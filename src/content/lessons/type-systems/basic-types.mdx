@@ -1,0 +1,75 @@
+---
+title: "Basic Types and Type Annotations"
+module: "type-systems"
+moduleTitle: "Type Systems"
+order: 1
+description: "Understanding Haskell's type system — type annotations, inference, and polymorphism"
+---
+
+import ExerciseIsland from '../../../components/exercise/ExerciseIsland.astro';
+
+# Basic Types and Type Annotations
+
+Haskell has one of the most powerful type systems of any mainstream programming language. Every expression has a type, and the compiler can usually **infer** it automatically. But explicit type annotations are invaluable — they serve as documentation, catch errors early, and often make error messages dramatically clearer.
+
+## The Type Signature
+
+In Haskell, type signatures are written above a function definition with `::`:
+
+```haskell
+double :: Int -> Int
+double x = x * 2
+```
+
+Read `::` as "has type". The signature above says: `double` takes an `Int` and returns an `Int`.
+
+## Common Base Types
+
+| Type | Example | Description |
+|------|---------|-------------|
+| `Int` | `42` | Machine-sized integer |
+| `Integer` | `999999999999` | Arbitrary-precision integer |
+| `Double` | `3.14` | Double-precision floating point |
+| `Bool` | `True`, `False` | Boolean |
+| `Char` | `'a'` | Single character |
+| `String` | `"hello"` | List of characters (`[Char]`) |
+
+## Polymorphism
+
+When a function works for **any** type, we use type variables (lowercase):
+
+```haskell
+identity :: a -> a
+identity x = x
+```
+
+This says `identity` works for any type `a`. The compiler guarantees you can't "look inside" — the function can only return the value it was given.
+
+## Typeclasses and Constraints
+
+Constraints appear before `=>` and restrict which types a variable can be:
+
+```haskell
+add :: Num a => a -> a -> a
+add x y = x + y
+```
+
+This says: `add` works for any type `a`, **as long as** `a` is a member of the `Num` typeclass (which provides `+`).
+
+---
+
+## Exercise: Add Type Annotations
+
+<ExerciseIsland id="type-annotations" />
+
+---
+
+## Exercise: Define a Shape Type
+
+<ExerciseIsland id="algebraic-data-types" />
+
+---
+
+## Exercise: Write Generic Functions
+
+<ExerciseIsland id="parametric-polymorphism" />

@@ -1,0 +1,115 @@
+---
+title: "Functors: Mapping Over Structure"
+module: "category-theory"
+moduleTitle: "Category Theory"
+order: 1
+description: "Understanding the Functor typeclass, fmap, and the functor laws"
+---
+
+import ExerciseIsland from '../../../components/exercise/ExerciseIsland.astro';
+
+# Functors: Mapping Over Structure
+
+A **Functor** is one of the most fundamental abstractions in both category theory and Haskell. At its core, a functor captures the idea of **mapping a function over some structure** while preserving the structure's shape.
+
+If you've ever used `map` on a list, you already understand functors intuitively:
+
+```haskell
+map (+1) [1, 2, 3]  -- [2, 3, 4]
+```
+
+The list's length and order are preserved — only the values change. That's the essence of a functor.
+
+## The Functor Typeclass
+
+```haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+```
+
+Here, `f` is a **type constructor** — something that takes a type and produces a type. `Maybe` is a functor, `[]` (list) is a functor, but `Int` is not (it doesn't take a type parameter).
+
+`fmap` says: given a function from `a` to `b`, and a structure containing `a`s, produce a structure containing `b`s — without changing the structure itself.
+
+## Familiar Functors
+
+```haskell
+-- Maybe: map over a value that might not exist
+fmap (+1) (Just 5)   -- Just 6
+fmap (+1) Nothing    -- Nothing
+
+-- Lists: map over every element
+fmap (*2) [1,2,3]    -- [2,4,6]
+
+-- Either: map over the Right value
+fmap show (Right 42)      -- Right "42"
+fmap show (Left "error")  -- Left "error"
+
+-- Functions: function composition!
+fmap (*2) (+3) $ 1   -- 8    (same as (*2) . (+3) $ 1)
+```
+
+## The Categorical View
+
+In category theory, a functor *F* maps between categories. It sends:
+- Each **object** *A* to an object *F(A)*
+- Each **morphism** *f : A -> B* to a morphism *F(f) : F(A) -> F(B)*
+
+In Haskell, we stay within the category **Hask** (types and functions):
+- The type constructor `f` maps types: `a` becomes `f a`
+- `fmap` maps functions: `(a -> b)` becomes `(f a -> f b)`
+
+This is why functors are sometimes called **structure-preserving maps**.
+
+## The Functor Laws
+
+A lawful `Functor` instance must satisfy:
+
+**Identity:** Mapping the identity function changes nothing.
+```haskell
+fmap id == id
+```
+
+**Composition:** Mapping a composition equals composing the maps.
+```haskell
+fmap (f . g) == fmap f . fmap g
+```
+
+These laws ensure `fmap` truly preserves structure — it doesn't reorder, duplicate, or drop elements.
+
+---
+
+## Exercise: Implement Functor for a Binary Tree
+
+<ExerciseIsland id="functor-instance" />
+
+---
+
+## Exercise: Verify the Functor Laws
+
+<ExerciseIsland id="functor-laws" />
+
+---
+
+## Natural Transformations
+
+A **natural transformation** is a mapping between two functors that "commutes" with `fmap`. In Haskell terms, it's a polymorphic function:
+
+```haskell
+type NaturalTransformation f g = forall a. f a -> g a
+```
+
+The naturality condition says: it doesn't matter whether you transform first and then map, or map first and then transform:
+
+```haskell
+-- For natural transformation alpha :: forall a. F a -> G a
+fmap f . alpha == alpha . fmap f
+```
+
+A simple example: `maybeToList :: Maybe a -> [a]` is a natural transformation from `Maybe` to `[]`.
+
+---
+
+## Exercise: Write Natural Transformations
+
+<ExerciseIsland id="natural-transformation" />

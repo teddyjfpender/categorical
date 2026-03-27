@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Dashboard">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="border-b border-border px-6 py-4">
+      <nav class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 text-xl font-semibold">
+          <span class="text-accent">C</span>ategorical
+        </a>
+        <div class="flex items-center gap-6 text-sm text-text-secondary">
+          <a href="/type-systems/basic-types" class="hover:text-text-primary transition-colors">Lessons</a>
+          <a href="/dashboard" class="text-text-primary">Dashboard</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="flex-1 max-w-4xl mx-auto w-full px-6 py-10">
+      <h1 class="text-3xl font-bold mb-2">Your Progress</h1>
+      <p class="text-text-secondary mb-8">Track your journey through types, categories, and code.</p>
+
+      <div id="dashboard-root"></div>
+    </main>
+  </div>
+
+  <script>
+    import { createElement } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { ProgressDashboard } from '../components/progress/ProgressDashboard';
+
+    const root = document.getElementById('dashboard-root');
+    if (root) {
+      createRoot(root).render(createElement(ProgressDashboard));
+    }
+  </script>
+</BaseLayout>

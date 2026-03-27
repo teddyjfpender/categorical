@@ -1,0 +1,165 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { Sidebar } from '../components/layout/Sidebar';
+
+interface Props {
+  title: string;
+  module: string;
+  moduleTitle: string;
+  lessonSlug: string;
+  description?: string;
+}
+
+const { title, module: moduleName, moduleTitle, lessonSlug, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar (React island) -->
+    <Sidebar client:load currentModule={moduleName} currentLesson={lessonSlug} />
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-y-auto">
+      <!-- Top bar -->
+      <div class="sticky top-0 z-10 bg-bg-primary/80 backdrop-blur-sm border-b border-border px-8 py-3">
+        <div class="flex items-center gap-2 text-sm">
+          <a href="/" class="text-text-muted hover:text-text-secondary transition-colors">Home</a>
+          <span class="text-text-muted">/</span>
+          <span class="text-text-muted">{moduleTitle}</span>
+          <span class="text-text-muted">/</span>
+          <span class="text-text-primary">{title}</span>
+        </div>
+      </div>
+
+      <!-- Lesson content -->
+      <article class="max-w-4xl mx-auto px-8 py-10 prose-custom">
+        <slot />
+      </article>
+    </main>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  /* Prose styling for lesson content */
+  .prose-custom h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .prose-custom h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .prose-custom h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .prose-custom p {
+    margin-bottom: 1rem;
+    line-height: 1.8;
+    color: var(--color-text-secondary);
+  }
+
+  .prose-custom strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+
+  .prose-custom code:not(pre code) {
+    background: var(--color-bg-tertiary);
+    color: var(--color-accent-bright);
+    padding: 0.15em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-family: var(--font-mono);
+  }
+
+  .prose-custom pre {
+    background: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .prose-custom pre code {
+    background: none;
+    color: var(--color-text-primary);
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  .prose-custom ul, .prose-custom ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    color: var(--color-text-secondary);
+  }
+
+  .prose-custom li {
+    margin-bottom: 0.25rem;
+    line-height: 1.7;
+  }
+
+  .prose-custom table {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    border-collapse: collapse;
+  }
+
+  .prose-custom th {
+    text-align: left;
+    padding: 0.5rem 1rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .prose-custom td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .prose-custom td code {
+    font-size: 0.8125rem;
+  }
+
+  .prose-custom hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 2rem 0;
+  }
+
+  .prose-custom a {
+    color: var(--color-accent-bright);
+    text-decoration: none;
+  }
+
+  .prose-custom a:hover {
+    text-decoration: underline;
+  }
+
+  .prose-custom blockquote {
+    border-left: 3px solid var(--color-accent);
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+</style>

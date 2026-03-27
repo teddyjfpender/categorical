@@ -1,0 +1,28 @@
+---
+import WorkspaceLayout from '../../layouts/WorkspaceLayout.astro';
+import { render, getCollection } from 'astro:content';
+import { getExercisesByModule } from '../../lib/exercises';
+
+const lessons = await getCollection('lessons');
+const lesson = lessons.find(l => l.id === 'type-systems/basic-types');
+
+if (!lesson) {
+  return Astro.redirect('/');
+}
+
+const { Content } = await render(lesson);
+const exercises = getExercisesByModule('type-systems');
+
+// Render lesson content to HTML string for the description panel
+const contentResponse = await render(lesson);
+---
+
+<WorkspaceLayout
+  title={lesson.data.title}
+  module={lesson.data.module}
+  moduleTitle={lesson.data.moduleTitle}
+  lessonSlug="basic-types"
+  exercises={exercises}
+  lessonContent=""
+  description={lesson.data.description}
+/>

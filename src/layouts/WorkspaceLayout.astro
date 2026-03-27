@@ -1,0 +1,155 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { SplitPaneWorkspace } from '../components/workspace/SplitPaneWorkspace';
+import type { Exercise } from '../lib/types/exercise';
+
+interface Props {
+  title: string;
+  module: string;
+  moduleTitle: string;
+  lessonSlug: string;
+  exercises: Exercise[];
+  lessonContent: string;
+  description?: string;
+}
+
+const { title, module: moduleSlug, moduleTitle, lessonSlug, exercises, lessonContent, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <SplitPaneWorkspace
+    client:load
+    exercises={exercises}
+    lessonTitle={title}
+    lessonContent={lessonContent}
+    moduleTitle={moduleTitle}
+    moduleSlug={moduleSlug}
+    lessonSlug={lessonSlug}
+  />
+</BaseLayout>
+
+<style is:global>
+  /* Prevent body scroll when workspace is mounted */
+  body {
+    overflow: hidden;
+  }
+
+  /* Prose styling for lesson content in description panel */
+  .prose-custom h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  .prose-custom h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text-primary);
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .prose-custom h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .prose-custom p {
+    margin-bottom: 0.75rem;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+  }
+
+  .prose-custom strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+
+  .prose-custom code:not(pre code) {
+    background: var(--color-bg-tertiary);
+    color: var(--color-accent-bright);
+    padding: 0.15em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.8em;
+    font-family: var(--font-mono);
+  }
+
+  .prose-custom pre {
+    background: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+
+  .prose-custom pre code {
+    background: none;
+    color: var(--color-text-primary);
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .prose-custom ul, .prose-custom ol {
+    margin-bottom: 0.75rem;
+    padding-left: 1.25rem;
+    color: var(--color-text-secondary);
+  }
+
+  .prose-custom li {
+    margin-bottom: 0.15rem;
+    line-height: 1.6;
+    font-size: 0.875rem;
+  }
+
+  .prose-custom table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  .prose-custom th {
+    text-align: left;
+    padding: 0.375rem 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+
+  .prose-custom td {
+    padding: 0.375rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  .prose-custom hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 1.25rem 0;
+  }
+
+  .prose-custom a {
+    color: var(--color-accent-bright);
+    text-decoration: none;
+  }
+
+  .prose-custom a:hover {
+    text-decoration: underline;
+  }
+
+  .prose-custom blockquote {
+    border-left: 3px solid var(--color-accent);
+    padding-left: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+</style>

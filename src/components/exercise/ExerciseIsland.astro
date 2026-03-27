@@ -1,0 +1,13 @@
+---
+import { ExerciseWorkspace } from './ExerciseWorkspace';
+import { getExercise } from '../../lib/exercises';
+
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+const exercise = getExercise(id);
+---
+
+{exercise && <ExerciseWorkspace client:load exercise={exercise} />}

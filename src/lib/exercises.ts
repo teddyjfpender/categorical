@@ -1,116 +1,329 @@
 import type { Exercise } from './types/exercise';
 
-// Exercise registry — all exercises are defined here so they can be
-// referenced by ID from MDX content and loaded by the ExerciseWorkspace.
-// The Haskell code is inlined to keep everything in one place for v1.
+// ────────────────────────────────────────────────────────────────────
+// Exercise Registry
+//
+// Exercises are grouped by module and ordered for progressive learning.
+// Each exercise builds on what the previous one taught — no gaps.
+//
+// Type Systems module (7 exercises):
+//   1. basic-functions        — defining functions, Haskell syntax basics
+//   2. concrete-types         — type signatures with concrete types
+//   3. pattern-matching       — pattern matching on Bool, Maybe, lists
+//   4. algebraic-data-types   — defining custom types + matching on them
+//   5. polymorphic-types      — type variables, constraints, typeclasses
+//   6. parametric-polymorphism — free theorems, tuples, HOFs, composition
+//   7. typeclasses-intro      — writing typeclass instances
+//
+// Category Theory module (4 exercises):
+//   1. using-fmap             — use fmap on standard types (no instance writing)
+//   2. functor-instance       — write a Functor instance for a custom type
+//   3. functor-laws           — verify the Functor laws
+//   4. natural-transformation — write natural transformations
+// ────────────────────────────────────────────────────────────────────
 
 const exercises: Record<string, Exercise> = {
-  'type-annotations': {
-    id: 'type-annotations',
-    title: 'Add Type Annotations',
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TYPE SYSTEMS MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'basic-functions': {
+    id: 'basic-functions',
+    title: 'Define Your First Functions',
     difficulty: 'beginner',
     order: 1,
     description: `
-<p>Add explicit <strong>type signatures</strong> to the functions in the editor. Haskell can infer types automatically, but explicit annotations serve as documentation and catch errors early.</p>
+<p>Welcome to Haskell! In this exercise you'll define simple functions to learn the basic syntax.</p>
 
-<h3>What is a type signature?</h3>
-<p>A type signature is written above a function using <code>::</code> (read as "has type"):</p>
-<pre><code>double :: Int -> Int
-double x = x * 2</code></pre>
+<h3>Defining Functions</h3>
+<p>In Haskell, a function is defined with <code>=</code>. Arguments are separated by spaces — no parentheses needed:</p>
+<pre><code>double x = x * 2
+</code></pre>
+<p>Call it the same way:</p>
+<pre><code>double 5    -- result: 10
+double 100  -- result: 200</code></pre>
 
-<p>The arrow <code>-></code> separates argument types from the return type. Multiple arguments chain with arrows:</p>
-<pre><code>add :: Int -> Int -> Int
-add x y = x + y</code></pre>
+<h3>Key Differences from Other Languages</h3>
+<ul>
+  <li><code>=</code> means <strong>definition</strong>, not assignment. <code>double x = x * 2</code> means "double of x <em>is defined as</em> x * 2."</li>
+  <li>No <code>return</code> keyword — the right side of <code>=</code> is the result.</li>
+  <li>No parentheses around arguments: <code>add x y = x + y</code>, not <code>add(x, y)</code>.</li>
+  <li>Strings use double quotes: <code>"hello"</code>. String concatenation uses <code>++</code>.</li>
+</ul>
 
-<h3>Polymorphism and Constraints</h3>
-<p>When a function works for <strong>any</strong> type, use a type variable (lowercase letter):</p>
-<pre><code>identity :: a -> a
-identity x = x</code></pre>
-
-<p>If the function needs specific operations (like <code>+</code>), add a <strong>typeclass constraint</strong> before <code>=></code>:</p>
-<pre><code>add :: Num a => a -> a -> a
-add x y = x + y</code></pre>
-
-<h3>Common Typeclasses</h3>
+<h3>Useful Operators</h3>
 <table>
-  <thead><tr><th>Typeclass</th><th>Provides</th><th>Example types</th></tr></thead>
+  <thead><tr><th>Operator</th><th>Meaning</th><th>Example</th></tr></thead>
   <tbody>
-    <tr><td><code>Num</code></td><td><code>+</code>, <code>-</code>, <code>*</code></td><td><code>Int</code>, <code>Double</code></td></tr>
-    <tr><td><code>Integral</code></td><td><code>div</code>, <code>mod</code></td><td><code>Int</code>, <code>Integer</code></td></tr>
-    <tr><td><code>Eq</code></td><td><code>==</code>, <code>/=</code></td><td>Most types</td></tr>
-    <tr><td><code>Show</code></td><td><code>show</code></td><td>Most types</td></tr>
+    <tr><td><code>+</code>, <code>-</code>, <code>*</code></td><td>Arithmetic</td><td><code>3 + 4</code> gives <code>7</code></td></tr>
+    <tr><td><code>++</code></td><td>Concatenate strings/lists</td><td><code>"hi" ++ "!"</code> gives <code>"hi!"</code></td></tr>
+    <tr><td><code>==</code>, <code>/=</code></td><td>Equal, not equal</td><td><code>3 == 3</code> gives <code>True</code></td></tr>
+    <tr><td><code>mod</code></td><td>Remainder (infix with backticks)</td><td><code>7 \`mod\` 3</code> gives <code>1</code></td></tr>
   </tbody>
 </table>
 
 <h3>Your Task</h3>
-<p>Add a type signature line above each of the four functions in the editor. Each function already works — you just need to declare its type.</p>
+<p>Implement four simple functions. Each one is a single line.</p>
 `,
-    starterCode: `module TypeAnnotations where
+    starterCode: `module BasicFunctions where
+
+-- EXERCISE: Implement each function.
+-- Replace the \`error "..."\` with your code.
+
+-- 1. Return the square of a number.
+--    Example: square 4 = 16
+square x = error "implement square"
+
+-- 2. Greet someone by name.
+--    Example: greet "Alice" = "Hello, Alice!"
+--    Use ++ to join strings.
+greet name = error "implement greet"
+
+-- 3. Check if a number is negative.
+--    Example: isNegative (-3) = True, isNegative 5 = False
+--    Use < to compare.
+isNegative n = error "implement isNegative"
+
+-- 4. Return the larger of two numbers.
+--    Example: larger 3 7 = 7
+--    Use an if-then-else expression:
+--      if condition then valueA else valueB
+larger x y = error "implement larger"
+`,
+    solutionCode: `module BasicFunctions where
+
+square x = x * x
+
+greet name = "Hello, " ++ name ++ "!"
+
+isNegative n = n < 0
+
+larger x y = if x > y then x else y
+`,
+    testCode: '',
+    hints: [
+      'For <code>square</code>, multiply <code>x</code> by itself.',
+      'For <code>greet</code>, use <code>++</code> to join three parts: <code>"Hello, "</code>, the name, and <code>"!"</code>.',
+      'For <code>isNegative</code>, compare <code>n</code> with <code>0</code> using <code>&lt;</code>.',
+      'For <code>larger</code>: <code>if x > y then x else y</code>.',
+    ],
+    concepts: ['functions', 'expressions', 'operators', 'if-then-else'],
+    successPatterns: [
+      'square\\s+\\w+\\s*=\\s*\\w+\\s*\\*\\s*\\w+',
+      'greet\\s+\\w+\\s*=.*\\+\\+.*\\+\\+',
+      'isNegative\\s+\\w+\\s*=.*<',
+      'larger\\s+\\w+\\s+\\w+\\s*=\\s*if',
+    ],
+    testNames: [
+      'square multiplies the number by itself',
+      'greet concatenates strings with ++',
+      'isNegative compares with 0',
+      'larger uses if-then-else',
+    ],
+  },
+
+  'concrete-types': {
+    id: 'concrete-types',
+    title: 'Add Type Signatures',
+    difficulty: 'beginner',
+    order: 2,
+    description: `
+<p>Every value in Haskell has a <strong>type</strong>. The compiler can figure out types automatically (called <em>type inference</em>), but writing them explicitly is good practice — they serve as documentation and catch errors early.</p>
+
+<h3>Type Signatures</h3>
+<p>A type signature goes on the line <strong>above</strong> a function definition, using <code>::</code> (read as "has type"):</p>
+<pre><code>double :: Int -> Int
+double x = x * 2</code></pre>
+<p>This says: <code>double</code> takes an <code>Int</code> and returns an <code>Int</code>.</p>
+
+<p>Multiple arguments chain with arrows:</p>
+<pre><code>add :: Int -> Int -> Int
+add x y = x + y</code></pre>
+<p>Read this as: takes an <code>Int</code>, then another <code>Int</code>, returns an <code>Int</code>.</p>
+
+<h3>Common Types</h3>
+<table>
+  <thead><tr><th>Type</th><th>Values</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><code>Int</code></td><td>Whole numbers</td><td><code>42</code>, <code>-7</code></td></tr>
+    <tr><td><code>Double</code></td><td>Decimal numbers</td><td><code>3.14</code>, <code>-0.5</code></td></tr>
+    <tr><td><code>Bool</code></td><td><code>True</code> or <code>False</code></td><td><code>True</code></td></tr>
+    <tr><td><code>String</code></td><td>Text (list of characters)</td><td><code>"hello"</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Your Task</h3>
+<p>Add a type signature line above each of the four functions. The functions already work — you're just declaring their types.</p>
+`,
+    starterCode: `module ConcreteTypes where
 
 -- EXERCISE: Add a type signature above each function.
 --
 -- A type signature looks like:
---   functionName :: InputType -> OutputType
+--   functionName :: InputType -> ReturnType
 --
 -- For example:
 --   double :: Int -> Int
 --   double x = x * 2
 
--- 1. What types does \`add\` take and return?
---    Hint: it uses (+), which requires the Num typeclass.
+-- 1. square takes an Int and returns an Int.
 --    _ :: _
-add x y = x + y
+square x = x * x
 
--- 2. \`greet\` takes a name and returns a greeting.
---    What's the type of a text value in Haskell?
+-- 2. greet takes a String and returns a String.
 --    _ :: _
 greet name = "Hello, " ++ name ++ "!"
 
--- 3. \`isEven\` checks divisibility — what does mod require?
---    Hint: mod uses the Integral typeclass. The result is True/False.
+-- 3. isNegative takes an Int and returns a Bool.
 --    _ :: _
-isEven n = n \`mod\` 2 == 0
+isNegative n = n < 0
 
--- 4. \`head'\` extracts the first element of a list.
---    It works on a list of *any* type — use a type variable.
+-- 4. add takes two Ints and returns an Int.
 --    _ :: _
-head' (x:_) = x
-head' []    = error "empty list"
-`,
-    solutionCode: `module TypeAnnotations where
-
-add :: Num a => a -> a -> a
 add x y = x + y
+`,
+    solutionCode: `module ConcreteTypes where
+
+square :: Int -> Int
+square x = x * x
 
 greet :: String -> String
 greet name = "Hello, " ++ name ++ "!"
 
-isEven :: Integral a => a -> Bool
-isEven n = n \`mod\` 2 == 0
+isNegative :: Int -> Bool
+isNegative n = n < 0
 
-head' :: [a] -> a
-head' (x:_) = x
-head' []    = error "empty list"
+add :: Int -> Int -> Int
+add x y = x + y
 `,
-    testCode: `-- Tests check that type signatures are present and correct`,
+    testCode: '',
     hints: [
-      'A type signature goes on the line above the function: <code>name :: Type</code>',
-      'For <code>add</code>, the constraint is <code>Num a =></code> because it uses <code>+</code>. The signature is <code>Num a => a -> a -> a</code>.',
-      'For <code>greet</code>, strings in Haskell are <code>String</code> (or <code>[Char]</code>). It takes a <code>String</code> and returns a <code>String</code>.',
-      'For <code>head\'</code>, it works on any list — the signature is <code>[a] -> a</code> where <code>a</code> is a type variable.',
+      'Write the signature on the line directly above the function. For example, above <code>square x = x * x</code> write <code>square :: ...</code>.',
+      'Look at what goes in and what comes out. <code>square</code> takes a number (<code>Int</code>) and returns a number (<code>Int</code>).',
+      'For <code>isNegative</code>, the result is <code>True</code> or <code>False</code> — that\'s the <code>Bool</code> type.',
+      'For <code>add</code>, there are two arguments: <code>add :: Int -> Int -> Int</code>.',
     ],
-    concepts: ['type-signatures', 'type-inference', 'typeclasses', 'polymorphism'],
+    concepts: ['type-signatures', 'basic-types', 'Int', 'Bool', 'String'],
     successPatterns: [
-      'add\\s*::',
+      'square\\s*::',
       'greet\\s*::',
-      'isEven\\s*::',
-      "head'\\s*::",
+      'isNegative\\s*::',
+      'add\\s*::',
     ],
     testNames: [
-      'add has a type signature',
+      'square has a type signature',
       'greet has a type signature',
-      'isEven has a type signature',
-      "head' has a type signature",
+      'isNegative has a type signature',
+      'add has a type signature',
+    ],
+  },
+
+  'pattern-matching': {
+    id: 'pattern-matching',
+    title: 'Pattern Matching',
+    difficulty: 'beginner',
+    order: 3,
+    description: `
+<p><strong>Pattern matching</strong> is how Haskell handles different cases. Instead of if-else chains, you write one equation per case:</p>
+
+<pre><code>describe :: Bool -> String
+describe True  = "yes"
+describe False = "no"</code></pre>
+
+<p>Haskell tries each equation top to bottom. The first pattern that matches runs.</p>
+
+<h3>Matching on Lists</h3>
+<p>A list is either empty (<code>[]</code>) or has a head and tail (<code>x:xs</code>):</p>
+<pre><code>isEmpty :: [a] -> Bool
+isEmpty []    = True
+isEmpty (_:_) = False</code></pre>
+<p>The underscore <code>_</code> means "I don't care about this value."</p>
+
+<h3>The Maybe Type</h3>
+<p><code>Maybe a</code> represents a value that might not exist. It has two constructors:</p>
+<pre><code>-- Maybe has two cases:
+--   Nothing   — no value
+--   Just x    — a value x
+
+fromMaybe :: a -> Maybe a -> a
+fromMaybe fallback Nothing  = fallback
+fromMaybe _        (Just x) = x</code></pre>
+<p>Think of <code>Maybe</code> as a safe version of null — the type system forces you to handle the missing case.</p>
+
+<h3>Your Task</h3>
+<p>Implement four functions using pattern matching. Each function needs multiple equations — one per case.</p>
+`,
+    starterCode: `module PatternMatching where
+
+-- EXERCISE: Implement each function using pattern matching.
+-- Write one equation per case (no if-then-else needed).
+
+-- 1. Convert a Bool to "yes" or "no".
+--    Example: boolToString True = "yes"
+boolToString :: Bool -> String
+boolToString True  = error "implement True case"
+boolToString False = error "implement False case"
+
+-- 2. Get the first element of a list, or a default if empty.
+--    Example: headOr 0 [1,2,3] = 1
+--    Example: headOr 0 []      = 0
+--    Pattern: (x:_) matches a non-empty list, [] matches empty.
+headOr :: a -> [a] -> a
+headOr fallback []    = error "implement empty case"
+headOr _        (x:_) = error "implement non-empty case"
+
+-- 3. Return True if a Maybe contains a value, False if Nothing.
+--    Example: isJust (Just 5) = True
+--    Example: isJust Nothing  = False
+isJust :: Maybe a -> Bool
+isJust Nothing  = error "implement Nothing case"
+isJust (Just _) = error "implement Just case"
+
+-- 4. Apply a function to the value inside a Maybe, or return a default.
+--    Example: maybeApply (+1) 0 (Just 5) = 6
+--    Example: maybeApply (+1) 0 Nothing  = 0
+maybeApply :: (a -> b) -> b -> Maybe a -> b
+maybeApply _ fallback Nothing  = error "implement Nothing case"
+maybeApply f _        (Just x) = error "implement Just case"
+`,
+    solutionCode: `module PatternMatching where
+
+boolToString :: Bool -> String
+boolToString True  = "yes"
+boolToString False = "no"
+
+headOr :: a -> [a] -> a
+headOr fallback [] = fallback
+headOr _     (x:_) = x
+
+isJust :: Maybe a -> Bool
+isJust Nothing  = False
+isJust (Just _) = True
+
+maybeApply :: (a -> b) -> b -> Maybe a -> b
+maybeApply _ fallback Nothing  = fallback
+maybeApply f _        (Just x) = f x
+`,
+    testCode: '',
+    hints: [
+      'Each equation replaces the <code>error "..."</code> with the return value for that case. For <code>boolToString True</code>, the result is just <code>"yes"</code>.',
+      'For <code>headOr</code>: when the list is empty, return the fallback. When it\'s non-empty, the <code>x</code> in <code>(x:_)</code> is the first element.',
+      'For <code>isJust</code>: <code>Nothing</code> means no value (<code>False</code>), <code>Just _</code> means there is one (<code>True</code>).',
+      'For <code>maybeApply</code>: the <code>Nothing</code> case returns <code>fallback</code>. The <code>Just x</code> case applies <code>f</code> to <code>x</code>: <code>f x</code>.',
+    ],
+    concepts: ['pattern-matching', 'Bool', 'Maybe', 'lists', 'constructors'],
+    successPatterns: [
+      'boolToString\\s+True\\s*=\\s*"yes"',
+      'headOr\\s+\\w+\\s+\\[\\]\\s*=\\s*\\w+',
+      'isJust\\s+Nothing\\s*=\\s*False',
+      'maybeApply\\s+\\w+\\s+\\w+\\s*\\(Just\\s+\\w+\\)\\s*=\\s*\\w+\\s+\\w+',
+    ],
+    testNames: [
+      'boolToString returns "yes" for True',
+      'headOr returns fallback for empty list',
+      'isJust returns False for Nothing',
+      'maybeApply applies function to Just value',
     ],
   },
 
@@ -118,32 +331,37 @@ head' []    = error "empty list"
     id: 'algebraic-data-types',
     title: 'Define a Shape Type',
     difficulty: 'beginner',
-    order: 2,
+    order: 4,
     description: `
-<p>Define an <strong>algebraic data type</strong> (ADT) called <code>Shape</code> and implement an <code>area</code> function using pattern matching.</p>
+<p>Now that you can pattern match on existing types, let's <strong>define your own type</strong> using the <code>data</code> keyword.</p>
 
-<h3>What are ADTs?</h3>
-<p>Algebraic data types let you define types with multiple <strong>constructors</strong>. Each constructor can hold different data:</p>
-<pre><code>data Color = Red | Green | Blue
+<h3>Algebraic Data Types</h3>
+<p>An algebraic data type (ADT) has one or more <strong>constructors</strong>, each of which can hold data:</p>
+<pre><code>data Color = Red | Green | Blue</code></pre>
+<p>This defines a type <code>Color</code> with three possible values. You pattern match on them just like <code>Bool</code>:</p>
+<pre><code>colorName :: Color -> String
+colorName Red   = "red"
+colorName Green = "green"
+colorName Blue  = "blue"</code></pre>
 
-data Expr
-  = Lit Double          -- a literal number
-  | Add Expr Expr       -- sum of two expressions
-  | Mul Expr Expr       -- product of two expressions</code></pre>
-
-<p>These are called <strong>sum types</strong> because a value is one constructor <em>or</em> another (like a tagged union).</p>
-
-<h3>Pattern Matching</h3>
-<p>You handle each constructor with its own equation:</p>
+<h3>Constructors with Fields</h3>
+<p>Constructors can carry data — just list the types after the constructor name:</p>
+<pre><code>data Expr
+  = Lit Double          -- holds one Double
+  | Add Expr Expr       -- holds two sub-expressions</code></pre>
 <pre><code>eval :: Expr -> Double
 eval (Lit n)     = n
-eval (Add e1 e2) = eval e1 + eval e2
-eval (Mul e1 e2) = eval e1 * eval e2</code></pre>
+eval (Add e1 e2) = eval e1 + eval e2</code></pre>
 
-<p>The compiler warns you if you forget a constructor — one of Haskell's great safety features.</p>
+<h3>Deriving</h3>
+<p><code>deriving (Show, Eq)</code> at the end of a data definition asks the compiler to automatically generate:</p>
+<ul>
+  <li><code>Show</code> — ability to print values (e.g., in the REPL)</li>
+  <li><code>Eq</code> — ability to compare values with <code>==</code></li>
+</ul>
 
 <h3>Your Task</h3>
-<p>Define <code>Shape</code> with three constructors, then implement <code>area</code>:</p>
+<p>Define a <code>Shape</code> type and an <code>area</code> function:</p>
 <table>
   <thead><tr><th>Constructor</th><th>Fields</th><th>Area formula</th></tr></thead>
   <tbody>
@@ -157,26 +375,18 @@ eval (Mul e1 e2) = eval e1 * eval e2</code></pre>
 
 -- EXERCISE: Define the Shape data type and an area function.
 --
--- An algebraic data type uses the \`data\` keyword:
---   data Color = Red | Green | Blue
---
--- Constructors can hold values:
---   data Expr = Lit Double | Add Expr Expr
+-- Uncomment the code below and replace the underscores.
 
--- 1. Define Shape with three constructors:
---    - Circle: holds a radius (Double)
---    - Rectangle: holds width and height (Double, Double)
---    - Triangle: holds base and height (Double, Double)
+-- 1. Define Shape with three constructors.
+--    Each constructor holds the dimensions as Doubles.
 --
--- Uncomment and complete:
 -- data Shape
 --   = Circle _
 --   | Rectangle _ _
 --   | Triangle _ _
 --   deriving (Show, Eq)
 
--- 2. Implement area using pattern matching.
---    Each constructor needs its own equation:
+-- 2. Implement area by pattern matching on each constructor.
 --
 -- area :: Shape -> Double
 -- area (Circle r)      = _
@@ -196,13 +406,14 @@ area (Circle r)      = pi * r * r
 area (Rectangle w h) = w * h
 area (Triangle b h)  = 0.5 * b * h
 `,
-    testCode: `-- Tests verify Shape constructors exist and area computes correctly`,
+    testCode: '',
     hints: [
-      'Start by uncommenting the <code>data Shape</code> block and replacing the underscores with <code>Double</code>.',
-      'Circle holds one Double (radius), Rectangle and Triangle each hold two Doubles.',
-      'For area: Circle uses <code>pi * r * r</code>, Rectangle uses <code>w * h</code>, Triangle uses <code>0.5 * b * h</code>.',
+      'Start by uncommenting the <code>data Shape</code> block. Replace each underscore with <code>Double</code>.',
+      'Circle has one field (radius), so it\'s <code>Circle Double</code>. Rectangle and Triangle each have two fields: <code>Rectangle Double Double</code>.',
+      'For <code>area</code>, uncomment the function and replace underscores with the formula from the table. <code>pi</code> is built into Haskell.',
+      'The complete area: <code>area (Circle r) = pi * r * r</code>, <code>area (Rectangle w h) = w * h</code>, <code>area (Triangle b h) = 0.5 * b * h</code>.',
     ],
-    concepts: ['algebraic-data-types', 'pattern-matching', 'constructors', 'sum-types'],
+    concepts: ['algebraic-data-types', 'pattern-matching', 'constructors', 'deriving'],
     successPatterns: [
       'data\\s+Shape',
       'Circle\\s+Double',
@@ -219,66 +430,160 @@ area (Triangle b h)  = 0.5 * b * h
     ],
   },
 
+  'polymorphic-types': {
+    id: 'polymorphic-types',
+    title: 'Polymorphic Types and Constraints',
+    difficulty: 'beginner',
+    order: 5,
+    description: `
+<p>So far your type signatures have used <strong>concrete types</strong> like <code>Int</code> and <code>String</code>. But many functions work for <em>any</em> type. Haskell expresses this with <strong>type variables</strong>.</p>
+
+<h3>Type Variables</h3>
+<p>A lowercase letter in a type signature stands for "any type":</p>
+<pre><code>identity :: a -> a
+identity x = x</code></pre>
+<p>This works for <code>Int</code>, <code>String</code>, <code>[Bool]</code>, anything. The <code>a</code> is a <strong>type variable</strong> — a placeholder for whatever type you use it with.</p>
+
+<h3>Typeclass Constraints</h3>
+<p>Some functions need the type to support specific operations. The function <code>add</code> uses <code>+</code>, which not all types have. A <strong>constraint</strong> says "this works for any type <code>a</code>, as long as <code>a</code> supports certain operations":</p>
+<pre><code>add :: Num a => a -> a -> a
+add x y = x + y</code></pre>
+<p>The <code>Num a =></code> part (before the fat arrow) means: "<code>a</code> must be a numeric type." This lets <code>add</code> work with <code>Int</code>, <code>Double</code>, <code>Integer</code>, etc.</p>
+
+<h3>Common Constraints</h3>
+<table>
+  <thead><tr><th>Constraint</th><th>Provides</th><th>Types that have it</th></tr></thead>
+  <tbody>
+    <tr><td><code>Num a</code></td><td><code>+</code>, <code>-</code>, <code>*</code></td><td><code>Int</code>, <code>Double</code>, <code>Integer</code></td></tr>
+    <tr><td><code>Integral a</code></td><td><code>div</code>, <code>mod</code></td><td><code>Int</code>, <code>Integer</code></td></tr>
+    <tr><td><code>Eq a</code></td><td><code>==</code>, <code>/=</code></td><td>Most types</td></tr>
+    <tr><td><code>Ord a</code></td><td><code><</code>, <code>></code>, <code><=</code>, <code>>=</code></td><td>Most types</td></tr>
+    <tr><td><code>Show a</code></td><td><code>show</code> (convert to String)</td><td>Most types</td></tr>
+  </tbody>
+</table>
+
+<h3>Your Task</h3>
+<p>Add type signatures with the correct type variables and constraints. Each function already works — figure out the most general type.</p>
+`,
+    starterCode: `module PolymorphicTypes where
+
+-- EXERCISE: Add a type signature above each function.
+-- Use type variables (a, b) and constraints (Num a =>, Eq a =>)
+-- where needed.
+
+-- 1. Works for ANY type — no constraint needed.
+--    What goes in and what comes out?
+--    _ :: _
+firstOfThree (x, _, _) = x
+
+-- 2. Uses (+), which needs the Num constraint.
+--    Both arguments and the result are the same numeric type.
+--    _ :: _
+addThree x y z = x + y + z
+
+-- 3. Uses (==), which needs the Eq constraint.
+--    Returns True if the value is in the list.
+--    _ :: _
+contains _ []     = False
+contains v (x:xs) = v == x || contains v xs
+
+-- 4. Works on any list — returns its length.
+--    The list elements can be any type.
+--    _ :: _
+len []     = 0
+len (_:xs) = 1 + len xs
+`,
+    solutionCode: `module PolymorphicTypes where
+
+firstOfThree :: (a, b, c) -> a
+firstOfThree (x, _, _) = x
+
+addThree :: Num a => a -> a -> a -> a
+addThree x y z = x + y + z
+
+contains :: Eq a => a -> [a] -> Bool
+contains _ []     = False
+contains v (x:xs) = v == x || contains v xs
+
+len :: [a] -> Int
+len []     = 0
+len (_:xs) = 1 + len xs
+`,
+    testCode: '',
+    hints: [
+      'For <code>firstOfThree</code>: the input is a 3-tuple <code>(a, b, c)</code>. The output is the first element, which has type <code>a</code>.',
+      'For <code>addThree</code>: it uses <code>+</code>, so it needs <code>Num a =></code>. All three arguments and the result are the same type <code>a</code>.',
+      'For <code>contains</code>: it uses <code>==</code>, so it needs <code>Eq a =></code>. It takes a value of type <code>a</code>, a list of <code>[a]</code>, and returns <code>Bool</code>.',
+      'For <code>len</code>: the list can hold any type (<code>[a]</code>), so no constraint is needed. It returns an <code>Int</code>.',
+    ],
+    concepts: ['polymorphism', 'type-variables', 'constraints', 'typeclasses'],
+    successPatterns: [
+      'firstOfThree\\s*::',
+      'addThree\\s*::.*Num',
+      'contains\\s*::.*Eq',
+      'len\\s*::.*\\[',
+    ],
+    testNames: [
+      'firstOfThree has a type signature',
+      'addThree has a Num constraint',
+      'contains has an Eq constraint',
+      'len has a polymorphic list type',
+    ],
+  },
+
   'parametric-polymorphism': {
     id: 'parametric-polymorphism',
-    title: 'Write Generic Functions',
+    title: 'Parametric Polymorphism',
     difficulty: 'beginner',
-    order: 3,
+    order: 6,
     description: `
-<p>Implement <strong>parametrically polymorphic</strong> functions — functions that work for <em>any</em> type without knowing what the type is.</p>
-
-<h3>What is parametric polymorphism?</h3>
-<p>A function like <code>identity :: a -> a</code> works for every type. The <code>a</code> is a <strong>type variable</strong> — it can be <code>Int</code>, <code>String</code>, <code>[Bool]</code>, anything:</p>
-<pre><code>identity :: a -> a
-identity x = x
-
-identity 42       -- 42
-identity "hello"  -- "hello"
-identity [True]   -- [True]</code></pre>
+<p>When a function has type <code>a -> a</code> with <strong>no constraints</strong>, it can't inspect the value at all — it can only rearrange structure. This is called <strong>parametric polymorphism</strong>, and it has a remarkable consequence: the type alone tells you what the function does.</p>
 
 <h3>The Free Theorem</h3>
-<p>The remarkable thing: because the function doesn't know what <code>a</code> is, it <strong>can't inspect the value</strong>. It can only rearrange structure. This severely limits what the function <em>can</em> do — which is a feature! It makes the function's behavior <strong>predictable from the type alone</strong>.</p>
+<p>Consider the type <code>(a, b) -> (b, a)</code>. There is only <strong>one possible function</strong> with this type — it must swap the pair. The function can't create new values (it doesn't know what <code>a</code> or <code>b</code> are), so it can only rearrange what it's given.</p>
 
-<p>For example, there is only <strong>one</strong> function with type <code>(a, b) -> (b, a)</code> — it must swap the elements.</p>
-
-<h3>Tuples and Higher-Order Functions</h3>
-<p>Haskell tuples use parentheses and commas. Pattern match to extract elements:</p>
+<h3>Tuples</h3>
+<p>Tuples group fixed numbers of values. Pattern match with parentheses:</p>
 <pre><code>fst :: (a, b) -> a
 fst (x, _) = x
 
 snd :: (a, b) -> b
 snd (_, y) = y</code></pre>
 
-<p>Functions can take other functions as arguments (<strong>higher-order functions</strong>):</p>
+<h3>Higher-Order Functions</h3>
+<p>Functions can take other functions as arguments:</p>
 <pre><code>apply :: (a -> b) -> a -> b
 apply f x = f x</code></pre>
 
+<h3>Function Composition</h3>
+<p>Haskell has a built-in composition operator <code>(.)</code> that chains functions. If <code>g</code> transforms the input and <code>f</code> transforms that result:</p>
+<pre><code>(f . g) x  =  f (g x)</code></pre>
+
 <h3>Your Task</h3>
-<p>Implement three functions: <code>swap</code> (reverse a pair), <code>both</code> (apply a function to both elements), and <code>compose</code> (chain two functions).</p>
+<p>Implement three polymorphic functions. The types tell you exactly what each one must do.</p>
 `,
     starterCode: `module Polymorphism where
 
--- EXERCISE: Replace each \`error "..."\` with a real implementation.
---
--- These functions are polymorphic — they work for ANY type.
--- That means you can't look at the values, only rearrange them.
+-- EXERCISE: Replace each \`error "..."\` with your implementation.
+-- The type signatures constrain exactly what each function can do.
 
 -- 1. Swap the elements of a pair.
---    Pattern match on the tuple: (a, b) -> (b, a)
+--    Type tells you: take (a, b), return (b, a).
 swap :: (a, b) -> (b, a)
 swap pair = error "implement swap"
--- Hint: swap (x, y) = ???
+-- Hint: pattern match on the tuple.
 
 -- 2. Apply a function to both elements of a pair.
+--    Type tells you: take a function and a pair, apply it to each.
 both :: (a -> b) -> (a, a) -> (b, b)
 both f pair = error "implement both"
--- Hint: both f (x, y) = (???, ???)
+-- Hint: destructure the pair, apply f to each element.
 
--- 3. Function composition: apply g first, then f.
---    This is the same as the (.) operator in Haskell.
+-- 3. Compose two functions (apply g first, then f).
+--    This is how Haskell's (.) operator works.
 compose :: (b -> c) -> (a -> b) -> a -> c
 compose f g x = error "implement compose"
--- Hint: compose f g x = f (???)
+-- Hint: apply g to x, then apply f to the result.
 `,
     solutionCode: `module Polymorphism where
 
@@ -291,13 +596,14 @@ both f (x, y) = (f x, f y)
 compose :: (b -> c) -> (a -> b) -> a -> c
 compose f g x = f (g x)
 `,
-    testCode: `-- Tests verify functions work with multiple types`,
+    testCode: '',
     hints: [
-      'For <code>swap</code>, destructure the tuple in the argument: <code>swap (x, y) = (y, x)</code>',
-      'For <code>both</code>, apply <code>f</code> to each element: <code>both f (x, y) = (f x, f y)</code>',
-      'For <code>compose</code>, <code>g</code> transforms <code>x</code> first, then <code>f</code> transforms the result: <code>f (g x)</code>',
+      'For <code>swap</code>: destructure the tuple in the argument. <code>swap (x, y) = ...</code> — now return them in the opposite order.',
+      'For <code>both</code>: destructure the pair AND name the function: <code>both f (x, y) = ...</code>. Apply <code>f</code> to each element separately.',
+      'For <code>compose</code>: you have <code>f</code>, <code>g</code>, and <code>x</code>. First compute <code>g x</code>, then pass that result to <code>f</code>.',
+      'Solutions: <code>swap (a, b) = (b, a)</code>; <code>both f (x, y) = (f x, f y)</code>; <code>compose f g x = f (g x)</code>.',
     ],
-    concepts: ['parametric-polymorphism', 'higher-order-functions', 'function-composition'],
+    concepts: ['parametric-polymorphism', 'higher-order-functions', 'function-composition', 'tuples'],
     successPatterns: [
       'swap\\s*\\(\\w+\\s*,\\s*\\w+\\)',
       'both\\s+\\w+\\s*\\(\\w+\\s*,\\s*\\w+\\)',
@@ -306,54 +612,246 @@ compose f g x = f (g x)
     testNames: [
       'swap destructures and reverses the pair',
       'both applies the function to both elements',
-      'compose chains two functions correctly',
+      'compose chains two functions',
+    ],
+  },
+
+  'typeclasses-intro': {
+    id: 'typeclasses-intro',
+    title: 'Writing Typeclass Instances',
+    difficulty: 'beginner',
+    order: 7,
+    description: `
+<p>A <strong>typeclass</strong> defines a set of functions that different types can implement. You've already used typeclasses — <code>Num</code>, <code>Eq</code>, <code>Show</code>. Now you'll write your own <strong>instance</strong>.</p>
+
+<h3>How Typeclasses Work</h3>
+<p>A typeclass is like an interface. It declares function signatures that types must implement:</p>
+<pre><code>class Describable a where
+  describe :: a -> String</code></pre>
+<p>This says: "Any type <code>a</code> that is <code>Describable</code> must have a <code>describe</code> function."</p>
+
+<h3>Writing an Instance</h3>
+<p>To make a type implement a typeclass, write an <code>instance</code> declaration:</p>
+<pre><code>data Color = Red | Green | Blue
+
+instance Describable Color where
+  describe Red   = "red"
+  describe Green = "green"
+  describe Blue  = "blue"</code></pre>
+<p>The syntax is: <code>instance ClassName TypeName where</code>, followed by the function implementations indented below.</p>
+
+<p><strong>Important:</strong> Write the <em>type constructor</em> after the class name, not a full type. It's <code>Describable Color</code>, not <code>Describable (Color a)</code>.</p>
+
+<h3>The Eq Typeclass</h3>
+<p><code>Eq</code> lets you compare values with <code>==</code> and <code>/=</code>:</p>
+<pre><code>class Eq a where
+  (==) :: a -> a -> Bool
+  (/=) :: a -> a -> Bool
+  x /= y = not (x == y)  -- default: /= is defined in terms of ==</code></pre>
+<p>You only need to implement <code>==</code>. Haskell provides <code>/=</code> for free.</p>
+
+<h3>Your Task</h3>
+<p>Implement typeclass instances for a custom <code>TrafficLight</code> type.</p>
+`,
+    starterCode: `module TypeclassIntro where
+
+data TrafficLight = Red | Yellow | Green
+
+-- EXERCISE: Write typeclass instances for TrafficLight.
+
+-- 1. Make TrafficLight an instance of Eq.
+--    Two traffic lights are equal only if they're the same color.
+--
+--    instance Eq TrafficLight where
+--      x == y = ???
+--
+-- Hint: pattern match on all pairs. Red == Red = True, etc.
+-- Or use a simpler approach: convert to an Int first.
+
+-- 2. Make TrafficLight an instance of Show.
+--    Show requires a function: show :: a -> String
+--
+--    instance Show TrafficLight where
+--      show Red    = ???
+--      show Yellow = ???
+--      show Green  = ???
+`,
+    solutionCode: `module TypeclassIntro where
+
+data TrafficLight = Red | Yellow | Green
+
+instance Eq TrafficLight where
+  Red    == Red    = True
+  Yellow == Yellow = True
+  Green  == Green  = True
+  _      == _      = False
+
+instance Show TrafficLight where
+  show Red    = "Red"
+  show Yellow = "Yellow"
+  show Green  = "Green"
+`,
+    testCode: '',
+    hints: [
+      'For <code>Eq</code>: start with <code>instance Eq TrafficLight where</code> on its own line, then indent the <code>==</code> equations below.',
+      'You need to match each pair: <code>Red == Red = True</code>, <code>Yellow == Yellow = True</code>, <code>Green == Green = True</code>, and a catch-all <code>_ == _ = False</code>.',
+      'For <code>Show</code>: same structure. <code>instance Show TrafficLight where</code>, then <code>show Red = "Red"</code>, etc.',
+      'Full Eq instance: <code>Red == Red = True</code>, <code>Yellow == Yellow = True</code>, <code>Green == Green = True</code>, <code>_ == _ = False</code>.',
+    ],
+    concepts: ['typeclasses', 'instance', 'Eq', 'Show', 'pattern-matching'],
+    successPatterns: [
+      'instance\\s+Eq\\s+TrafficLight',
+      'Red\\s*==\\s*Red\\s*=\\s*True',
+      'instance\\s+Show\\s+TrafficLight',
+      'show\\s+Red',
+    ],
+    testNames: [
+      'Eq instance is declared',
+      'Red == Red returns True',
+      'Show instance is declared',
+      'show handles Red',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CATEGORY THEORY MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'using-fmap': {
+    id: 'using-fmap',
+    title: 'Using fmap',
+    difficulty: 'beginner',
+    order: 1,
+    description: `
+<p>Before writing your own <code>Functor</code> instance, let's understand <code>fmap</code> by <strong>using</strong> it on types that already have one.</p>
+
+<h3>What is fmap?</h3>
+<p><code>fmap</code> applies a function to the value(s) inside a container, without changing the container's structure:</p>
+<pre><code>fmap :: Functor f => (a -> b) -> f a -> f b</code></pre>
+<p>Think of it as "reach inside the container, transform what's there, put it back."</p>
+
+<h3>fmap on Common Types</h3>
+<pre><code>-- Maybe: transform the value if it exists
+fmap (+1) (Just 5)   -- Just 6
+fmap (+1) Nothing    -- Nothing  (nothing to transform)
+
+-- Lists: transform every element
+fmap (*2) [1, 2, 3]  -- [2, 4, 6]
+fmap show [1, 2, 3]  -- ["1", "2", "3"]
+
+-- Either: transform the Right value (Left is untouched)
+fmap (+1) (Right 10)      -- Right 11
+fmap (+1) (Left "error")  -- Left "error"</code></pre>
+
+<p>Notice the pattern: <code>fmap</code> never changes the structure. A <code>Nothing</code> stays <code>Nothing</code>. A 3-element list stays 3 elements. A <code>Left</code> stays <code>Left</code>.</p>
+
+<h3>fmap is Just map, Generalized</h3>
+<p>For lists, <code>fmap</code> is the same as <code>map</code>. The <code>Functor</code> typeclass generalizes this pattern to any container type.</p>
+
+<h3>Your Task</h3>
+<p>Use <code>fmap</code> to transform values inside containers. No instance writing — just apply <code>fmap</code> with the right function.</p>
+`,
+    starterCode: `module UsingFmap where
+
+-- EXERCISE: Use fmap to transform values inside containers.
+-- Replace each \`error "..."\` with an expression using fmap.
+
+-- 1. Double every number in the list.
+--    Result should be [2, 4, 6, 8, 10]
+doubleAll :: [Int] -> [Int]
+doubleAll xs = error "use fmap to double each element"
+-- Hint: fmap (\\x -> ???) xs
+
+-- 2. Convert a Maybe Int to a Maybe String.
+--    Just 42 should become Just "42", Nothing stays Nothing.
+showMaybe :: Maybe Int -> Maybe String
+showMaybe mx = error "use fmap with the show function"
+
+-- 3. Add 10 to the Right value of an Either.
+--    Right 5 -> Right 15, Left "err" -> Left "err"
+addToRight :: Either String Int -> Either String Int
+addToRight ex = error "use fmap to add 10"
+
+-- 4. Get the length of each string in a list.
+--    ["hi", "hello", "hey"] -> [2, 5, 3]
+lengths :: [String] -> [Int]
+lengths xs = error "use fmap with the length function"
+`,
+    solutionCode: `module UsingFmap where
+
+doubleAll :: [Int] -> [Int]
+doubleAll xs = fmap (* 2) xs
+
+showMaybe :: Maybe Int -> Maybe String
+showMaybe mx = fmap show mx
+
+addToRight :: Either String Int -> Either String Int
+addToRight ex = fmap (+ 10) ex
+
+lengths :: [String] -> [Int]
+lengths xs = fmap length xs
+`,
+    testCode: '',
+    hints: [
+      'The pattern is always <code>fmap someFunction container</code>. For <code>doubleAll</code>: <code>fmap (* 2) xs</code>.',
+      'For <code>showMaybe</code>: <code>show</code> converts any value to a String. Use <code>fmap show mx</code>.',
+      'For <code>addToRight</code>: <code>fmap (+ 10) ex</code>. The <code>Left</code> case is handled automatically — fmap only touches <code>Right</code>.',
+      'For <code>lengths</code>: <code>length</code> gives the length of a string. Use <code>fmap length xs</code>.',
+    ],
+    concepts: ['functor', 'fmap', 'Maybe', 'Either', 'lists'],
+    successPatterns: [
+      'fmap.*doubleAll|doubleAll.*fmap',
+      'fmap\\s+show',
+      'fmap.*addToRight|addToRight.*fmap',
+      'fmap\\s+length',
+    ],
+    testNames: [
+      'doubleAll uses fmap',
+      'showMaybe uses fmap with show',
+      'addToRight uses fmap',
+      'lengths uses fmap with length',
     ],
   },
 
   'functor-instance': {
     id: 'functor-instance',
-    title: 'Implement Functor for a Binary Tree',
+    title: 'Write a Functor Instance',
     difficulty: 'intermediate',
-    order: 1,
+    order: 2,
     description: `
-<p>Implement the <strong>Functor</strong> instance for a binary tree. This is your first encounter with one of Haskell's most important typeclasses.</p>
+<p>You've used <code>fmap</code> on <code>Maybe</code>, lists, and <code>Either</code>. Now you'll make your <strong>own type</strong> work with <code>fmap</code> by writing a <code>Functor</code> instance.</p>
 
-<h3>What is a Functor?</h3>
-<p>A Functor is a type that supports <strong>mapping a function over its contents</strong> while preserving structure. If you've used <code>map</code> on a list, you already know the idea:</p>
-<pre><code>map (+1) [1, 2, 3]  -- [2, 3, 4]
--- Length preserved, order preserved, only values change</code></pre>
-
-<p>The <code>Functor</code> typeclass generalizes this to any container:</p>
+<h3>The Functor Typeclass</h3>
 <pre><code>class Functor f where
   fmap :: (a -> b) -> f a -> f b</code></pre>
+<p>To make a type a Functor, write an <code>instance</code> declaration — the same syntax you used for <code>Eq</code> and <code>Show</code>:</p>
+<pre><code>instance Functor MyType where
+  fmap f x = ...</code></pre>
 
-<h3>How fmap works on common types</h3>
-<pre><code>fmap (+1) (Just 5)        -- Just 6
-fmap (+1) Nothing         -- Nothing
-fmap (*2) [1, 2, 3]      -- [2, 4, 6]
-fmap show (Right 42)      -- Right "42"</code></pre>
-
-<p>Notice: <code>fmap</code> never changes the <em>structure</em> — a <code>Nothing</code> stays <code>Nothing</code>, a 3-element list stays 3 elements.</p>
+<p><strong>Key detail:</strong> After <code>Functor</code> you write the <em>type constructor alone</em>, without its type parameter. It's <code>Functor Tree</code>, not <code>Functor (Tree a)</code>.</p>
 
 <h3>The Binary Tree</h3>
 <p>Our tree has two constructors:</p>
 <pre><code>data Tree a
   = Leaf a                   -- holds a single value
-  | Branch (Tree a) (Tree a) -- holds two subtrees</code></pre>
-
+  | Branch (Tree a) (Tree a) -- two subtrees, no value</code></pre>
 <p>Visually:</p>
-<pre><code>    Branch
-   /      \\
- Leaf 1   Branch
-         /      \\
-       Leaf 2  Leaf 3</code></pre>
+<pre><code>     Branch
+    /      \\
+  Leaf 1   Branch
+          /      \\
+        Leaf 2  Leaf 3</code></pre>
+
+<h3>Writing fmap for Tree</h3>
+<p>Think recursively — one equation per constructor:</p>
+<ul>
+  <li><strong>Leaf x</strong> — base case. Apply <code>f</code> to <code>x</code>, wrap back in <code>Leaf</code>.</li>
+  <li><strong>Branch l r</strong> — recursive case. Recursively <code>fmap</code> over both subtrees.</li>
+</ul>
+<p>This is the same pattern as writing a recursive function on a list: handle the empty case, then the cons case.</p>
 
 <h3>Your Task</h3>
-<p>Implement <code>fmap</code> for <code>Tree</code>. Think about two cases:</p>
-<ul>
-  <li><strong>Leaf x</strong> — apply the function to <code>x</code>, wrap result back in <code>Leaf</code></li>
-  <li><strong>Branch l r</strong> — recursively <code>fmap</code> over both subtrees</li>
-</ul>
+<p>Implement <code>fmap</code> for <code>Tree</code>. Two equations, one per constructor.</p>
 `,
     starterCode: `module TreeFunctor where
 
@@ -364,17 +862,14 @@ data Tree a
 
 -- EXERCISE: Implement fmap for Tree.
 --
--- fmap applies a function to every value in the tree,
--- while keeping the tree's shape exactly the same.
---
--- There are two cases to handle:
---   Leaf x     -> what should happen to x?
---   Branch l r -> what should happen to each subtree?
+-- Two cases:
+--   Leaf x     -> apply f to x, wrap in Leaf
+--   Branch l r -> recursively fmap each subtree
 
 instance Functor Tree where
   -- fmap :: (a -> b) -> Tree a -> Tree b
-  fmap f (Leaf x)     = error "handle the Leaf case"
-  fmap f (Branch l r) = error "handle the Branch case"
+  fmap f (Leaf x)     = error "apply f to x, wrap in Leaf"
+  fmap f (Branch l r) = error "fmap over l and r, wrap in Branch"
 `,
     solutionCode: `module TreeFunctor where
 
@@ -387,11 +882,12 @@ instance Functor Tree where
   fmap f (Leaf x)     = Leaf (f x)
   fmap f (Branch l r) = Branch (fmap f l) (fmap f r)
 `,
-    testCode: `-- Tests check fmap applies to all values and preserves structure`,
+    testCode: '',
     hints: [
-      'For <code>Leaf x</code>: apply the function to <code>x</code> and wrap it back: <code>Leaf (f x)</code>',
-      'For <code>Branch l r</code>: recursively fmap over both subtrees: <code>Branch (fmap f l) (fmap f r)</code>',
-      'The key insight: Leaf is the base case, Branch is the recursive case — just like a list.',
+      'This is like writing a recursive function on a list. <code>Leaf</code> is your base case (like <code>[]</code>), <code>Branch</code> is your recursive case (like <code>x:xs</code>).',
+      'For the Leaf case: you have a value <code>x</code> and a function <code>f</code>. The result should still be a <code>Leaf</code>, wrapping the transformed value: <code>Leaf (...)</code>.',
+      'For the Branch case: recurse on both subtrees. The structure stays the same: <code>Branch (fmap f l) (fmap f r)</code>.',
+      'Full solution: <code>fmap f (Leaf x) = Leaf (f x)</code> and <code>fmap f (Branch l r) = Branch (fmap f l) (fmap f r)</code>.',
     ],
     concepts: ['functor', 'fmap', 'typeclass-instance', 'recursive-types'],
     successPatterns: [
@@ -407,42 +903,38 @@ instance Functor Tree where
 
   'functor-laws': {
     id: 'functor-laws',
-    title: 'Verify the Functor Laws',
+    title: 'The Functor Laws',
     difficulty: 'intermediate',
-    order: 2,
+    order: 3,
     description: `
-<p>A valid <code>Functor</code> must satisfy two <strong>laws</strong>. These aren't enforced by the compiler — it's on you to ensure your instance is lawful. Write functions that test both laws.</p>
+<p>Writing <code>fmap</code> isn't enough — a lawful <code>Functor</code> must satisfy two <strong>laws</strong>. These guarantee that <code>fmap</code> truly preserves structure.</p>
 
-<h3>Why laws?</h3>
-<p>Without laws, <code>fmap</code> could do anything — reorder elements, duplicate them, drop some. The laws guarantee <code>fmap</code> truly preserves structure.</p>
+<h3>Why Laws?</h3>
+<p>Without laws, <code>fmap</code> could do anything — reverse a list, drop elements, duplicate values. The laws ensure it only transforms values, nothing else.</p>
 
 <h3>Law 1: Identity</h3>
-<pre><code>fmap id == id
-
--- In other words:
-fmap id tree == tree</code></pre>
-<p>Mapping the <strong>do-nothing function</strong> (<code>id</code>) over a structure should change nothing. If your functor passes this, it's not adding or removing elements.</p>
+<pre><code>fmap id == id</code></pre>
+<p>Mapping the do-nothing function (<code>id</code>) over a structure changes nothing:</p>
+<pre><code>fmap id (Branch (Leaf 1) (Leaf 2))
+  == Branch (Leaf 1) (Leaf 2)  -- unchanged!</code></pre>
 
 <h3>Law 2: Composition</h3>
-<pre><code>fmap (f . g) == fmap f . fmap g
+<pre><code>fmap (f . g) == fmap f . fmap g</code></pre>
+<p>Mapping a composed function equals mapping each function in sequence:</p>
+<pre><code>-- These give the same result:
+fmap (show . (+1)) (Leaf 5)       -- Leaf "6"
+(fmap show . fmap (+1)) (Leaf 5)  -- Leaf "6"</code></pre>
 
--- In other words:
-fmap (f . g) tree == (fmap f . fmap g) tree</code></pre>
-<p>Mapping a <strong>composed function</strong> is the same as mapping each function in sequence. If your functor passes this, it's not reordering elements or depending on the function.</p>
-
-<h3>Example</h3>
-<pre><code>let tree = Branch (Leaf 1) (Leaf 2)
-
--- Identity law:
-fmap id tree          -- Branch (Leaf 1) (Leaf 2) ✓
-tree                  -- Branch (Leaf 1) (Leaf 2) ✓
-
--- Composition law with f = show, g = (+1):
-fmap (show . (+1)) tree       -- Branch (Leaf "2") (Leaf "3")
-(fmap show . fmap (+1)) tree  -- Branch (Leaf "2") (Leaf "3") ✓</code></pre>
+<h3>Haskell's Built-in Functions</h3>
+<p>You'll need two standard functions:</p>
+<ul>
+  <li><code>id :: a -> a</code> — returns its argument unchanged: <code>id 5 = 5</code></li>
+  <li><code>(.) :: (b -> c) -> (a -> b) -> a -> c</code> — composes functions: <code>(f . g) x = f (g x)</code></li>
+</ul>
+<p>These are the same concepts from the parametric-polymorphism exercise, but <code>id</code> and <code>(.)</code> are built into Haskell.</p>
 
 <h3>Your Task</h3>
-<p>Implement <code>identityLaw</code> and <code>compositionLaw</code> — each should return <code>True</code> when the law holds. Use <code>==</code> to compare both sides.</p>
+<p>Write functions that <strong>check</strong> whether each law holds for a given tree. Each function should return <code>True</code> if the law is satisfied.</p>
 `,
     starterCode: `module FunctorLaws where
 
@@ -456,19 +948,15 @@ instance Functor Tree where
   fmap f (Branch l r) = Branch (fmap f l) (fmap f r)
 
 -- EXERCISE: Implement these law-checking functions.
---
--- Each function should return True if the law holds.
--- Use (==) to compare both sides of the equation.
+-- Each should return True if the law holds.
 
 -- Identity law: fmap id tree  ==  tree
--- "Mapping the do-nothing function changes nothing."
 identityLaw :: Eq a => Tree a -> Bool
-identityLaw tree = error "compare: fmap id tree  vs  tree"
+identityLaw tree = error "compare fmap id tree with tree using =="
 
 -- Composition law: fmap (f . g) tree  ==  (fmap f . fmap g) tree
--- "Mapping a composed function equals composing the maps."
 compositionLaw :: Eq c => (b -> c) -> (a -> b) -> Tree a -> Bool
-compositionLaw f g tree = error "compare: fmap (f . g) tree  vs  (fmap f . fmap g) tree"
+compositionLaw f g tree = error "compare both sides using =="
 `,
     solutionCode: `module FunctorLaws where
 
@@ -487,11 +975,12 @@ identityLaw tree = fmap id tree == tree
 compositionLaw :: Eq c => (b -> c) -> (a -> b) -> Tree a -> Bool
 compositionLaw f g tree = fmap (f . g) tree == (fmap f . fmap g) tree
 `,
-    testCode: `-- Tests verify the law-checking functions work correctly`,
+    testCode: '',
     hints: [
-      'For <code>identityLaw</code>: compare <code>fmap id tree</code> with <code>tree</code> using <code>==</code>',
-      'For <code>compositionLaw</code>: the left side is <code>fmap (f . g) tree</code>, the right side is <code>(fmap f . fmap g) tree</code>',
-      'Both are one-liners — just translate the mathematical equation into Haskell using <code>==</code>.',
+      'Each function is a one-liner. Translate the mathematical equation directly into Haskell using <code>==</code>.',
+      'For <code>identityLaw</code>: the left side is <code>fmap id tree</code>, the right side is <code>tree</code>. Compare with <code>==</code>.',
+      'For <code>compositionLaw</code>: left side is <code>fmap (f . g) tree</code>. Right side: <code>(fmap f . fmap g) tree</code>. The <code>.</code> composes <code>fmap f</code> and <code>fmap g</code>.',
+      'Solutions: <code>identityLaw tree = fmap id tree == tree</code> and <code>compositionLaw f g tree = fmap (f . g) tree == (fmap f . fmap g) tree</code>.',
     ],
     concepts: ['functor-laws', 'identity', 'composition', 'equational-reasoning'],
     successPatterns: [
@@ -499,89 +988,73 @@ compositionLaw f g tree = fmap (f . g) tree == (fmap f . fmap g) tree
       'fmap\\s*\\(f\\s*\\.\\s*g\\)',
     ],
     testNames: [
-      'identityLaw correctly checks fmap id == id',
-      'compositionLaw correctly checks fmap (f . g) == fmap f . fmap g',
+      'identityLaw checks fmap id == id',
+      'compositionLaw checks fmap (f . g) == fmap f . fmap g',
     ],
   },
 
   'natural-transformation': {
     id: 'natural-transformation',
-    title: 'Write Natural Transformations',
+    title: 'Natural Transformations',
     difficulty: 'intermediate',
-    order: 3,
+    order: 4,
     description: `
-<p>A <strong>natural transformation</strong> converts one functor to another without looking at the values inside. In Haskell, it's a polymorphic function <code>forall a. F a -> G a</code>.</p>
+<p>A <strong>natural transformation</strong> converts one container type to another without looking at the values inside.</p>
 
 <h3>Intuition</h3>
-<p>Think of functors as containers. A natural transformation changes the <em>container</em>, not the <em>contents</em>:</p>
-<pre><code>-- Maybe → List: change the container from Maybe to []
-maybeToList (Just 42) = [42]
-maybeToList Nothing   = []
-
--- The value 42 is untouched — only the wrapping changed.</code></pre>
+<p>Think of it as changing the packaging without touching the contents:</p>
+<pre><code>maybeToList (Just 42) = [42]    -- Maybe -> List
+maybeToList Nothing   = []      -- same conversion, no value</code></pre>
+<p>The value <code>42</code> is untouched — only the container changed from <code>Maybe</code> to <code>[]</code>.</p>
 
 <h3>The Naturality Condition</h3>
-<p>For any natural transformation <code>alpha</code>, this diagram commutes:</p>
-<pre><code>fmap f . alpha  ==  alpha . fmap f
+<p>A natural transformation has a special property: it doesn't matter whether you transform the container first and then map a function, or map first and then transform:</p>
+<pre><code>-- These always give the same result:
+fmap f (maybeToList mx)  ==  maybeToList (fmap f mx)
 
--- It doesn't matter whether you:
---   1. Transform then map, OR
---   2. Map then transform
--- You get the same result either way.</code></pre>
+-- Example: f = (+1), mx = Just 5
+fmap (+1) (maybeToList (Just 5))  = fmap (+1) [5]    = [6]
+maybeToList (fmap (+1) (Just 5))  = maybeToList (Just 6) = [6]</code></pre>
 
-<p>Example with <code>maybeToList</code>:</p>
-<pre><code>-- Path 1: transform then map
-fmap (+1) (maybeToList (Just 5))
-= fmap (+1) [5]
-= [6]
-
--- Path 2: map then transform
-maybeToList (fmap (+1) (Just 5))
-= maybeToList (Just 6)
-= [6]     -- Same! ✓</code></pre>
-
-<h3>Pattern Matching on Constructors</h3>
-<p>Each natural transformation pattern-matches on the source functor's constructors:</p>
-<pre><code>-- Maybe has two constructors: Nothing, Just x
--- [] has two base cases: [], [x]
--- Either has two constructors: Left e, Right x</code></pre>
+<h3>Pattern Matching to Convert</h3>
+<p>To write a natural transformation, pattern match on the source type's constructors and build the target type:</p>
+<table>
+  <thead><tr><th>Source</th><th>Constructors</th><th>Target</th><th>Mapping</th></tr></thead>
+  <tbody>
+    <tr><td><code>Maybe a</code></td><td><code>Nothing</code>, <code>Just x</code></td><td><code>[a]</code></td><td><code>Nothing -> []</code>, <code>Just x -> [x]</code></td></tr>
+    <tr><td><code>[a]</code></td><td><code>[]</code>, <code>(x:_)</code></td><td><code>Maybe a</code></td><td><code>[] -> Nothing</code>, <code>(x:_) -> Just x</code></td></tr>
+    <tr><td><code>Either e a</code></td><td><code>Left e</code>, <code>Right x</code></td><td><code>Maybe a</code></td><td><code>Left _ -> Nothing</code>, <code>Right x -> Just x</code></td></tr>
+  </tbody>
+</table>
 
 <h3>Your Task</h3>
-<p>Implement three natural transformations:</p>
-<ul>
-  <li><code>maybeToList</code> — <code>Nothing → []</code>, <code>Just x → [x]</code></li>
-  <li><code>listToMaybe</code> — <code>[] → Nothing</code>, <code>(x:_) → Just x</code></li>
-  <li><code>eitherToMaybe</code> — <code>Left _ → Nothing</code>, <code>Right x → Just x</code></li>
-</ul>
+<p>Implement three natural transformations using pattern matching.</p>
 `,
     starterCode: `module NaturalTransformations where
 
 -- EXERCISE: Implement each natural transformation.
---
--- A natural transformation converts one "container" to another
--- without looking at what's inside. It can only restructure.
---
--- Pattern match on each constructor of the input type.
+-- Pattern match on the source type's constructors.
 
 -- 1. Maybe -> List
 --    Nothing has no value — what list has no elements?
 --    Just x has one value — what list has one element?
 maybeToList :: Maybe a -> [a]
-maybeToList = error "implement maybeToList"
--- maybeToList Nothing  = ???
--- maybeToList (Just x) = ???
+maybeToList Nothing  = error "what list is empty?"
+maybeToList (Just x) = error "what list has just x?"
 
--- 2. List -> Maybe (take the first element, if it exists)
+-- 2. List -> Maybe (take the first element if it exists)
+--    [] has no elements — which Maybe constructor means "no value"?
+--    (x:_) has at least one — which constructor wraps a value?
 listToMaybe :: [a] -> Maybe a
-listToMaybe = error "implement listToMaybe"
--- listToMaybe []    = ???
--- listToMaybe (x:_) = ???
+listToMaybe []    = error "no elements means..."
+listToMaybe (x:_) = error "first element is x, so..."
 
--- 3. Either e a -> Maybe a (discard the error, keep the value)
+-- 3. Either e a -> Maybe a
+--    Left represents failure — discard it.
+--    Right represents success — keep the value.
 eitherToMaybe :: Either e a -> Maybe a
-eitherToMaybe = error "implement eitherToMaybe"
--- eitherToMaybe (Left _)  = ???
--- eitherToMaybe (Right x) = ???
+eitherToMaybe (Left _)  = error "failure means no value"
+eitherToMaybe (Right x) = error "success means we have x"
 `,
     solutionCode: `module NaturalTransformations where
 
@@ -597,11 +1070,12 @@ eitherToMaybe :: Either e a -> Maybe a
 eitherToMaybe (Left _)  = Nothing
 eitherToMaybe (Right x) = Just x
 `,
-    testCode: `-- Tests verify natural transformations and naturality condition`,
+    testCode: '',
     hints: [
-      'For <code>maybeToList</code>: <code>Nothing</code> becomes <code>[]</code>, <code>Just x</code> becomes <code>[x]</code>',
-      'For <code>listToMaybe</code>: <code>[]</code> becomes <code>Nothing</code>, <code>(x:_)</code> becomes <code>Just x</code>',
-      'For <code>eitherToMaybe</code>: <code>Left _</code> becomes <code>Nothing</code>, <code>Right x</code> becomes <code>Just x</code>',
+      'For <code>maybeToList</code>: <code>Nothing</code> (no value) maps to the empty list <code>[]</code>. <code>Just x</code> (one value) maps to a single-element list.',
+      'For <code>listToMaybe</code>: an empty list means there\'s no first element (<code>Nothing</code>). A non-empty list <code>(x:_)</code> gives us the first element (<code>Just x</code>).',
+      'For <code>eitherToMaybe</code>: <code>Left</code> is the failure case — discard with <code>Nothing</code>. <code>Right x</code> is the success case — wrap with <code>Just x</code>.',
+      'Solutions: <code>Nothing -> []</code>, <code>Just x -> [x]</code>; <code>[] -> Nothing</code>, <code>(x:_) -> Just x</code>; <code>Left _ -> Nothing</code>, <code>Right x -> Just x</code>.',
     ],
     concepts: ['natural-transformation', 'polymorphism', 'functor', 'structure-preservation'],
     successPatterns: [
@@ -619,16 +1093,33 @@ eitherToMaybe (Right x) = Just x
   },
 };
 
+// ────────────────────────────────────────────────────────────────────
+// Module → Exercise mapping
+// ────────────────────────────────────────────────────────────────────
+
+const moduleExerciseIds: Record<string, string[]> = {
+  'type-systems': [
+    'basic-functions',
+    'concrete-types',
+    'pattern-matching',
+    'algebraic-data-types',
+    'polymorphic-types',
+    'parametric-polymorphism',
+    'typeclasses-intro',
+  ],
+  'category-theory': [
+    'using-fmap',
+    'functor-instance',
+    'functor-laws',
+    'natural-transformation',
+  ],
+};
+
 export function getExercise(id: string): Exercise | undefined {
   return exercises[id];
 }
 
 export function getExercisesByModule(moduleSlug: string): Exercise[] {
-  const moduleExerciseIds: Record<string, string[]> = {
-    'type-systems': ['type-annotations', 'algebraic-data-types', 'parametric-polymorphism'],
-    'category-theory': ['functor-instance', 'functor-laws', 'natural-transformation'],
-  };
-
   const ids = moduleExerciseIds[moduleSlug] || [];
   return ids.map((id) => exercises[id]).filter(Boolean);
 }

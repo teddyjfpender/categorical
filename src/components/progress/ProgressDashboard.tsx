@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule, getAllExercises } from '../../lib/exercises';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface ModuleCard {
   slug: string;
@@ -17,26 +19,30 @@ const moduleCards: ModuleCard[] = [
   {
     slug: 'type-systems',
     title: 'Type Systems',
-    description: 'From basic types and ADTs to GADTs, type families, and dependent types.',
+    description: 'Functions, types, pattern matching, ADTs, polymorphism, and typeclasses.',
     icon: '\u03BB',
     lessons: [
       {
-        title: 'Basic Types and Annotations',
+        title: 'Haskell Foundations',
         path: '/type-systems/basic-types',
-        exerciseIds: ['type-annotations', 'algebraic-data-types', 'parametric-polymorphism'],
+        exerciseIds: [
+          'basic-functions', 'concrete-types', 'pattern-matching',
+          'algebraic-data-types', 'polymorphic-types', 'parametric-polymorphism',
+          'typeclasses-intro',
+        ],
       },
     ],
   },
   {
     slug: 'category-theory',
     title: 'Category Theory',
-    description: 'Functors, natural transformations, monads, and adjunctions — through code.',
+    description: 'Functors, fmap, functor laws, and natural transformations — through code.',
     icon: '\u2219',
     lessons: [
       {
-        title: 'Functors: Mapping Over Structure',
+        title: 'Functors and Natural Transformations',
         path: '/category-theory/functors',
-        exerciseIds: ['functor-instance', 'functor-laws', 'natural-transformation'],
+        exerciseIds: ['using-fmap', 'functor-instance', 'functor-laws', 'natural-transformation'],
       },
     ],
   },
@@ -44,6 +50,7 @@ const moduleCards: ModuleCard[] = [
 
 export function ProgressDashboard() {
   const { isCompleted, completedExercises, resetProgress } = useProgressStore();
+  const [showResetModal, setShowResetModal] = useState(false);
   const allExercises = getAllExercises();
   const totalCompleted = completedExercises.length;
   const totalExercises = allExercises.length;
@@ -137,16 +144,26 @@ export function ProgressDashboard() {
 
       {/* Reset */}
       {totalCompleted > 0 && (
-        <button
-          onClick={() => {
-            if (confirm('Reset all progress? This cannot be undone.')) {
+        <>
+          <button
+            onClick={() => setShowResetModal(true)}
+            className="text-xs text-text-muted hover:text-error transition-colors duration-150"
+          >
+            Reset all progress
+          </button>
+          <ConfirmModal
+            open={showResetModal}
+            title="Reset all progress?"
+            message="This will clear all completed exercises and saved code. This cannot be undone."
+            confirmLabel="Reset all"
+            cancelLabel="Keep progress"
+            onConfirm={() => {
+              setShowResetModal(false);
               resetProgress();
-            }
-          }}
-          className="text-xs text-text-muted hover:text-error transition-colors"
-        >
-          Reset all progress
-        </button>
+            }}
+            onCancel={() => setShowResetModal(false)}
+          />
+        </>
       )}
     </div>
   );

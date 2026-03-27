@@ -45,14 +45,19 @@ export class MockExecutor implements ExecutionService {
       };
     }
 
-    // Run per-exercise pattern validation
+    // Run per-exercise pattern validation.
+    // Strip comment lines so patterns only match real code.
+    const uncommented = code
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n');
     const tests: TestCase[] = [];
     const patterns = exercise.successPatterns;
     const names = exercise.testNames;
 
     for (let i = 0; i < patterns.length; i++) {
       const regex = new RegExp(patterns[i]);
-      const passed = regex.test(code);
+      const passed = regex.test(uncommented);
       tests.push({
         name: names[i] || `check ${i + 1}`,
         passed,

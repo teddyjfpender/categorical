@@ -180,7 +180,10 @@ export function SplitPaneWorkspace({
           {/* Resizable divider */}
           <div
             onMouseDown={handleMouseDown}
-            className="w-1.5 bg-border hover:bg-accent/50 cursor-col-resize flex-shrink-0 transition-colors"
+            className="w-1.5 bg-border hover:bg-accent/50 cursor-col-resize flex-shrink-0 transition-colors duration-150"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panels"
           />
 
           {/* Right panel — editor + output */}

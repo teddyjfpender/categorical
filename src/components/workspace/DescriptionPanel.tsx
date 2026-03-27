@@ -34,12 +34,15 @@ export function DescriptionPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Tabs */}
-      <div className="flex items-center border-b border-border bg-bg-secondary px-1 flex-shrink-0">
+      <div className="flex items-center border-b border-border bg-bg-secondary px-1 flex-shrink-0" role="tablist" aria-label="Exercise details">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`tabpanel-${tab.id}`}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors duration-150 relative ${
               activeTab === tab.id
                 ? 'text-text-primary'
                 : 'text-text-muted hover:text-text-secondary'
@@ -49,9 +52,7 @@ export function DescriptionPanel({
             {tab.count !== undefined && (
               <span className="ml-1.5 text-[10px] text-text-muted">({tab.count})</span>
             )}
-            {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />
-            )}
+            <div className={`absolute bottom-0 left-2 right-2 h-0.5 rounded-full transition-all duration-200 ${activeTab === tab.id ? 'bg-accent opacity-100' : 'bg-transparent opacity-0'}`} />
           </button>
         ))}
       </div>
@@ -59,7 +60,7 @@ export function DescriptionPanel({
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'description' && (
-          <div className="p-6">
+          <div className="p-6" role="tabpanel" id="tabpanel-description">
             {/* Exercise title and metadata */}
             <h2 className="text-xl font-semibold text-text-primary mb-2">{exercise.title}</h2>
             <div className="flex items-center gap-2 mb-5">
@@ -95,7 +96,7 @@ export function DescriptionPanel({
         )}
 
         {activeTab === 'hints' && (
-          <div className="p-6">
+          <div className="p-6" role="tabpanel" id="tabpanel-hints">
             <h3 className="text-sm font-medium text-text-primary mb-4">
               Progressive Hints
             </h3>
@@ -121,7 +122,8 @@ export function DescriptionPanel({
                   ) : i === revealedHints ? (
                     <button
                       onClick={onRevealHint}
-                      className="w-full rounded-lg border border-dashed border-border hover:border-border-bright p-4 text-sm text-text-muted hover:text-text-secondary transition-colors text-left"
+                      className="w-full rounded-lg border border-dashed border-border hover:border-border-bright hover:bg-bg-hover/50 p-4 text-sm text-text-muted hover:text-text-secondary active:bg-bg-tertiary transition-colors duration-150 text-left"
+                      aria-label={`Reveal hint ${i + 1}`}
                     >
                       <span className="flex items-center gap-2">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -144,7 +146,7 @@ export function DescriptionPanel({
         )}
 
         {activeTab === 'solution' && (
-          <div className="p-6">
+          <div className="p-6" role="tabpanel" id="tabpanel-solution">
             {showSolution ? (
               <div>
                 <h3 className="text-sm font-medium text-text-primary mb-4">Reference Solution</h3>

@@ -1,120 +1,118 @@
 import { EditorView } from '@codemirror/view';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
+import { ui, syntax, fonts } from '../../../lib/theme';
 
-// Editor theme — dark theme matching the Categorical aesthetic
 export const categoricalTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: '#0f0f17',
-      color: '#e8e8f0',
+      backgroundColor: ui.bgPrimary,
+      color: ui.textPrimary,
       fontSize: '14px',
       lineHeight: '1.7',
     },
     '.cm-content': {
-      caretColor: '#a78bfa',
+      caretColor: ui.accentBright,
       padding: '16px 0',
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+      fontFamily: fonts.mono,
     },
     '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: '#a78bfa',
+      borderLeftColor: ui.accentBright,
       borderLeftWidth: '2px',
     },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-      backgroundColor: 'rgba(139, 92, 246, 0.25)',
+      backgroundColor: `rgba(${ui.accentRgb}, 0.25)`,
     },
     '.cm-panels': {
-      backgroundColor: '#12121a',
-      color: '#e8e8f0',
+      backgroundColor: ui.bgSecondary,
+      color: ui.textPrimary,
     },
     '.cm-panels.cm-panels-top': {
-      borderBottom: '1px solid #2a2a3a',
+      borderBottom: `1px solid ${ui.border}`,
     },
     '.cm-panels.cm-panels-bottom': {
-      borderTop: '1px solid #2a2a3a',
+      borderTop: `1px solid ${ui.border}`,
     },
     '.cm-searchMatch': {
-      backgroundColor: 'rgba(139, 92, 246, 0.3)',
-      outline: '1px solid rgba(139, 92, 246, 0.5)',
+      backgroundColor: `rgba(${ui.accentRgb}, 0.3)`,
+      outline: `1px solid rgba(${ui.accentRgb}, 0.5)`,
     },
     '.cm-searchMatch.cm-searchMatch-selected': {
-      backgroundColor: 'rgba(139, 92, 246, 0.5)',
+      backgroundColor: `rgba(${ui.accentRgb}, 0.5)`,
     },
     '.cm-activeLine': {
       backgroundColor: 'rgba(255, 255, 255, 0.03)',
     },
     '.cm-selectionMatch': {
-      backgroundColor: 'rgba(139, 92, 246, 0.15)',
+      backgroundColor: `rgba(${ui.accentRgb}, 0.15)`,
     },
     '.cm-matchingBracket, .cm-nonmatchingBracket': {
-      backgroundColor: 'rgba(139, 92, 246, 0.25)',
-      outline: '1px solid rgba(139, 92, 246, 0.5)',
+      backgroundColor: `rgba(${ui.accentRgb}, 0.25)`,
+      outline: `1px solid rgba(${ui.accentRgb}, 0.5)`,
     },
     '.cm-gutters': {
-      backgroundColor: '#0f0f17',
-      color: '#4a4a5f',
+      backgroundColor: ui.bgPrimary,
+      color: ui.textGutter,
       border: 'none',
       paddingRight: '8px',
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'rgba(255, 255, 255, 0.03)',
-      color: '#8b5cf6',
+      color: ui.accent,
     },
     '.cm-foldPlaceholder': {
-      backgroundColor: '#1a1a26',
-      border: '1px solid #2a2a3a',
-      color: '#9898b0',
+      backgroundColor: ui.bgTertiary,
+      border: `1px solid ${ui.border}`,
+      color: ui.textSecondary,
     },
     '.cm-tooltip': {
-      border: '1px solid #2a2a3a',
-      backgroundColor: '#16161f',
+      border: `1px solid ${ui.border}`,
+      backgroundColor: ui.bgCard,
     },
     '.cm-tooltip .cm-tooltip-arrow:before': {
-      borderTopColor: '#2a2a3a',
-      borderBottomColor: '#2a2a3a',
+      borderTopColor: ui.border,
+      borderBottomColor: ui.border,
     },
     '.cm-tooltip .cm-tooltip-arrow:after': {
-      borderTopColor: '#16161f',
-      borderBottomColor: '#16161f',
+      borderTopColor: ui.bgCard,
+      borderBottomColor: ui.bgCard,
     },
     '.cm-tooltip-autocomplete': {
       '& > ul > li[aria-selected]': {
-        backgroundColor: 'rgba(139, 92, 246, 0.2)',
-        color: '#e8e8f0',
+        backgroundColor: `rgba(${ui.accentRgb}, 0.2)`,
+        color: ui.textPrimary,
       },
     },
-    // Error/warning line decorations
     '.cm-lintRange-error': {
       backgroundImage: 'none',
-      borderBottom: '2px wavy #f87171',
+      borderBottom: `2px wavy ${ui.error}`,
     },
     '.cm-lintRange-warning': {
       backgroundImage: 'none',
-      borderBottom: '2px wavy #fbbf24',
+      borderBottom: `2px wavy ${ui.warning}`,
     },
   },
   { dark: true },
 );
 
-// Syntax highlighting colors
 export const categoricalHighlighting = syntaxHighlighting(
   HighlightStyle.define([
-    { tag: tags.keyword, color: '#c084fc' },
-    { tag: tags.operator, color: '#67e8f9' },
-    { tag: tags.variableName, color: '#e8e8f0' },
-    { tag: tags.typeName, color: '#fbbf24' },
-    { tag: tags.string, color: '#34d399' },
-    { tag: tags.number, color: '#fb923c' },
-    { tag: tags.comment, color: '#5c5c72', fontStyle: 'italic' },
-    { tag: tags.lineComment, color: '#5c5c72', fontStyle: 'italic' },
-    { tag: tags.punctuation, color: '#9898b0' },
-    { tag: tags.bracket, color: '#9898b0' },
-    { tag: tags.definition(tags.variableName), color: '#60a5fa' },
-    { tag: tags.definition(tags.typeName), color: '#fbbf24' },
-    { tag: tags.function(tags.variableName), color: '#60a5fa' },
-    { tag: tags.bool, color: '#fb923c' },
-    { tag: tags.null, color: '#fb923c' },
-    { tag: tags.className, color: '#fbbf24' },
-    { tag: tags.moduleKeyword, color: '#c084fc' },
+    { tag: tags.keyword, color: syntax.keyword },
+    { tag: tags.operator, color: syntax.operator },
+    { tag: tags.variableName, color: syntax.variable },
+    { tag: tags.typeName, color: syntax.type },
+    { tag: tags.string, color: syntax.string },
+    { tag: tags.number, color: syntax.number },
+    { tag: tags.comment, color: syntax.comment, fontStyle: 'italic' },
+    { tag: tags.lineComment, color: syntax.comment, fontStyle: 'italic' },
+    { tag: tags.punctuation, color: syntax.punctuation },
+    { tag: tags.bracket, color: syntax.punctuation },
+    { tag: tags.definition(tags.variableName), color: syntax.function },
+    { tag: tags.definition(tags.typeName), color: syntax.type },
+    { tag: tags.function(tags.variableName), color: syntax.function },
+    { tag: tags.bool, color: syntax.number },
+    { tag: tags.null, color: syntax.number },
+    { tag: tags.className, color: syntax.type },
+    { tag: tags.moduleKeyword, color: syntax.keyword },
   ]),
 );

@@ -1,19 +1,9 @@
 /**
  * Lightweight Haskell syntax highlighter for static code blocks.
- * Uses the same color palette as the CodeMirror editor theme.
+ * Imports colors from the shared theme so editor and prose stay in sync.
  */
 
-const COLORS = {
-  keyword: '#c084fc',
-  operator: '#67e8f9',
-  type: '#fbbf24',
-  string: '#34d399',
-  number: '#fb923c',
-  comment: '#5c5c72',
-  punctuation: '#9898b0',
-  variable: '#e8e8f0',
-  function: '#60a5fa',
-};
+import { syntax } from './theme';
 
 const KEYWORDS = new Set([
   'module', 'where', 'import', 'qualified', 'as', 'hiding',
@@ -46,7 +36,7 @@ function highlightLine(line: string): string {
   while (i < line.length) {
     // Line comment
     if (line[i] === '-' && line[i + 1] === '-') {
-      result += span(COLORS.comment, line.slice(i), true);
+      result += span(syntax.comment, line.slice(i), true);
       return result;
     }
 
@@ -58,20 +48,19 @@ function highlightLine(line: string): string {
         if (line[j] === '"') { j++; break; }
         j++;
       }
-      result += span(COLORS.string, line.slice(i, j));
+      result += span(syntax.string, line.slice(i, j));
       i = j;
       continue;
     }
 
     // Char literal
     if (line[i] === "'" && i + 1 < line.length && line[i + 1] !== ' ') {
-      // Only treat as char literal if it looks like 'x' or '\n'
       let j = i + 1;
       if (j < line.length && line[j] === '\\') j++;
       if (j < line.length) j++;
       if (j < line.length && line[j] === "'") {
         j++;
-        result += span(COLORS.string, line.slice(i, j));
+        result += span(syntax.string, line.slice(i, j));
         i = j;
         continue;
       }
@@ -86,7 +75,7 @@ function highlightLine(line: string): string {
       } else {
         while (j < line.length && /[\d.]/.test(line[j])) j++;
       }
-      result += span(COLORS.number, line.slice(i, j));
+      result += span(syntax.number, line.slice(i, j));
       i = j;
       continue;
     }
@@ -97,9 +86,9 @@ function highlightLine(line: string): string {
       while (j < line.length && /[a-zA-Z0-9_']/.test(line[j])) j++;
       const word = line.slice(i, j);
       if (KEYWORDS.has(word)) {
-        result += span(COLORS.keyword, word);
+        result += span(syntax.keyword, word);
       } else {
-        result += span(COLORS.type, word);
+        result += span(syntax.type, word);
       }
       i = j;
       continue;
@@ -111,9 +100,9 @@ function highlightLine(line: string): string {
       while (j < line.length && /[a-zA-Z0-9_']/.test(line[j])) j++;
       const word = line.slice(i, j);
       if (KEYWORDS.has(word)) {
-        result += span(COLORS.keyword, word);
+        result += span(syntax.keyword, word);
       } else {
-        result += span(COLORS.variable, word);
+        result += span(syntax.variable, word);
       }
       i = j;
       continue;
@@ -123,14 +112,14 @@ function highlightLine(line: string): string {
     if (/[+\-*/<>=!&|^~@#$%?.:\\]/.test(line[i])) {
       let j = i;
       while (j < line.length && /[+\-*/<>=!&|^~@#$%?.:\\]/.test(line[j])) j++;
-      result += span(COLORS.operator, line.slice(i, j));
+      result += span(syntax.operator, line.slice(i, j));
       i = j;
       continue;
     }
 
     // Punctuation
     if (/[()[\]{},;`]/.test(line[i])) {
-      result += span(COLORS.punctuation, line[i]);
+      result += span(syntax.punctuation, line[i]);
       i++;
       continue;
     }

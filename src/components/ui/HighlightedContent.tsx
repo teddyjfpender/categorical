@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useMemo } from 'react';
 import { highlightHaskell } from '../../lib/highlightHaskell';
 
 interface HighlightedContentProps {
@@ -7,31 +7,32 @@ interface HighlightedContentProps {
 }
 
 /**
- * Renders HTML content and syntax-highlights all <pre><code> blocks
- * using the same Haskell color palette as the CodeMirror editor.
+ * Renders HTML content with syntax-highlighted <pre><code> blocks.
+ * Pre-processes the HTML string to replace code block contents with
+ * highlighted Haskell, avoiding DOM mutation timing issues.
  */
 export function HighlightedContent({ html, className = '' }: HighlightedContentProps) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-
-    const codeBlocks = ref.current.querySelectorAll('pre code');
-    codeBlocks.forEach((block) => {
-      // Only highlight if not already highlighted
-      if (block.getAttribute('data-highlighted')) return;
-
-      const raw = block.textContent || '';
-      block.innerHTML = highlightHaskell(raw);
-      block.setAttribute('data-highlighted', 'true');
-    });
+  const highlighted = useMemo(() => {
+    // Find all <pre><code>...</code></pre> blocks and highlight their contents
+    return html.replace(
+      /<pre><code(?:\s[^>]*)?>([^]*?)<\/code><\/pre>/g,
+      (_match, codeContent: string) => {
+        // Decode HTML entities back to plain text before highlighting
+        const decoded = codeContent
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&#39;/g, "'")
+          .replace(/&quot;/g, '"');
+        return `<pre><code>${highlightHaskell(decoded)}</code></pre>`;
+      },
+    );
   }, [html]);
 
   return (
     <div
-      ref={ref}
       className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: highlighted }}
     />
   );
 }

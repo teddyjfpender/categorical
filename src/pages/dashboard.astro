@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { href } from '../lib/paths';
 ---
 
 <BaseLayout title="Dashboard">
@@ -7,12 +8,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <!-- Header -->
     <header class="border-b border-border px-6 py-4">
       <nav class="max-w-6xl mx-auto flex items-center justify-between">
-        <a href="/" class="flex items-center gap-2 text-xl font-semibold">
+        <a href={href('/')} class="flex items-center gap-2 text-xl font-semibold">
           <span class="text-accent">C</span>ategorical
         </a>
         <div class="flex items-center gap-6 text-sm text-text-secondary">
-          <a href="/type-systems/basic-types" class="hover:text-text-primary transition-colors">Lessons</a>
-          <a href="/dashboard" class="text-text-primary">Dashboard</a>
+          <a href={href('/type-systems/basic-types')} class="hover:text-text-primary transition-colors">Lessons</a>
+          <a href={href('/dashboard')} class="text-text-primary">Dashboard</a>
         </div>
       </nav>
     </header>

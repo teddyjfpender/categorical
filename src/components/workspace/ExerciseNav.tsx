@@ -1,4 +1,5 @@
 import type { Difficulty } from '../../lib/types/exercise';
+import { href } from '../../lib/paths';
 
 interface ExerciseNavProps {
   moduleTitle: string;
@@ -63,7 +64,7 @@ export function ExerciseNav({
         </button>
 
         <div className="flex items-center gap-2 text-sm min-w-0">
-          <a href="/" className="text-text-muted hover:text-text-secondary transition-colors duration-150" aria-label="Home">
+          <a href={href('/')} className="text-text-muted hover:text-text-secondary transition-colors duration-150" aria-label="Home">
             <span className="text-accent font-semibold">C</span>
           </a>
           <span className="text-text-muted/40" aria-hidden="true">/</span>

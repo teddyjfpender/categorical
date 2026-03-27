@@ -1,4 +1,5 @@
 import { useProgressStore } from '../../lib/stores/progressStore';
+import { href } from '../../lib/paths';
 import type { Exercise } from '../../lib/types/exercise';
 
 interface ExerciseSidebarProps {
@@ -88,7 +89,7 @@ export function ExerciseSidebar({ exercises, currentIndex, onSelect, moduleSlug 
       {/* Bottom links */}
       <div className="p-3 border-t border-border">
         <a
-          href="/"
+          href={href('/')}
           className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors duration-150"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">

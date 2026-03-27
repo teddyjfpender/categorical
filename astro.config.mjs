@@ -4,6 +4,8 @@ import mdx from '@astrojs/mdx';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  site: 'https://teddyjfpender.github.io',
+  base: '/categorical',
   integrations: [react(), mdx()],
   vite: {
     plugins: [tailwindcss()],

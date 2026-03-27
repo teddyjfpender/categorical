@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule, getAllExercises } from '../../lib/exercises';
+import { href } from '../../lib/paths';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface ModuleCard {
@@ -115,7 +116,7 @@ export function ProgressDashboard() {
                   return (
                     <a
                       key={lesson.path}
-                      href={lesson.path}
+                      href={href(lesson.path)}
                       className="flex items-center justify-between px-4 py-3 rounded-lg bg-bg-secondary hover:bg-bg-hover border border-border transition-colors"
                     >
                       <div className="flex items-center gap-3">

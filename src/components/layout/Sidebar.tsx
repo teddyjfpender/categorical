@@ -1,5 +1,6 @@
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule } from '../../lib/exercises';
+import { href } from '../../lib/paths';
 
 interface SidebarProps {
   currentModule: string;
@@ -50,7 +51,7 @@ export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
   return (
     <nav className="w-64 flex-shrink-0 border-r border-border bg-bg-secondary h-full overflow-y-auto">
       <div className="p-4">
-        <a href="/" className="flex items-center gap-2 text-lg font-semibold mb-6">
+        <a href={href('/')} className="flex items-center gap-2 text-lg font-semibold mb-6">
           <span className="text-accent">C</span>ategorical
         </a>
 
@@ -89,7 +90,7 @@ export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
                     return (
                       <li key={lesson.slug}>
                         <a
-                          href={lesson.path}
+                          href={href(lesson.path)}
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                             isActive
                               ? 'bg-accent/10 text-accent border border-accent/20'

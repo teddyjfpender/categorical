@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import { Sidebar } from '../components/layout/Sidebar';
+import { href } from '../lib/paths';
 
 interface Props {
   title: string;
@@ -23,7 +24,7 @@ const { title, module: moduleName, moduleTitle, lessonSlug, description } = Astr
       <!-- Top bar -->
       <div class="sticky top-0 z-10 bg-bg-primary/80 backdrop-blur-sm border-b border-border px-8 py-3">
         <div class="flex items-center gap-2 text-sm">
-          <a href="/" class="text-text-muted hover:text-text-secondary transition-colors">Home</a>
+          <a href={href('/')} class="text-text-muted hover:text-text-secondary transition-colors">Home</a>
           <span class="text-text-muted">/</span>
           <span class="text-text-muted">{moduleTitle}</span>
           <span class="text-text-muted">/</span>

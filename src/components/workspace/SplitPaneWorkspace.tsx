@@ -17,7 +17,12 @@ interface SplitPaneWorkspaceProps {
   initialExerciseIndex?: number;
 }
 
-const executor = getExecutionService();
+// Lazy-init on client only to avoid SSR/hydration mismatch
+let executor: ReturnType<typeof getExecutionService> | null = null;
+function getExecutor() {
+  if (!executor) executor = getExecutionService();
+  return executor;
+}
 
 export function SplitPaneWorkspace({
   exercises,
@@ -72,7 +77,7 @@ export function SplitPaneWorkspace({
     setIsRunning(true);
     setResult(null);
     try {
-      const testResult = await executor.runTests(code, exercise);
+      const testResult = await getExecutor().runTests(code, exercise);
       setResult(testResult);
       if (testResult.success) {
         markCompleted(exercise.id);

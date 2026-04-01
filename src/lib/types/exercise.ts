@@ -36,10 +36,13 @@ export interface TestCase {
   message?: string;
 }
 
+export type ExecutionBackend = 'playground' | 'mock';
+
 export interface TestRunResult {
   success: boolean;
   compilationErrors: CompilerError[];
   tests: TestCase[];
   output: string;
   executionTimeMs: number;
+  backend: ExecutionBackend;
 }

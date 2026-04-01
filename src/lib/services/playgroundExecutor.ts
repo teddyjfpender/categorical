@@ -45,6 +45,7 @@ export class PlaygroundExecutor implements ExecutionService {
           tests: [],
           output: response.err,
           executionTimeMs: Math.round(performance.now() - startTime),
+          backend: 'playground',
         };
       }
 
@@ -61,6 +62,7 @@ export class PlaygroundExecutor implements ExecutionService {
           tests: [],
           output: response.ghcout,
           executionTimeMs,
+          backend: 'playground',
         };
       }
 
@@ -76,6 +78,7 @@ export class PlaygroundExecutor implements ExecutionService {
             : [{ name: 'runtime', passed: false, message: errorMsg }],
           output: response.sout + (response.serr ? '\n' + response.serr : ''),
           executionTimeMs,
+          backend: 'playground',
         };
       }
 
@@ -89,6 +92,7 @@ export class PlaygroundExecutor implements ExecutionService {
         tests,
         output: response.sout,
         executionTimeMs,
+        backend: 'playground',
       };
     } catch (e) {
       if (isCorsError(e)) {
@@ -103,6 +107,7 @@ export class PlaygroundExecutor implements ExecutionService {
           tests: [{ name: 'rate limit', passed: false, message: 'The Haskell Playground is rate-limited. Wait a moment and try again.' }],
           output: 'Rate limited',
           executionTimeMs: Math.round(performance.now() - startTime),
+          backend: 'playground',
         };
       }
 

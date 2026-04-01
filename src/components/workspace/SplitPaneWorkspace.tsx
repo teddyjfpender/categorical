@@ -84,6 +84,7 @@ export function SplitPaneWorkspace({
         tests: [],
         output: 'Error',
         executionTimeMs: 0,
+        backend: 'mock',
       });
     } finally {
       setIsRunning(false);

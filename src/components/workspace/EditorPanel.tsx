@@ -99,7 +99,16 @@ export function EditorPanel({ code, onChange, onRun, onReset, result, isRunning 
             )}
           </div>
           {result && (
-            <span className="text-[10px] text-text-muted tabular-nums">{result.executionTimeMs}ms</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                result.backend === 'playground'
+                  ? 'bg-accent/15 text-accent-bright'
+                  : 'bg-bg-tertiary text-text-muted'
+              }`}>
+                {result.backend === 'playground' ? 'GHC 9.6' : 'Mock'}
+              </span>
+              <span className="text-[10px] text-text-muted tabular-nums">{result.executionTimeMs}ms</span>
+            </div>
           )}
         </div>
 

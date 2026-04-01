@@ -20,6 +20,7 @@ export class MockExecutor implements ExecutionService {
         tests: [],
         output: errors.map((e) => `${e.line}:${e.column}: ${e.message}`).join('\n'),
         executionTimeMs: 87,
+        backend: 'mock',
       };
     }
 
@@ -42,6 +43,7 @@ export class MockExecutor implements ExecutionService {
         ],
         output: remaining.map((p) => `Still contains: ${p}`).join('\n'),
         executionTimeMs: 94,
+        backend: 'mock',
       };
     }
 
@@ -75,6 +77,7 @@ export class MockExecutor implements ExecutionService {
         ? 'All tests passed!'
         : `${tests.filter((t) => !t.passed).length} of ${tests.length} checks failed.`,
       executionTimeMs: 150 + Math.floor(Math.random() * 100),
+      backend: 'mock',
     };
   }
 

@@ -33,7 +33,7 @@ jobs:
 
       - run: pnpm build
         env:
-          VITE_PLAYGROUND_PROXY_URL: ${{ secrets.VITE_PLAYGROUND_PROXY_URL }}
+          PUBLIC_PLAYGROUND_PROXY_URL: ${{ secrets.PUBLIC_PLAYGROUND_PROXY_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

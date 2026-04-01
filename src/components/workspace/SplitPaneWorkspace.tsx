@@ -47,9 +47,16 @@ export function SplitPaneWorkspace({
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  const [code, setCode] = useState(() => {
-    return getSavedCode(exercise.id) || exercise.starterCode;
-  });
+  // Always start with starterCode during SSR/initial render to avoid hydration mismatch.
+  // After mount, load saved code from localStorage if available.
+  const [code, setCode] = useState(exercise.starterCode);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+    const saved = getSavedCode(exercise.id);
+    if (saved) setCode(saved);
+  }, []);
 
   // When switching exercises, load saved code
   const switchExercise = useCallback((index: number) => {

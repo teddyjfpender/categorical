@@ -15,9 +15,9 @@ export function setExecutionService(service: ExecutionService) {
 export function getExecutionService(): ExecutionService {
   if (!currentService) {
     const fallback = new MockExecutor();
-    // VITE_PLAYGROUND_PROXY_URL can be set in .env or at build time.
-    // When set, all playground requests route through this CORS proxy.
-    const proxyUrl = (import.meta as any).env?.VITE_PLAYGROUND_PROXY_URL as string | undefined;
+    // PUBLIC_PLAYGROUND_PROXY_URL is set in .env or as a GitHub secret.
+    // Astro exposes PUBLIC_ prefixed vars to client-side code at build time.
+    const proxyUrl = (import.meta as any).env?.PUBLIC_PLAYGROUND_PROXY_URL as string | undefined;
     currentService = new PlaygroundExecutor(fallback, proxyUrl || undefined);
   }
   return currentService;

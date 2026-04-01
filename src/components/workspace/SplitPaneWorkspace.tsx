@@ -3,7 +3,7 @@ import { DescriptionPanel } from './DescriptionPanel';
 import { EditorPanel } from './EditorPanel';
 import { ExerciseNav } from './ExerciseNav';
 import { ExerciseSidebar } from './ExerciseSidebar';
-import { MockExecutor } from '../../lib/services/mockExecutor';
+import { getExecutionService } from '../../lib/services/executionService';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import type { Exercise, TestRunResult } from '../../lib/types/exercise';
 
@@ -17,7 +17,7 @@ interface SplitPaneWorkspaceProps {
   initialExerciseIndex?: number;
 }
 
-const executor = new MockExecutor();
+const executor = getExecutionService();
 
 export function SplitPaneWorkspace({
   exercises,

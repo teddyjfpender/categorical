@@ -101,7 +101,16 @@ isNegative n = n < 0
 
 larger x y = if x > y then x else y
 `,
-    testCode: '',
+    testCode: `runTestEq "square 4 = 16" (16 :: Int) (square 4)
+        , runTestEq "square 0 = 0" (0 :: Int) (square 0)
+        , runTestEq "square (-3) = 9" (9 :: Int) (square (-3))
+        , runTestEq "greet Alice" "Hello, Alice!" (greet "Alice")
+        , runTestEq "greet world" "Hello, world!" (greet "world")
+        , runTestEq "isNegative (-3)" True (isNegative (-3))
+        , runTestEq "isNegative 5" False (isNegative 5)
+        , runTestEq "isNegative 0" False (isNegative 0)
+        , runTestEq "larger 3 7 = 7" (7 :: Int) (larger 3 7)
+        , runTestEq "larger 10 2 = 10" (10 :: Int) (larger 10 2)`,
     hints: [
       'For <code>square</code>, multiply <code>x</code> by itself.',
       'For <code>greet</code>, use <code>++</code> to join three parts: <code>"Hello, "</code>, the name, and <code>"!"</code>.',
@@ -197,7 +206,11 @@ isNegative n = n < 0
 add :: Int -> Int -> Int
 add x y = x + y
 `,
-    testCode: '',
+    testCode: `runTestEq "square 5 = 25" (25 :: Int) (square 5)
+        , runTestEq "greet Bob" "Hello, Bob!" (greet "Bob")
+        , runTestEq "isNegative (-1)" True (isNegative (-1))
+        , runTestEq "isNegative 0" False (isNegative 0)
+        , runTestEq "add 3 4 = 7" (7 :: Int) (add 3 4)`,
     hints: [
       'Write the signature on the line directly above the function. For example, above <code>square x = x * x</code> write <code>square :: ...</code>.',
       'Look at what goes in and what comes out. <code>square</code> takes a number (<code>Int</code>) and returns a number (<code>Int</code>).',
@@ -305,7 +318,14 @@ maybeApply :: (a -> b) -> b -> Maybe a -> b
 maybeApply _ fallback Nothing  = fallback
 maybeApply f _        (Just x) = f x
 `,
-    testCode: '',
+    testCode: `runTestEq "boolToString True" "yes" (boolToString True)
+        , runTestEq "boolToString False" "no" (boolToString False)
+        , runTestEq "headOr 0 [1,2,3]" (1 :: Int) (headOr 0 [1,2,3])
+        , runTestEq "headOr 0 []" (0 :: Int) (headOr 0 [])
+        , runTestEq "isJust (Just 5)" True (isJust (Just 5 :: Maybe Int))
+        , runTestEq "isJust Nothing" False (isJust (Nothing :: Maybe Int))
+        , runTestEq "maybeApply (+1) 0 (Just 5)" (6 :: Int) (maybeApply (+1) 0 (Just 5))
+        , runTestEq "maybeApply (+1) 0 Nothing" (0 :: Int) (maybeApply (+1) 0 Nothing)`,
     hints: [
       'Each equation replaces the <code>error "..."</code> with the return value for that case. For <code>boolToString True</code>, the result is just <code>"yes"</code>.',
       'For <code>headOr</code>: when the list is empty, return the fallback. When it\'s non-empty, the <code>x</code> in <code>(x:_)</code> is the first element.',
@@ -406,7 +426,11 @@ area (Circle r)      = pi * r * r
 area (Rectangle w h) = w * h
 area (Triangle b h)  = 0.5 * b * h
 `,
-    testCode: '',
+    testCode: `runTestApprox "area (Circle 5)" (pi * 25) (area (Circle 5)) 0.01
+        , runTestEq "area (Rectangle 3 4)" (12.0 :: Double) (area (Rectangle 3 4))
+        , runTestEq "area (Triangle 6 3)" (9.0 :: Double) (area (Triangle 6 3))
+        , runTestApprox "area (Circle 1)" pi (area (Circle 1)) 0.01
+        , runTestEq "area (Rectangle 0 5)" (0.0 :: Double) (area (Rectangle 0 5))`,
     hints: [
       'Start by uncommenting the <code>data Shape</code> block. Replace each underscore with <code>Double</code>.',
       'Circle has one field (radius), so it\'s <code>Circle Double</code>. Rectangle and Triangle each have two fields: <code>Rectangle Double Double</code>.',
@@ -509,7 +533,15 @@ len :: [a] -> Int
 len []     = 0
 len (_:xs) = 1 + len xs
 `,
-    testCode: '',
+    testCode: `runTestEq "firstOfThree (1,2,3)" (1 :: Int) (firstOfThree (1 :: Int, 2 :: Int, 3 :: Int))
+        , runTestEq "firstOfThree (True,'a',1)" True (firstOfThree (True, 'a', 1 :: Int))
+        , runTestEq "addThree 1 2 3" (6 :: Int) (addThree 1 2 3)
+        , runTestEq "addThree 0 0 0" (0 :: Int) (addThree 0 0 0)
+        , runTestEq "contains 3 [1,2,3]" True (contains (3 :: Int) [1,2,3])
+        , runTestEq "contains 4 [1,2,3]" False (contains (4 :: Int) [1,2,3])
+        , runTestEq "contains 1 []" False (contains (1 :: Int) [])
+        , runTestEq "len [1,2,3]" (3 :: Int) (len [1 :: Int, 2, 3])
+        , runTestEq "len []" (0 :: Int) (len ([] :: [Int]))`,
     hints: [
       'For <code>firstOfThree</code>: the input is a 3-tuple <code>(a, b, c)</code>. The output is the first element, which has type <code>a</code>.',
       'For <code>addThree</code>: it uses <code>+</code>, so it needs <code>Num a =></code>. All three arguments and the result are the same type <code>a</code>.',
@@ -596,7 +628,12 @@ both f (x, y) = (f x, f y)
 compose :: (b -> c) -> (a -> b) -> a -> c
 compose f g x = f (g x)
 `,
-    testCode: '',
+    testCode: `runTestEq "swap (1,2)" (2 :: Int, 1 :: Int) (swap (1 :: Int, 2 :: Int))
+        , runTestEq "swap (True,'a')" ('a', True) (swap (True, 'a'))
+        , runTestEq "both (+1) (3,4)" (4 :: Int, 5 :: Int) (both (+1) (3 :: Int, 4 :: Int))
+        , runTestEq "both show (1,2)" ("1", "2") (both show (1 :: Int, 2 :: Int))
+        , runTestEq "compose show (+1) 5" "6" (compose show (+1) (5 :: Int))
+        , runTestEq "compose (*2) (+3) 1" (8 :: Int) (compose (*2) (+3) (1 :: Int))`,
     hints: [
       'For <code>swap</code>: destructure the tuple in the argument. <code>swap (x, y) = ...</code> — now return them in the opposite order.',
       'For <code>both</code>: destructure the pair AND name the function: <code>both f (x, y) = ...</code>. Apply <code>f</code> to each element separately.',
@@ -691,7 +728,13 @@ instance Show TrafficLight where
   show Yellow = "Yellow"
   show Green  = "Green"
 `,
-    testCode: '',
+    testCode: `runTestEq "Red == Red" True (Red == Red)
+        , runTestEq "Red == Green" False (Red == Green)
+        , runTestEq "Yellow == Yellow" True (Yellow == Yellow)
+        , runTestEq "Green /= Red" True (Green /= Red)
+        , runTestEq "show Red" "Red" (show Red)
+        , runTestEq "show Yellow" "Yellow" (show Yellow)
+        , runTestEq "show Green" "Green" (show Green)`,
     hints: [
       'For <code>Eq</code>: start with <code>instance Eq TrafficLight where</code> on its own line, then indent the <code>==</code> equations below.',
       'You need to match each pair: <code>Red == Red = True</code>, <code>Yellow == Yellow = True</code>, <code>Green == Green = True</code>, and a catch-all <code>_ == _ = False</code>.',
@@ -791,7 +834,13 @@ addToRight ex = fmap (+ 10) ex
 lengths :: [String] -> [Int]
 lengths xs = fmap length xs
 `,
-    testCode: '',
+    testCode: `runTestEq "doubleAll [1..5]" [2,4,6,8,10 :: Int] (doubleAll [1,2,3,4,5])
+        , runTestEq "doubleAll []" ([] :: [Int]) (doubleAll [])
+        , runTestEq "showMaybe (Just 42)" (Just "42") (showMaybe (Just 42))
+        , runTestEq "showMaybe Nothing" (Nothing :: Maybe String) (showMaybe Nothing)
+        , runTestEq "addToRight (Right 5)" (Right 15 :: Either String Int) (addToRight (Right 5))
+        , runTestEq "addToRight (Left err)" (Left "err" :: Either String Int) (addToRight (Left "err"))
+        , runTestEq "lengths" [2,5,3 :: Int] (lengths ["hi","hello","hey"])`,
     hints: [
       'The pattern is always <code>fmap someFunction container</code>. For <code>doubleAll</code>: <code>fmap (* 2) xs</code>.',
       'For <code>showMaybe</code>: <code>show</code> converts any value to a String. Use <code>fmap show mx</code>.',
@@ -882,7 +931,10 @@ instance Functor Tree where
   fmap f (Leaf x)     = Leaf (f x)
   fmap f (Branch l r) = Branch (fmap f l) (fmap f r)
 `,
-    testCode: '',
+    testCode: `runTestEq "fmap (+1) (Leaf 5)" (Leaf 6) (fmap (+1) (Leaf 5 :: Tree Int))
+        , runTestEq "fmap (*2) branch" (Branch (Leaf 2) (Leaf 4)) (fmap (*2) (Branch (Leaf 1) (Leaf 2) :: Tree Int))
+        , runTestEq "fmap show (Leaf 42)" (Leaf "42") (fmap show (Leaf 42 :: Tree Int))
+        , runTestEq "fmap id preserves" (Leaf 7) (fmap id (Leaf 7 :: Tree Int))`,
     hints: [
       'This is like writing a recursive function on a list. <code>Leaf</code> is your base case (like <code>[]</code>), <code>Branch</code> is your recursive case (like <code>x:xs</code>).',
       'For the Leaf case: you have a value <code>x</code> and a function <code>f</code>. The result should still be a <code>Leaf</code>, wrapping the transformed value: <code>Leaf (...)</code>.',
@@ -975,7 +1027,10 @@ identityLaw tree = fmap id tree == tree
 compositionLaw :: Eq c => (b -> c) -> (a -> b) -> Tree a -> Bool
 compositionLaw f g tree = fmap (f . g) tree == (fmap f . fmap g) tree
 `,
-    testCode: '',
+    testCode: `runTestEq "identityLaw (Leaf 5)" True (identityLaw (Leaf 5 :: Tree Int))
+        , runTestEq "identityLaw branch" True (identityLaw (Branch (Leaf 1) (Leaf 2) :: Tree Int))
+        , runTestEq "compositionLaw show (+1) leaf" True (compositionLaw show (+1) (Leaf 5 :: Tree Int))
+        , runTestEq "compositionLaw show (+1) branch" True (compositionLaw show (+1) (Branch (Leaf 1) (Leaf 2) :: Tree Int))`,
     hints: [
       'Each function is a one-liner. Translate the mathematical equation directly into Haskell using <code>==</code>.',
       'For <code>identityLaw</code>: the left side is <code>fmap id tree</code>, the right side is <code>tree</code>. Compare with <code>==</code>.',
@@ -1070,7 +1125,12 @@ eitherToMaybe :: Either e a -> Maybe a
 eitherToMaybe (Left _)  = Nothing
 eitherToMaybe (Right x) = Just x
 `,
-    testCode: '',
+    testCode: `runTestEq "maybeToList Nothing" ([] :: [Int]) (maybeToList (Nothing :: Maybe Int))
+        , runTestEq "maybeToList (Just 5)" [5 :: Int] (maybeToList (Just 5))
+        , runTestEq "listToMaybe []" (Nothing :: Maybe Int) (listToMaybe ([] :: [Int]))
+        , runTestEq "listToMaybe [1,2,3]" (Just 1 :: Maybe Int) (listToMaybe [1 :: Int, 2, 3])
+        , runTestEq "eitherToMaybe (Left err)" (Nothing :: Maybe Int) (eitherToMaybe (Left "err" :: Either String Int))
+        , runTestEq "eitherToMaybe (Right 42)" (Just 42 :: Maybe Int) (eitherToMaybe (Right 42))`,
     hints: [
       'For <code>maybeToList</code>: <code>Nothing</code> (no value) maps to the empty list <code>[]</code>. <code>Just x</code> (one value) maps to a single-element list.',
       'For <code>listToMaybe</code>: an empty list means there\'s no first element (<code>Nothing</code>). A non-empty list <code>(x:_)</code> gives us the first element (<code>Just x</code>).',

@@ -2636,19 +2636,19 @@ mySum xs = error "pattern match on [] and (x:xs)"
 -- 2. Reverse a list using foldl.
 --    foldl builds from the left — perfect for reversing.
 --    Accumulator starts as [], each step prepends the element.
---    Hint: foldl (\\acc x -> x : acc) [] xs
+--    Hint: foldl processes left-to-right. What accumulator and step function reverses?
 myReverse :: [a] -> [a]
 myReverse xs = error "use foldl"
 
 -- 3. Map a function over a list using foldr.
 --    foldr replaces (:) with your function and [] with [].
---    Hint: foldr (\\x acc -> f x : acc) [] xs
+--    Hint: foldr replaces (:) — what should go in place of (:)?
 myMap :: (a -> b) -> [a] -> [b]
 myMap f xs = error "use foldr"
 
 -- 4. Filter elements using foldr.
 --    Like map, but only include elements where p is True.
---    Hint: foldr (\\x acc -> if p x then x : acc else acc) [] xs
+--    Hint: like myMap, but only cons when the predicate holds.
 myFilter :: (a -> Bool) -> [a] -> [a]
 myFilter p xs = error "use foldr with an if"
 `,
@@ -2852,6 +2852,11 @@ take 4 (iterate (+3) 0)   -- [0, 3, 6, 9]</code></pre>
 -- Result: 0 : 1 : [1, 2, 3, 5, 8, 13, ...]</code></pre>
 <p>Laziness makes this work — each element is computed only when needed, and the computed values are <strong>shared</strong> (not recomputed).</p>
 
+<h3>zipWith: Pairwise Combination</h3>
+<p><code>zipWith</code> applies a function to corresponding elements of two lists:</p>
+<pre><code>zipWith (+) [1,2,3] [10,20,30] = [11, 22, 33]
+zipWith (*) [2,3]   [10,10]    = [20, 30]</code></pre>
+
 <h3>Your Task</h3>
 <p>Implement infinite list generators and use laziness to work with infinite data.</p>
 `,
@@ -2862,13 +2867,13 @@ take 4 (iterate (+3) 0)   -- [0, 3, 6, 9]</code></pre>
 -- 1. Implement iterate: generate [x, f x, f (f x), ...]
 --    This is an infinite list — Haskell's laziness makes it work.
 myIterate :: (a -> a) -> a -> [a]
-myIterate f x = error "x : myIterate f (f x)"
+myIterate f x = error "cons the current value, then recurse with f applied to x"
 
 -- 2. Implement repeat and replicate.
 --    repeat x = [x, x, x, ...]  (infinite)
 --    replicate n x = take n (repeat x)
 myRepeat :: a -> [a]
-myRepeat x = error "x : myRepeat x"
+myRepeat x = error "cons x, then recurse"
 
 myReplicate :: Int -> a -> [a]
 myReplicate n x = error "use take and myRepeat"
@@ -2877,11 +2882,11 @@ myReplicate n x = error "use take and myRepeat"
 --    fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
 --    zipWith f xs ys applies f to corresponding elements.
 fibs :: [Int]
-fibs = error "0 : 1 : zipWith (+) fibs (tail fibs)"
+fibs = error "start with 0 and 1, then add corresponding pairs"
 
 -- Index into the Fibonacci sequence (0-indexed).
 fibN :: Int -> Int
-fibN n = error "use !! to index into fibs"
+fibN n = error "index into the fibs list"
 
 -- 4. From the infinite list [1..], find numbers divisible by both 3 and 5.
 --    Use filter on the infinite list [1..].
@@ -3088,6 +3093,17 @@ mergeSort xs  =
     ├── fib 2      ← AND here!
     └── fib 1</code></pre>
 
+<h3>Data.Array: Fixed-Size Indexed Arrays</h3>
+<p><code>Data.Array</code> provides arrays with constant-time lookup:</p>
+<pre><code>import Data.Array
+
+-- Create: listArray (low, high) [elements...]
+arr = listArray (0, 3) [10, 20, 30, 40]
+
+-- Access: arr ! index
+arr ! 0  -- 10
+arr ! 2  -- 30</code></pre>
+
 <h3>The Solution: Lazy Arrays</h3>
 <p>Create an array where each entry references other entries in the same array. Laziness ensures each entry is computed <strong>at most once</strong>:</p>
 <pre><code>import Data.Array
@@ -3100,8 +3116,9 @@ fibMemo n = arr ! n
     go 1 = 1
     go i = arr ! (i-1) + arr ! (i-2)   -- looks up already-computed values!</code></pre>
 
-<h3>Why This Works</h3>
-<p><code>listArray</code> creates the array lazily — entries are thunks (unevaluated expressions). When <code>go 5</code> needs <code>arr ! 4</code>, Haskell evaluates that entry, caches the result, and never recomputes it. This is O(n) time and O(n) space — the same as imperative DP.</p>
+<h3>Why This Works: Lazy Self-Reference</h3>
+<p>Notice that <code>go</code> references <code>arr</code>, and <code>arr</code> is defined using <code>go</code>. This circular reference works because Haskell is lazy — <code>arr</code> is a collection of unevaluated thunks. When <code>go 5</code> needs <code>arr ! 4</code>, Haskell evaluates that entry once, caches the result, and never recomputes it.</p>
+<p>This is O(n) time and O(n) space — the same as imperative DP.</p>
 
 <h3>The 0/1 Knapsack Problem</h3>
 <p>Given items with weights and values, maximize total value within a weight limit:</p>
@@ -3145,7 +3162,18 @@ staircase n = error "use array memoization"
 --    Items are [(weight, value)] pairs.
 --    Use a 2D array indexed by (item, remaining capacity).
 knapsack :: [(Int, Int)] -> Int -> Int
-knapsack items capacity = error "use 2D array memoization"
+knapsack items capacity = error "compute arr ! (numItems, capacity)"
+  -- Scaffold:
+  -- where
+  --   numItems = length items
+  --   itemArr  = listArray (1, numItems) items
+  --   arr = listArray ((0,0), (numItems, capacity))
+  --         [go i w | i <- [0..numItems], w <- [0..capacity]]
+  --   go 0 _ = 0
+  --   go i w
+  --     | wi > w    = ???  -- item too heavy, skip
+  --     | otherwise = ???  -- max of (skip, take)
+  --     where (wi, vi) = itemArr ! i
 `,
     solutionCode: `module LazyMemoization where
 
@@ -3412,6 +3440,7 @@ gfDiv (GF a p) (GF b _) = mkGF (a * modInverse b p) p
 <p>Both sides compute <code>g^(a*b) mod p</code>, just in different order:</p>
 <pre><code>Alice: B^a = (g^b)^a = g^(b*a) mod p
 Bob:   A^b = (g^a)^b = g^(a*b) mod p</code></pre>
+<p><strong>The key property to verify:</strong> both sides arrive at the <em>same</em> shared secret independently. This agreement is the foundation of the entire protocol — if Alice's computed secret differs from Bob's, the exchange is broken.</p>
 <p>An eavesdropper sees p, g, A, and B but <strong>cannot compute a or b</strong> — that would require solving the <strong>discrete logarithm problem</strong>, which is believed to be computationally infeasible for large primes.</p>
 
 <h3>Square-and-Multiply (Modular Exponentiation)</h3>
@@ -3568,8 +3597,11 @@ Decrypt c=81:  m = 81^103 mod 143 = 42  ✓</code></pre>
 
 <h3>Your Task</h3>
 <p>Implement RSA key generation with validation, encryption, decryption, and a round-trip function using do-notation to chain Either computations.</p>
+<p>Recall from the Applicative & Monad module: <code>do</code>-notation with <code>Either</code> short-circuits on the first <code>Left</code>, carrying the error message through.</p>
 `,
     starterCode: `module RSAEncryption where
+
+-- Helpers (same algorithms from previous exercises, provided for reuse)
 
 -- Helper: modular exponentiation (square-and-multiply)
 modExp :: Integer -> Integer -> Integer -> Integer
@@ -3721,12 +3753,12 @@ rsaRoundTrip p q e msg = do
 
 <h3>Point Addition Formulas</h3>
 <p>For distinct points P = (x1, y1) and Q = (x2, y2) where P ≠ -Q:</p>
-<pre><code>λ = (y2 - y1) * modInverse (x2 - x1) p   -- slope of the line
+<pre><code>λ = ((y2 - y1) * modInverse ((x2 - x1) \`mod\` p) p) \`mod\` p  -- slope of the line
 x3 = (λ² - x1 - x2) mod p
 y3 = (λ * (x1 - x3) - y1) mod p</code></pre>
 
-<p>For point doubling P + P where y1 ≠ 0:</p>
-<pre><code>λ = (3*x1² + a) * modInverse (2*y1) p     -- slope of the tangent
+<p>For point doubling P + P where y1 ≠ 0 (if y1 = 0, the tangent is vertical → return Inf):</p>
+<pre><code>λ = ((3*x1² + a) * modInverse (2*y1) p) \`mod\` p   -- slope of the tangent
 x3 = (λ² - 2*x1) mod p
 y3 = (λ * (x1 - x3) - y1) mod p</code></pre>
 
@@ -3784,7 +3816,11 @@ ecNegate _ Inf = error "implement Inf case"
 ecNegate p (ECPoint x y) = error "reflect over x-axis"
 
 -- 3. Point addition on the curve.
---    Handle: Inf cases, inverse points, doubling, general addition.
+--    Handle: Inf cases, inverse points, y1==0 doubling guard, doubling, general addition.
+--    Doubling formula: lam = ((3*x1*x1 + a) * modInverse (2*y1) p) \`mod\` p
+--    General formula:  lam = ((y2 - y1) * modInverse ((x2 - x1) \`mod\` p) p) \`mod\` p
+--    Then: x3 = (lam*lam - x1 - x2) \`mod\` p
+--           y3 = (lam*(x1 - x3) - y1) \`mod\` p
 ecAdd :: Curve -> ECPoint -> ECPoint -> ECPoint
 ecAdd _ Inf q = error "implement identity cases"
 ecAdd _ p Inf = error "implement identity cases"
@@ -3834,13 +3870,14 @@ ecAdd _ Inf q = q
 ecAdd _ p Inf = p
 ecAdd (Curve a p) (ECPoint x1 y1) (ECPoint x2 y2)
   | x1 == x2 && y1 == ((p - y2) \`mod\` p) = Inf
+  | x1 == x2 && y1 == y2 && y1 == 0 = Inf
   | x1 == x2 && y1 == y2 = let
-      lam = (3 * x1 * x1 + a) * modInverse (2 * y1) p \`mod\` p
+      lam = ((3 * x1 * x1 + a) * modInverse (2 * y1) p) \`mod\` p
       x3  = (lam * lam - 2 * x1) \`mod\` p
       y3  = (lam * (x1 - x3) - y1) \`mod\` p
     in ECPoint x3 y3
   | otherwise = let
-      lam = (y2 - y1) * modInverse (x2 - x1) p \`mod\` p
+      lam = ((y2 - y1) * modInverse ((x2 - x1) \`mod\` p) p) \`mod\` p
       x3  = (lam * lam - x1 - x2) \`mod\` p
       y3  = (lam * (x1 - x3) - y1) \`mod\` p
     in ECPoint x3 y3
@@ -3961,6 +3998,8 @@ data Commitment = Commitment
   , commitRand  :: Integer
   , commitC     :: Integer
   } deriving (Show, Eq)
+
+-- Note: in a real system, values and randomness would be reduced modulo the group order.
 
 -- 1. Create a Pedersen commitment.
 --    commit(v, r) = g^v * h^r mod p

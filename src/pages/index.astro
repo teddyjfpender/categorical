@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { href } from '../lib/paths';
+import { modules } from '../lib/curriculum';
 ---
 
 <BaseLayout title="Home">
@@ -12,6 +13,7 @@ import { href } from '../lib/paths';
           <span class="text-accent">C</span>ategorical
         </a>
         <div class="flex items-center gap-6 text-sm text-text-secondary">
+          <a href={href('/syllabus')} class="hover:text-text-primary transition-colors duration-150 py-1">Syllabus</a>
           <a href={href('/type-systems/basic-types')} class="hover:text-text-primary transition-colors duration-150 py-1">Lessons</a>
           <a href={href('/dashboard')} class="hover:text-text-primary transition-colors duration-150 py-1">Dashboard</a>
         </div>
@@ -30,8 +32,8 @@ import { href } from '../lib/paths';
           through Haskell
         </h1>
         <p class="text-lg md:text-xl text-text-secondary mb-10 max-w-2xl mx-auto leading-relaxed">
-          Hands-on exercises with an embedded code editor, instant compiler feedback,
-          and a structured curriculum from basic types to advanced abstractions.
+          Hands-on exercises with an embedded code editor, real GHC compilation,
+          and a structured curriculum from basic types to algebraic cryptography.
         </p>
         <div class="flex items-center justify-center gap-4">
           <a
@@ -41,37 +43,32 @@ import { href } from '../lib/paths';
             Start Learning
           </a>
           <a
-            href={href('/dashboard')}
+            href={href('/syllabus')}
             class="px-6 py-3 border border-border hover:border-border-bright hover:bg-bg-hover active:bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors duration-150"
           >
-            View Curriculum
+            View Syllabus
           </a>
         </div>
 
         <!-- Module Cards -->
         <div class="mt-20 grid md:grid-cols-3 gap-4 text-left">
-          <a href={href('/type-systems/basic-types')} class="group p-6 rounded-xl bg-bg-card border border-border hover:border-border-bright hover:bg-bg-hover transition-colors duration-150">
-            <div class="text-2xl mb-3" aria-hidden="true">&#x03BB;</div>
-            <h3 class="font-semibold mb-2 group-hover:text-accent transition-colors duration-150">Type Systems</h3>
-            <p class="text-sm text-text-secondary leading-relaxed">
-              From basic types and ADTs to GADTs, type families, and dependent types.
-            </p>
-          </a>
-          <a href={href('/category-theory/functors')} class="group p-6 rounded-xl bg-bg-card border border-border hover:border-border-bright hover:bg-bg-hover transition-colors duration-150">
-            <div class="text-2xl mb-3" aria-hidden="true">&#x2219;</div>
-            <h3 class="font-semibold mb-2 group-hover:text-accent transition-colors duration-150">Category Theory</h3>
-            <p class="text-sm text-text-secondary leading-relaxed">
-              Functors, natural transformations, monads, and adjunctions — through code.
-            </p>
-          </a>
-          <div class="p-6 rounded-xl bg-bg-card border border-border opacity-60">
-            <div class="text-2xl mb-3" aria-hidden="true">&#x03B1;</div>
-            <h3 class="font-semibold mb-2">Functional Algorithms</h3>
-            <p class="text-sm text-text-secondary leading-relaxed">
-              Recursion schemes, persistent data structures, and algebraic approaches.
-            </p>
-            <span class="inline-block mt-3 text-[10px] text-text-muted uppercase tracking-wider font-medium">Coming soon</span>
-          </div>
+          {modules.filter(m => m.status === 'available').slice(0, 6).map((mod) => {
+            const firstPath = mod.lessons[0]?.path;
+            return firstPath ? (
+              <a href={href(firstPath)} class="group p-6 rounded-xl bg-bg-card border border-border hover:border-border-bright hover:bg-bg-hover transition-colors duration-150">
+                <div class="text-2xl mb-3" aria-hidden="true">{mod.icon}</div>
+                <h3 class="font-semibold mb-2 group-hover:text-accent transition-colors duration-150">{mod.title}</h3>
+                <p class="text-sm text-text-secondary leading-relaxed">{mod.description}</p>
+              </a>
+            ) : (
+              <div class="p-6 rounded-xl bg-bg-card border border-border opacity-50">
+                <div class="text-2xl mb-3" aria-hidden="true">{mod.icon}</div>
+                <h3 class="font-semibold mb-2">{mod.title}</h3>
+                <p class="text-sm text-text-secondary leading-relaxed">{mod.description}</p>
+                <span class="inline-block mt-3 text-[10px] text-text-muted uppercase tracking-wider font-medium">Coming soon</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </main>

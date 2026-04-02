@@ -1,5 +1,6 @@
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule } from '../../lib/exercises';
+import { modules as curriculumModules } from '../../lib/curriculum';
 import { href } from '../../lib/paths';
 
 interface SidebarProps {
@@ -7,46 +8,9 @@ interface SidebarProps {
   currentLesson: string;
 }
 
-interface ModuleInfo {
-  slug: string;
-  title: string;
-  lessons: Array<{
-    slug: string;
-    title: string;
-    path: string;
-    exerciseIds: string[];
-  }>;
-}
-
-const modules: ModuleInfo[] = [
-  {
-    slug: 'type-systems',
-    title: 'Type Systems',
-    lessons: [
-      {
-        slug: 'basic-types',
-        title: 'Basic Types and Annotations',
-        path: '/type-systems/basic-types',
-        exerciseIds: ['basic-functions', 'concrete-types', 'pattern-matching', 'algebraic-data-types', 'polymorphic-types', 'parametric-polymorphism', 'typeclasses-intro'],
-      },
-    ],
-  },
-  {
-    slug: 'category-theory',
-    title: 'Category Theory',
-    lessons: [
-      {
-        slug: 'functors',
-        title: 'Functors: Mapping Over Structure',
-        path: '/category-theory/functors',
-        exerciseIds: ['using-fmap', 'functor-instance', 'functor-laws', 'natural-transformation'],
-      },
-    ],
-  },
-];
-
 export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
   const { isCompleted } = useProgressStore();
+  const availableModules = curriculumModules.filter((m) => m.status === 'available');
 
   return (
     <nav className="w-64 flex-shrink-0 border-r border-border bg-bg-secondary h-full overflow-y-auto">
@@ -56,7 +20,7 @@ export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
         </a>
 
         <div className="space-y-6">
-          {modules.map((mod) => {
+          {availableModules.map((mod) => {
             const exercises = getExercisesByModule(mod.slug);
             const completedCount = exercises.filter((e) => isCompleted(e.id)).length;
             const totalCount = exercises.length;
@@ -72,7 +36,6 @@ export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
                   </span>
                 </div>
 
-                {/* Progress bar */}
                 <div className="h-1 bg-bg-tertiary rounded-full mb-3 overflow-hidden">
                   <div
                     className="h-full bg-accent rounded-full transition-all duration-300"
@@ -83,9 +46,8 @@ export function Sidebar({ currentModule, currentLesson }: SidebarProps) {
                 <ul className="space-y-1">
                   {mod.lessons.map((lesson) => {
                     const isActive = mod.slug === currentModule && lesson.slug === currentLesson;
-                    const lessonExercises = lesson.exerciseIds;
-                    const lessonCompleted = lessonExercises.filter((id) => isCompleted(id)).length;
-                    const allDone = lessonCompleted === lessonExercises.length && lessonExercises.length > 0;
+                    const lessonCompleted = lesson.exerciseIds.filter((id) => isCompleted(id)).length;
+                    const allDone = lessonCompleted === lesson.exerciseIds.length && lesson.exerciseIds.length > 0;
 
                     return (
                       <li key={lesson.slug}>

@@ -1,53 +1,9 @@
 import { useState } from 'react';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule, getAllExercises } from '../../lib/exercises';
+import { modules as curriculumModules } from '../../lib/curriculum';
 import { href } from '../../lib/paths';
 import { ConfirmModal } from '../ui/ConfirmModal';
-
-interface ModuleCard {
-  slug: string;
-  title: string;
-  description: string;
-  icon: string;
-  lessons: Array<{
-    title: string;
-    path: string;
-    exerciseIds: string[];
-  }>;
-}
-
-const moduleCards: ModuleCard[] = [
-  {
-    slug: 'type-systems',
-    title: 'Type Systems',
-    description: 'Functions, types, pattern matching, ADTs, polymorphism, and typeclasses.',
-    icon: '\u03BB',
-    lessons: [
-      {
-        title: 'Haskell Foundations',
-        path: '/type-systems/basic-types',
-        exerciseIds: [
-          'basic-functions', 'concrete-types', 'pattern-matching',
-          'algebraic-data-types', 'polymorphic-types', 'parametric-polymorphism',
-          'typeclasses-intro',
-        ],
-      },
-    ],
-  },
-  {
-    slug: 'category-theory',
-    title: 'Category Theory',
-    description: 'Functors, fmap, functor laws, and natural transformations — through code.',
-    icon: '\u2219',
-    lessons: [
-      {
-        title: 'Functors and Natural Transformations',
-        path: '/category-theory/functors',
-        exerciseIds: ['using-fmap', 'functor-instance', 'functor-laws', 'natural-transformation'],
-      },
-    ],
-  },
-];
 
 export function ProgressDashboard() {
   const { isCompleted, completedExercises, resetProgress } = useProgressStore();
@@ -55,6 +11,7 @@ export function ProgressDashboard() {
   const allExercises = getAllExercises();
   const totalCompleted = completedExercises.length;
   const totalExercises = allExercises.length;
+  const availableModules = curriculumModules.filter((m) => m.status === 'available');
 
   return (
     <div>
@@ -79,7 +36,7 @@ export function ProgressDashboard() {
       {/* Module cards */}
       <h2 className="text-xl font-semibold mb-4">Modules</h2>
       <div className="space-y-4 mb-8">
-        {moduleCards.map((mod) => {
+        {availableModules.map((mod) => {
           const exercises = getExercisesByModule(mod.slug);
           const completedCount = exercises.filter((e) => isCompleted(e.id)).length;
           const percent = exercises.length > 0 ? Math.round((completedCount / exercises.length) * 100) : 0;
@@ -99,7 +56,6 @@ export function ProgressDashboard() {
                 </span>
               </div>
 
-              {/* Progress bar */}
               <div className="h-2 bg-bg-tertiary rounded-full mb-4 overflow-hidden">
                 <div
                   className="h-full bg-accent rounded-full transition-all duration-500"
@@ -107,7 +63,6 @@ export function ProgressDashboard() {
                 />
               </div>
 
-              {/* Lessons */}
               <div className="space-y-2">
                 {mod.lessons.map((lesson) => {
                   const lessonCompleted = lesson.exerciseIds.filter((id) => isCompleted(id)).length;

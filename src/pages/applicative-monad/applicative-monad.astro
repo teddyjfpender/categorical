@@ -1,0 +1,24 @@
+---
+import WorkspaceLayout from '../../layouts/WorkspaceLayout.astro';
+import { getCollection } from 'astro:content';
+import { getExercisesByModule } from '../../lib/exercises';
+
+const lessons = await getCollection('lessons');
+const lesson = lessons.find(l => l.id === 'applicative-monad/applicative-monad');
+
+if (!lesson) {
+  return Astro.redirect('/');
+}
+
+const exercises = getExercisesByModule('applicative-monad');
+---
+
+<WorkspaceLayout
+  title={lesson.data.title}
+  module={lesson.data.module}
+  moduleTitle={lesson.data.moduleTitle}
+  lessonSlug="applicative-monad"
+  exercises={exercises}
+  lessonContent=""
+  description={lesson.data.description}
+/>

@@ -153,13 +153,21 @@ export const modules: CurriculumModule[] = [
   {
     slug: 'algebraic-cryptography',
     title: 'Algebraic Cryptography',
-    description: 'Finite fields, elliptic curves, and lattice-based constructions.',
+    description: 'Finite fields, Diffie-Hellman, RSA, elliptic curves, and commitment schemes.',
     icon: '\uD83D\uDD10',
     order: 6,
     track: 'algebra-crypto',
-    status: 'coming-soon',
+    status: 'available',
     prerequisites: ['abstract-algebra', 'applicative-monad'],
-    lessons: [],
+    lessons: [{
+      slug: 'cryptography',
+      title: 'Cryptographic Protocols from Algebra',
+      path: '/algebraic-cryptography/cryptography',
+      exerciseIds: [
+        'finite-field-gfp', 'diffie-hellman', 'rsa-encryption',
+        'elliptic-curve-addition', 'pedersen-commitment',
+      ],
+    }],
   },
   {
     slug: 'functional-algorithms',

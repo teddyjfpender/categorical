@@ -3155,8 +3155,9 @@ fibMemo n = error "use Data.Array for O(n) Fibonacci"
 --    ways(0) = 1 (one way: do nothing)
 --    ways(1) = 1 (one way: take 1 step)
 --    ways(n) = ways(n-1) + ways(n-2)
+--    This is the SAME pattern as fibMemo — just different base cases.
 staircase :: Int -> Int
-staircase n = error "use array memoization"
+staircase n = error "use array memoization (same pattern as fibMemo)"
 
 -- 3. 0/1 Knapsack: maximize value within weight capacity.
 --    Items are [(weight, value)] pairs.
@@ -3822,9 +3823,13 @@ ecNegate p (ECPoint x y) = error "reflect over x-axis"
 --    Then: x3 = (lam*lam - x1 - x2) \`mod\` p
 --           y3 = (lam*(x1 - x3) - y1) \`mod\` p
 ecAdd :: Curve -> ECPoint -> ECPoint -> ECPoint
-ecAdd _ Inf q = error "implement identity cases"
-ecAdd _ p Inf = error "implement identity cases"
-ecAdd curve p q = error "implement point addition and doubling"
+ecAdd _ Inf q = q
+ecAdd _ p Inf = p
+ecAdd (Curve a p) (ECPoint x1 y1) (ECPoint x2 y2)
+  | x1 == x2 && y1 == ((p - y2) \`mod\` p) = error "inverse points -> return Inf"
+  | x1 == x2 && y1 == y2 && y1 == 0       = error "vertical tangent -> return Inf"
+  | x1 == x2 && y1 == y2                   = error "doubling: compute lam, x3, y3"
+  | otherwise                               = error "general addition: compute lam, x3, y3"
 
 -- 4. Scalar multiplication using double-and-add.
 --    ecMul curve 0 _ = Inf

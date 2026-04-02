@@ -6,7 +6,7 @@
  */
 
 export type ModuleStatus = 'available' | 'coming-soon';
-export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto';
+export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms';
 
 export interface Track {
   slug: TrackSlug;
@@ -54,6 +54,12 @@ export const tracks: Track[] = [
     title: 'Algebra & Cryptography',
     description: 'Abstract algebra and its applications to cryptography',
     order: 3,
+  },
+  {
+    slug: 'algorithms',
+    title: 'Algorithms',
+    description: 'Functional algorithm patterns: recursion, higher-order design, laziness, and memoization',
+    order: 4,
   },
 ];
 
@@ -154,6 +160,25 @@ export const modules: CurriculumModule[] = [
     status: 'coming-soon',
     prerequisites: ['abstract-algebra', 'applicative-monad'],
     lessons: [],
+  },
+  {
+    slug: 'functional-algorithms',
+    title: 'Functional Algorithms',
+    description: 'Algorithmic thinking in Haskell: recursion schemes, higher-order design, laziness, and memoization.',
+    icon: '\u03B1',
+    order: 7,
+    track: 'algorithms',
+    status: 'available',
+    prerequisites: ['type-systems', 'monoids-foldable'],
+    lessons: [{
+      slug: 'algorithms',
+      title: 'Functional Algorithm Patterns',
+      path: '/functional-algorithms/algorithms',
+      exerciseIds: [
+        'recursion-patterns', 'higher-order-algorithms', 'lazy-infinite-lists',
+        'divide-and-conquer', 'lazy-memoization',
+      ],
+    }],
   },
 ];
 

@@ -1165,16 +1165,18 @@ eitherToMaybe (Right x) = Just x
 <p>A <strong>Semigroup</strong> is a type that has an associative binary operation for combining two values. In Haskell, this operation is <code>(&lt;&gt;)</code>.</p>
 
 <h3>The Semigroup Typeclass</h3>
+<p>Just like the <code>Eq</code> and <code>Show</code> instances you wrote in the Type Systems module, <code>Semigroup</code> is a typeclass. You implement it with the same <code>instance ... where</code> syntax:</p>
 <pre><code>class Semigroup a where
   (&lt;&gt;) :: a -> a -> a</code></pre>
 
 <p>You already know several semigroups:</p>
 <pre><code>"hello" &lt;&gt; " world"   -- "hello world"  (String concatenation)
-[1,2] &lt;&gt; [3,4]        -- [1,2,3,4]      (List append)
-Just 3 &lt;&gt; Just 5      -- Just 3         (keeps first)</code></pre>
+[1,2] &lt;&gt; [3,4]        -- [1,2,3,4]      (List append)</code></pre>
+
+<p>Notice the pattern: <code>(&lt;&gt;)</code> takes two values of the <strong>same type</strong> and produces another value of that type. The operation differs by type — for strings it concatenates, for lists it appends.</p>
 
 <h3>The Associativity Law</h3>
-<p>A Semigroup must satisfy: <code>(a &lt;&gt; b) &lt;&gt; c == a &lt;&gt; (b &lt;&gt; c)</code>. Grouping doesn't matter.</p>
+<p>A Semigroup must satisfy: <code>(a &lt;&gt; b) &lt;&gt; c == a &lt;&gt; (b &lt;&gt; c)</code>. Grouping doesn't matter — just like <code>(1 + 2) + 3 == 1 + (2 + 3)</code> for addition.</p>
 
 <h3>Your Task</h3>
 <p>Implement <code>Semigroup</code> for an <code>Inventory</code> type that combines inventories by adding each field.</p>
@@ -1191,6 +1193,10 @@ data Inventory = Inventory
 -- Combining two inventories adds each field pairwise.
 --
 -- Example: Inventory 3 1 0 <> Inventory 0 2 5 = Inventory 3 3 5
+--
+-- The syntax is the same as writing Eq or Show instances:
+--   instance Semigroup Inventory where
+--     ...
 
 instance Semigroup Inventory where
   (<>) = error "implement (<>) for Inventory"
@@ -1212,10 +1218,10 @@ instance Semigroup Inventory where
         , runTestEq "combine with empty" (Inventory 1 2 3) (Inventory 1 2 3 <> Inventory 0 0 0)
         , runTestEq "associativity" ((Inventory 1 0 0 <> Inventory 0 1 0) <> Inventory 0 0 1) (Inventory 1 0 0 <> (Inventory 0 1 0 <> Inventory 0 0 1))`,
     hints: [
+      'The syntax is <code>instance Semigroup Inventory where</code> — same structure as writing <code>instance Eq TrafficLight where</code>.',
       'Pattern match on both <code>Inventory</code> values to access their fields.',
       'Each field is combined with <code>+</code>: swords + swords, shields + shields, potions + potions.',
-      'The pattern is: <code>Inventory s1 sh1 p1 <> Inventory s2 sh2 p2 = Inventory (s1+s2) ...</code>',
-      'Full solution: <code>Inventory s1 sh1 p1 <> Inventory s2 sh2 p2 = Inventory (s1+s2) (sh1+sh2) (p1+p2)</code>',
+      'The pattern is: <code>Inventory s1 sh1 p1 <> Inventory s2 sh2 p2 = Inventory (s1+s2) (sh1+sh2) (p1+p2)</code>',
     ],
     concepts: ['semigroup', 'typeclass', 'associativity'],
     successPatterns: [
@@ -1239,17 +1245,23 @@ instance Semigroup Inventory where
 <pre><code>class Semigroup a => Monoid a where
   mempty :: a</code></pre>
 
+<p>The <code>Semigroup a =></code> before <code>Monoid a</code> is a <strong>constraint</strong> — it means "to be a Monoid, a type must already be a Semigroup." You'll see this pattern often in Haskell: typeclasses building on each other.</p>
+
 <p>The identity element satisfies: <code>mempty &lt;&gt; x == x</code> and <code>x &lt;&gt; mempty == x</code>. It's the "do nothing" value.</p>
 
 <h3>Examples</h3>
 <pre><code>mempty :: String    -- ""     (empty string)
 mempty :: [a]       -- []     (empty list)
-mempty :: Sum Int   -- Sum 0  (zero under addition)</code></pre>
+
+-- mempty <> anything = anything:
+"" ++ "hello"       -- "hello"
+[] ++ [1, 2, 3]     -- [1, 2, 3]</code></pre>
 
 <h3>Why Monoids Matter</h3>
-<p>With a Monoid, you can <code>mconcat</code> any list of values into one:</p>
-<pre><code>mconcat ["a", "b", "c"]  -- "abc"
-mconcat [Sum 1, Sum 2]   -- Sum 3</code></pre>
+<p>With a Monoid, you can <code>mconcat</code> any list of values into one — it folds the list using <code>(&lt;&gt;)</code>, starting from <code>mempty</code>:</p>
+<pre><code>mconcat ["a", "b", "c"]    -- "abc"
+mconcat [[1,2], [3]]       -- [1,2,3]
+mconcat ([] :: [String])   -- ""     (empty list gives mempty)</code></pre>
 
 <h3>Your Task</h3>
 <p>Make Inventory a Monoid by defining <code>mempty</code>, then write a function that checks the identity law.</p>
@@ -1268,12 +1280,17 @@ instance Semigroup Inventory where
 -- EXERCISE: Make Inventory a Monoid.
 
 -- 1. Define mempty — the "empty" inventory where every field is 0.
+--    The constraint "Semigroup a => Monoid a" is already satisfied
+--    because we wrote the Semigroup instance above.
 instance Monoid Inventory where
   mempty = error "implement mempty"
 
 -- 2. Write a function that checks both identity laws.
 --    Left identity:  mempty <> x == x
 --    Right identity: x <> mempty == x
+--
+--    Note the constraint syntax: (Monoid a, Eq a) => means
+--    "this works for any type a that is both a Monoid and has Eq."
 identityLaw :: (Monoid a, Eq a) => a -> Bool
 identityLaw x = error "check both identity laws"
 `,
@@ -1325,23 +1342,47 @@ identityLaw x = (mempty <> x == x) && (x <> mempty == x)
     description: `
 <p><strong>Foldable</strong> generalizes list folding to any container. If you can "visit every element" in a structure, it's Foldable.</p>
 
+<h3>The Tree Type</h3>
+<p>We'll fold over a binary tree. Here's the data type and a visual example:</p>
+<pre><code>data Tree a = Leaf a | Branch (Tree a) (Tree a)</code></pre>
+<pre><code>     Branch
+    /      \\
+  Leaf 1   Branch
+          /      \\
+        Leaf 2  Leaf 3</code></pre>
+<p>A <code>Leaf</code> holds a single value. A <code>Branch</code> holds two subtrees (left and right) but no value of its own. If you did the Functor module, you've seen this type before.</p>
+
 <h3>The Key Function: foldr</h3>
 <pre><code>class Foldable t where
   foldr :: (a -> b -> b) -> b -> t a -> b</code></pre>
 
 <p><code>foldr f acc structure</code> folds from the right, combining each element with an accumulator:</p>
-<pre><code>foldr (+) 0 [1,2,3]  -- 1 + (2 + (3 + 0)) = 6
+<pre><code>-- On lists:
+foldr (+) 0 [1,2,3]  -- 1 + (2 + (3 + 0)) = 6
 foldr (:) [] [1,2,3] -- 1 : (2 : (3 : [])) = [1,2,3]</code></pre>
+
+<h3>Folding a Tree</h3>
+<p>Let's trace <code>foldr (+) 0</code> on the tree above (Branch (Leaf 1) (Branch (Leaf 2) (Leaf 3))):</p>
+<ol>
+  <li><strong>Branch case:</strong> We need to fold the whole tree. Since <code>foldr</code> folds from the <em>right</em>, we fold the right subtree first to get an intermediate accumulator, then fold the left subtree with that result.</li>
+  <li><strong>Fold right subtree</strong> <code>Branch (Leaf 2) (Leaf 3)</code>:
+    <ul>
+      <li>Fold its right subtree <code>Leaf 3</code>: <code>(+) 3 0 = 3</code> (accumulator was 0)</li>
+      <li>Fold its left subtree <code>Leaf 2</code> with new accumulator 3: <code>(+) 2 3 = 5</code></li>
+    </ul>
+  </li>
+  <li><strong>Fold left subtree</strong> <code>Leaf 1</code> with accumulator 5: <code>(+) 1 5 = 6</code></li>
+</ol>
+<p>Result: <strong>6</strong>. The leaves were visited in order: 1, 2, 3 (left to right).</p>
 
 <h3>Free Functions from Foldable</h3>
 <p>Once you implement <code>foldr</code>, you get many functions for free:</p>
 <pre><code>toList :: Foldable t => t a -> [a]
 length :: Foldable t => t a -> Int
-sum    :: (Foldable t, Num a) => t a -> a
-null   :: Foldable t => t a -> Bool</code></pre>
+sum    :: (Foldable t, Num a) => t a -> a</code></pre>
 
 <h3>Your Task</h3>
-<p>Implement <code>Foldable</code> for the <code>Tree</code> type you already know from the Functor module.</p>
+<p>Implement <code>Foldable</code> for <code>Tree</code>. Two equations, one per constructor.</p>
 `,
     starterCode: `module FoldableBasics where
 
@@ -1351,9 +1392,18 @@ data Tree a = Leaf a | Branch (Tree a) (Tree a)
 -- EXERCISE: Implement Foldable for Tree.
 --
 -- Two cases, just like Functor:
---   Leaf x     -> apply f to x and the accumulator
---   Branch l r -> fold the right subtree first, then use that result
---                 to fold the left subtree
+--
+-- Case 1: Leaf x
+--   You have one element x and an accumulator acc.
+--   Just combine them: f x acc
+--
+-- Case 2: Branch l r
+--   Two subtrees, no element of its own.
+--   Step A: fold the RIGHT subtree first to get an intermediate acc.
+--           let acc' = foldr f acc r
+--   Step B: fold the LEFT subtree using that intermediate acc.
+--           foldr f acc' l
+--   Combined: foldr f (foldr f acc r) l
 
 instance Foldable Tree where
   foldr f acc (Leaf x)     = error "combine x with acc using f"
@@ -1374,8 +1424,8 @@ instance Foldable Tree where
         , runTestEq "length" (3 :: Int) (length (Branch (Leaf 1) (Branch (Leaf 2) (Leaf 3)) :: Tree Int))`,
     hints: [
       'For <code>Leaf x</code>: you have an element <code>x</code> and an accumulator <code>acc</code>. Combine them: <code>f x acc</code>.',
-      'For <code>Branch l r</code>: first fold the right subtree to get an intermediate result, then fold the left subtree with that result.',
-      'The right-subtree fold: <code>foldr f acc r</code>. Then pass that as the accumulator to the left: <code>foldr f (foldr f acc r) l</code>.',
+      'For <code>Branch l r</code>: first fold the right subtree to get an intermediate accumulator. Think of it as: <code>let acc\' = foldr f acc r</code>.',
+      'Then fold the left subtree using that intermediate accumulator: <code>foldr f acc\' l</code>. Inline it: <code>foldr f (foldr f acc r) l</code>.',
       'Full solution: <code>foldr f acc (Leaf x) = f x acc</code> and <code>foldr f acc (Branch l r) = foldr f (foldr f acc r) l</code>.',
     ],
     concepts: ['foldable', 'foldr', 'tree', 'recursion'],
@@ -1400,20 +1450,32 @@ instance Foldable Tree where
 <p><code>foldMap</code> is the most elegant way to fold — it maps each element to a Monoid value, then combines them all with <code>(&lt;&gt;)</code>:</p>
 <pre><code>foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m</code></pre>
 
-<h3>Monoid Newtypes</h3>
-<p>Haskell provides newtype wrappers in <code>Data.Monoid</code> that give numbers different Monoid behaviors:</p>
+<h3>The Problem: Numbers Have Multiple Monoids</h3>
+<p>Strings have one obvious way to combine: concatenation. But numbers can be combined by <em>addition</em> or <em>multiplication</em> — two different Monoid instances for the same type! Haskell can't have two instances of the same typeclass for <code>Int</code>, so it uses <strong>newtype wrappers</strong> to distinguish them:</p>
 <pre><code>import Data.Monoid (Sum(..), Product(..))
 
-Sum 3 &lt;&gt; Sum 4         -- Sum 7     (addition)
-Product 3 &lt;&gt; Product 4 -- Product 12 (multiplication)
+-- Sum wraps a number to use addition as <>:
+Sum 3 &lt;&gt; Sum 4         -- Sum 7
 
-getSum (Sum 7)          -- 7
+-- Product wraps a number to use multiplication as <>:
+Product 3 &lt;&gt; Product 4 -- Product 12</code></pre>
+<p><code>Sum</code> and <code>Product</code> are just thin wrappers. To get the number back out, use <code>getSum</code> or <code>getProduct</code>:</p>
+<pre><code>getSum (Sum 7)          -- 7
 getProduct (Product 12) -- 12</code></pre>
 
 <h3>foldMap in Action</h3>
+<p>Let's trace <code>foldMap Sum</code> on <code>Branch (Leaf 1) (Leaf 2)</code>:</p>
+<ol>
+  <li><code>Sum</code> is applied to each leaf: <code>Leaf 1</code> becomes <code>Sum 1</code>, <code>Leaf 2</code> becomes <code>Sum 2</code></li>
+  <li>The results are combined with <code>(&lt;&gt;)</code>: <code>Sum 1 &lt;&gt; Sum 2 = Sum 3</code></li>
+  <li>Unwrap: <code>getSum (Sum 3) = 3</code></li>
+</ol>
+
+<p>More examples:</p>
 <pre><code>foldMap Sum [1,2,3]          -- Sum 6
 foldMap Product [1,2,3]      -- Product 6
 foldMap (\\x -> [x]) [1,2,3]  -- [1,2,3]  (each element -> singleton list)</code></pre>
+<p>The last one uses lists as a Monoid (where <code>(&lt;&gt;) = (++)</code>). Each element becomes a one-element list, and they get concatenated together.</p>
 
 <h3>Your Task</h3>
 <p>Use <code>foldMap</code> with different Monoid newtypes to implement three utility functions on your Tree.</p>
@@ -1432,16 +1494,22 @@ instance Foldable Tree where
 -- EXERCISE: Implement these using foldMap.
 
 -- 1. Sum all values in the tree.
---    Hint: foldMap Sum wraps each element, then (<>) adds them.
+--    Strategy: wrap each element with Sum, foldMap combines them,
+--    then unwrap with getSum.
+--    Example: getSum (foldMap Sum (Branch (Leaf 1) (Leaf 2))) = 3
 treeSum :: Num a => Tree a -> a
 treeSum t = error "use foldMap with Sum"
 
 -- 2. Multiply all values in the tree.
+--    Same pattern as treeSum but with Product / getProduct.
 treeProduct :: Num a => Tree a -> a
 treeProduct t = error "use foldMap with Product"
 
 -- 3. Convert the tree to a list.
---    Hint: each element becomes a singleton list [x], then (<>) = (++)
+--    Strategy: each element becomes a singleton list [x].
+--    Written as a lambda: \\x -> [x]
+--    (You may also see the shorthand (:[]) — it means the same thing.)
+--    foldMap combines them with (++) since lists are a Monoid.
 treeToList :: Tree a -> [a]
 treeToList t = error "use foldMap with singleton lists"
 `,
@@ -1472,8 +1540,8 @@ treeToList t = foldMap (:[]) t
     hints: [
       '<code>foldMap</code> takes a function <code>a -> m</code> (where <code>m</code> is a Monoid) and a Foldable structure. It maps then combines.',
       'For <code>treeSum</code>: wrap with <code>Sum</code>, then unwrap: <code>getSum (foldMap Sum t)</code>.',
-      'For <code>treeToList</code>: each element becomes a singleton list. The function is <code>(:[])></code> or <code>\\x -> [x]</code>.',
-      'Solutions: <code>getSum (foldMap Sum t)</code>, <code>getProduct (foldMap Product t)</code>, <code>foldMap (:[]) t</code>.',
+      'For <code>treeToList</code>: each element becomes a singleton list. You can write <code>\\x -> [x]</code> or the shorthand <code>(:[]) </code> — both mean "put x in a one-element list."',
+      'Solutions: <code>getSum (foldMap Sum t)</code>, <code>getProduct (foldMap Product t)</code>, <code>foldMap (\\x -> [x]) t</code> or <code>foldMap (:[]) t</code>.',
     ],
     concepts: ['foldMap', 'monoid', 'Sum', 'Product', 'foldable'],
     successPatterns: [
@@ -1499,28 +1567,51 @@ treeToList t = foldMap (:[]) t
     difficulty: 'intermediate',
     order: 1,
     description: `
-<p>The <strong>Maybe monad</strong> lets you chain operations that might fail, without nested case expressions.</p>
+<h3>From Functor to Monad</h3>
+<p>You've already used <code>fmap</code> to apply a function inside a <code>Maybe</code>:</p>
+<pre><code>fmap (+1) (Just 5)   -- Just 6
+fmap (+1) Nothing    -- Nothing</code></pre>
+<p>But what if your function <em>itself</em> returns a <code>Maybe</code>? Then <code>fmap</code> gives you a <strong>nested</strong> result:</p>
+<pre><code>fmap lookup (Just key)  -- Maybe (Maybe value)  -- nested!</code></pre>
+<p>The <strong>bind operator</strong> <code>(&gt;&gt;=)</code> solves this: it maps the function and then <em>flattens</em> the result, avoiding nesting.</p>
 
-<h3>The Problem</h3>
-<p>Without monads, chaining fallible operations is painful:</p>
-<pre><code>-- Ugly: nested case matching
-findPhone userId = case lookupName userId of
+<h3>The Problem: Nested Case Expressions</h3>
+<p>Imagine chaining two lookups — find a user's name by ID, then look up their phone number. Without <code>(&gt;&gt;=)</code>, you'd write nested cases:</p>
+<pre><code>-- Without >>= : deeply nested and repetitive
+result = case lookupName userId of
   Nothing   -> Nothing
   Just name -> case lookupPhone name of
     Nothing    -> Nothing
     Just phone -> Just phone</code></pre>
+<p>Each step repeats the same pattern: "if Nothing, short-circuit; if Just, continue." With three or four steps, the nesting becomes unreadable.</p>
 
 <h3>The Bind Operator (&gt;&gt;=)</h3>
-<p><code>(&gt;&gt;=)</code> (pronounced "bind") chains Maybe values:</p>
+<p><code>(&gt;&gt;=)</code> (pronounced "bind") captures that repeated pattern:</p>
 <pre><code>(&gt;&gt;=) :: Maybe a -> (a -> Maybe b) -> Maybe b
 Nothing  &gt;&gt;= f = Nothing   -- short-circuit on failure
-Just x   &gt;&gt;= f = f x       -- pass the value to f</code></pre>
+Just x   &gt;&gt;= f = f x       -- unwrap, apply f (which may also fail)</code></pre>
 
-<p>The nested case becomes a clean chain:</p>
-<pre><code>findPhone userId = lookupName userId &gt;&gt;= lookupPhone</code></pre>
+<p>Now the nested case becomes:</p>
+<pre><code>result = lookupName userId &gt;&gt;= lookupPhone</code></pre>
+<p>Read this as: "look up the name, and <em>if that succeeds</em>, feed it to lookupPhone."</p>
+
+<h3>Before vs. After</h3>
+<table>
+  <thead><tr><th>Without &gt;&gt;=</th><th>With &gt;&gt;=</th></tr></thead>
+  <tbody>
+    <tr><td>Nested case for each step</td><td>Flat chain: <code>a &gt;&gt;= f &gt;&gt;= g</code></td></tr>
+    <tr><td>Repetitive Nothing handling</td><td>Short-circuits automatically</td></tr>
+    <tr><td>Grows rightward with depth</td><td>Stays flat regardless of length</td></tr>
+  </tbody>
+</table>
 
 <h3>Your Task</h3>
-<p>Use <code>(&gt;&gt;=)</code> to chain fallible lookups and safe division.</p>
+<p>Implement three functions:</p>
+<ol>
+  <li><code>safeDivide</code> — a helper that returns <code>Nothing</code> on divide-by-zero (this is not monadic itself, but the next two functions chain it monadically)</li>
+  <li><code>findPhone</code> — chain two lookups with <code>(&gt;&gt;=)</code></li>
+  <li><code>chainDivide</code> — chain two safe divisions with <code>(&gt;&gt;=)</code></li>
+</ol>
 `,
     starterCode: `module MaybeMonad where
 
@@ -1541,16 +1632,20 @@ lookupPhone name = lookup name phoneBook
 
 -- EXERCISE: Use >>= to chain operations.
 
--- 1. Find a phone number by user ID.
---    Chain: lookupName uid >>= lookupPhone
-findPhone :: Int -> Maybe String
-findPhone uid = error "chain lookupName and lookupPhone with >>="
-
--- 2. Safe division that returns Nothing on divide-by-zero.
+-- 1. Safe division that returns Nothing on divide-by-zero.
+--    This is a plain helper — not monadic — but we'll chain it next.
+--    Pattern match on y: if 0, Nothing. Otherwise Just (x \`div\` y).
 safeDivide :: Int -> Int -> Maybe Int
 safeDivide x y = error "Nothing if y is 0, otherwise Just (x div y)"
 
+-- 2. Find a phone number by user ID.
+--    Chain two lookups: lookupName uid >>= lookupPhone
+--    Read this as: "look up the name, then if it succeeds, look up the phone."
+findPhone :: Int -> Maybe String
+findPhone uid = error "chain lookupName and lookupPhone with >>="
+
 -- 3. Chain two divisions: divide x by y, then divide that result by z.
+--    Use >>= with a lambda: safeDivide x y >>= \\r -> safeDivide r z
 chainDivide :: Int -> Int -> Int -> Maybe Int
 chainDivide x y z = error "use >>= to chain two safeDivides"
 `,
@@ -1588,10 +1683,10 @@ chainDivide x y z = safeDivide x y >>= \\r -> safeDivide r z
         , runTestEq "chainDivide 100 5 2" (Just 10 :: Maybe Int) (chainDivide 100 5 2)
         , runTestEq "chainDivide 100 0 2" (Nothing :: Maybe Int) (chainDivide 100 0 2)`,
     hints: [
-      '<code>(&gt;&gt;=)</code> takes a <code>Maybe a</code> on the left and a function <code>a -> Maybe b</code> on the right.',
-      'For <code>findPhone</code>: <code>lookupName uid &gt;&gt;= lookupPhone</code>. That\'s it — one line.',
       'For <code>safeDivide</code>: pattern match on <code>y</code>. If 0, return <code>Nothing</code>. Otherwise <code>Just (x \\`div\\` y)</code>.',
-      'For <code>chainDivide</code>: <code>safeDivide x y &gt;&gt;= \\r -> safeDivide r z</code>.',
+      '<code>(&gt;&gt;=)</code> takes a <code>Maybe a</code> on the left and a function <code>a -> Maybe b</code> on the right.',
+      'For <code>findPhone</code>: <code>lookupName uid &gt;&gt;= lookupPhone</code>. That\'s it — one line. The <code>&gt;&gt;=</code> handles the Nothing case for you.',
+      'For <code>chainDivide</code>: <code>safeDivide x y &gt;&gt;= \\r -> safeDivide r z</code>. The lambda <code>\\r -> ...</code> receives the result of the first division.',
     ],
     concepts: ['monad', 'maybe', 'bind', 'chaining'],
     successPatterns: [
@@ -1616,28 +1711,49 @@ chainDivide x y z = safeDivide x y >>= \\r -> safeDivide r z
     difficulty: 'intermediate',
     order: 2,
     description: `
-<p><code>do</code>-notation is syntactic sugar for <code>(&gt;&gt;=)</code> that makes monadic code read like imperative code:</p>
+<p><code>do</code>-notation is syntactic sugar for <code>(&gt;&gt;=)</code> that makes monadic code read like imperative code.</p>
 
-<h3>The Translation</h3>
+<h3>Desugaring Rules</h3>
+<p>The compiler translates <code>do</code> blocks into <code>(&gt;&gt;=)</code> chains. Here are the rules:</p>
+<table>
+  <thead><tr><th>do-notation</th><th>Desugars to</th></tr></thead>
+  <tbody>
+    <tr><td><code>do { x &lt;- action; rest }</code></td><td><code>action &gt;&gt;= \\x -> rest</code></td></tr>
+    <tr><td><code>do { action; rest }</code></td><td><code>action &gt;&gt; rest</code></td></tr>
+    <tr><td><code>do { let x = expr; rest }</code></td><td><code>let x = expr in rest</code></td></tr>
+    <tr><td><code>do { lastAction }</code></td><td><code>lastAction</code></td></tr>
+  </tbody>
+</table>
+
+<h3>An Example</h3>
 <pre><code>-- With >>= :
 lookupName uid &gt;&gt;= \\name -> lookupPhone name
 
--- With do-notation:
+-- With do-notation (same thing):
 do
   name &lt;- lookupName uid
   lookupPhone name</code></pre>
 
-<p>The <code>&lt;-</code> arrow "extracts" the value from a <code>Maybe</code> (or any monad). If any step returns <code>Nothing</code>, the whole <code>do</code> block short-circuits.</p>
+<p>The <code>&lt;-</code> arrow "extracts" the value from a <code>Maybe</code> (or any monad). If any step returns <code>Nothing</code>, the whole <code>do</code> block short-circuits to <code>Nothing</code>.</p>
 
-<h3>Rules</h3>
-<ul>
-  <li><code>x &lt;- action</code> — bind the result of <code>action</code> to <code>x</code></li>
-  <li>The last line is the return value (no <code>&lt;-</code> needed)</li>
-  <li>Use <code>return</code> or <code>Just</code> to wrap a pure value back into the monad</li>
-</ul>
+<h3>Important: <code>return</code> is NOT Imperative Return</h3>
+<p>In Haskell, <code>return</code> does <strong>not</strong> exit a function early. It simply wraps a pure value into the monad. For <code>Maybe</code>, <code>return x</code> is just <code>Just x</code>:</p>
+<pre><code>return 42 :: Maybe Int  -- Just 42
+Just 42                 -- exactly the same thing</code></pre>
+<p>You can use either <code>return</code> or <code>Just</code> — they mean the same thing for Maybe.</p>
+
+<h3>if-then-else with Maybe</h3>
+<p>You can use <code>if-then-else</code> inside a <code>do</code> block to validate data. Each branch returns a <code>Maybe</code>:</p>
+<pre><code>validateAge :: Int -> Maybe Int
+validateAge age = if age > 0 then Just age else Nothing</code></pre>
+<p>Inside a <code>do</code> block, you bind the result with <code>&lt;-</code>:</p>
+<pre><code>do
+  validAge &lt;- if age > 0 then Just age else Nothing
+  -- validAge is now an Int, not a Maybe Int
+  ...</code></pre>
 
 <h3>Your Task</h3>
-<p>Rewrite <code>(&gt;&gt;=)</code> chains as <code>do</code> blocks, then build a validator.</p>
+<p>Rewrite <code>findPhone</code> using <code>do</code>-notation, then build a user validator.</p>
 `,
     starterCode: `module DoNotation where
 
@@ -1660,6 +1776,8 @@ lookupPhone name = lookup name phoneBook
 -- EXERCISE: Use do-notation.
 
 -- 1. Rewrite findPhone using do-notation instead of >>=.
+--    Remember: x <- action binds the result.
+--    The last line IS the return value (no <- needed).
 findPhone :: Int -> Maybe String
 findPhone uid = error "use do-notation"
 -- do
@@ -1670,11 +1788,13 @@ findPhone uid = error "use do-notation"
 --    - name must be non-empty
 --    - age must be positive
 --    - email must contain '@'
+--
+--    Use if-then-else for each check:
+--      validName <- if null name then Nothing else Just name
+--    The last line wraps the validated fields into a User.
+--    Use Just (not return) to keep it explicit for now.
 validateUser :: String -> Int -> String -> Maybe User
 validateUser name age email = error "use do-notation to validate"
--- do
---   validName  <- if null name then Nothing else Just name
---   ...
 `,
     solutionCode: `module DoNotation where
 
@@ -1713,10 +1833,10 @@ validateUser name age email = do
         , runTestEq "bad age" (Nothing :: Maybe User) (validateUser "Alice" 0 "a@b.com")
         , runTestEq "bad email" (Nothing :: Maybe User) (validateUser "Alice" 30 "invalid")`,
     hints: [
-      '<code>do</code> notation: <code>x &lt;- action</code> binds the result. The last line is the return value.',
-      'For <code>findPhone</code>: <code>do { name &lt;- lookupName uid; lookupPhone name }</code>.',
-      'For <code>validateUser</code>: each step returns <code>Nothing</code> or <code>Just value</code>. Use <code>if ... then Nothing else Just ...</code>.',
-      'The last line wraps the result: <code>Just (User validName validAge validEmail)</code>.',
+      'For <code>findPhone</code>: start with <code>do</code>, then <code>name &lt;- lookupName uid</code> on the next line, then <code>lookupPhone name</code> as the last line.',
+      'Remember: the last line of a <code>do</code> block is the return value. No need for <code>&lt;-</code> on it.',
+      'For <code>validateUser</code>: each check is <code>validX &lt;- if condition then Just value else Nothing</code>. If any returns <code>Nothing</code>, the whole block short-circuits.',
+      'The last line wraps the result: <code>Just (User validName validAge validEmail)</code>. Remember, <code>Just</code> and <code>return</code> are the same for Maybe.',
     ],
     concepts: ['do-notation', 'monad', 'syntactic-sugar', 'validation'],
     successPatterns: [
@@ -1746,16 +1866,36 @@ validateUser name age email = do
 -- Left  = failure with error info
 -- Right = success with value</code></pre>
 
+<h3>How Either's Bind Works</h3>
+<p>Either's <code>(&gt;&gt;=)</code> works just like Maybe's, but preserves the error:</p>
+<pre><code>Right x &gt;&gt;= f = f x        -- success: apply f
+Left  e &gt;&gt;= f = Left e     -- failure: pass the error through unchanged</code></pre>
+<p>This means in a <code>do</code> block, the <strong>first</strong> <code>Left</code> value short-circuits the whole chain, and its error message is preserved:</p>
+<pre><code>do
+  x &lt;- Right 42        -- success, x = 42
+  y &lt;- Left "oops"     -- failure! the whole block returns Left "oops"
+  Right (x + y)         -- never reached</code></pre>
+
+<h3>Parsing with <code>reads</code></h3>
+<p>Haskell's <code>reads</code> function tries to parse a string into a value. Its return type is a list of (value, remainingString) pairs:</p>
+<pre><code>reads :: Read a => String -> [(a, String)]
+
+reads "8080"  :: [(Int, String)]  -- [(8080, "")]    -- success: parsed 8080, nothing left
+reads "8080x" :: [(Int, String)]  -- [(8080, "x")]   -- parsed 8080 but "x" remains
+reads "abc"   :: [(Int, String)]  -- []              -- no parse at all</code></pre>
+<p>A successful <em>complete</em> parse gives <code>[(n, "")]</code> — the value <code>n</code> and an empty remaining string <code>""</code>. You match on this pattern to detect success.</p>
+
 <h3>Either as a Monad</h3>
 <p><code>Either String</code> works with <code>do</code>-notation just like <code>Maybe</code>:</p>
 <pre><code>parseInt :: String -> Either String Int
-parseInt "42" = Right 42
-parseInt s    = Left ("Not a number: " ++ s)
+parseInt s = case reads s of
+  [(n, "")] -> Right n
+  _         -> Left ("Not a number: " ++ s)
 
 -- In do-notation:
 do
-  x &lt;- parseInt "42"    -- Right 42 → x = 42
-  y &lt;- parseInt "abc"   -- Left "Not a number: abc" → whole block fails
+  x &lt;- parseInt "42"    -- Right 42, so x = 42
+  y &lt;- parseInt "abc"   -- Left "Not a number: abc", whole block fails
   Right (x + y)          -- never reached</code></pre>
 
 <p>The key advantage over <code>Maybe</code>: you get a <strong>descriptive error message</strong> instead of just <code>Nothing</code>.</p>
@@ -1770,18 +1910,28 @@ data Config = Config String Int deriving (Show, Eq)
 -- EXERCISE: Implement config parsing with Either for error messages.
 
 -- 1. Parse a port string. Must be a number between 1 and 65535.
+--
+--    Strategy:
+--      a) Use "reads s" to try parsing. Check for [(n, "")].
+--      b) If parse succeeded AND n is in range, return Right n.
+--      c) Otherwise return Left ("Invalid port: " ++ s).
+--
+--    You can use a case expression:
+--      case reads s of
+--        [(n, "")] -> if n > 0 && n < 65536 then Right n else Left ...
+--        _         -> Left ("Invalid port: " ++ s)
 parsePort :: String -> Either String Int
 parsePort s = error "parse and validate port"
--- Hint: use reads :: String -> [(Int, String)]
--- reads "8080" = [(8080, "")]
--- reads "abc"  = []
 
 -- 2. Parse a host string. Must be non-empty.
+--    Empty string -> Left "Host cannot be empty"
+--    Otherwise    -> Right h
 parseHost :: String -> Either String String
 parseHost h = error "validate host"
 
 -- 3. Build a Config using do-notation.
 --    Chain parseHost and parsePort with Either's monad.
+--    The first Left will short-circuit, just like Nothing does for Maybe.
 buildConfig :: String -> String -> Either String Config
 buildConfig hostStr portStr = error "use do-notation"
 `,
@@ -1811,9 +1961,9 @@ buildConfig hostStr portStr = do
         , runTestEq "parsePort valid" (Right 443 :: Either String Int) (parsePort "443")
         , runTestEq "parseHost valid" (Right "example.com" :: Either String String) (parseHost "example.com")`,
     hints: [
-      'Use <code>reads s :: [(Int, String)]</code> to try parsing. If it returns <code>[(n, "")]</code>, the parse succeeded.',
-      'For <code>parsePort</code>: match on <code>reads s</code>. Check <code>n > 0 && n < 65536</code>. Return <code>Left ("Invalid port: " ++ s)</code> on failure.',
-      'For <code>parseHost</code>: empty string → <code>Left "Host cannot be empty"</code>. Otherwise → <code>Right h</code>.',
+      'Use <code>reads s :: [(Int, String)]</code> to try parsing. If it returns <code>[(n, "")]</code>, the parse fully succeeded (empty remaining string).',
+      'For <code>parsePort</code>: match on <code>reads s</code>. If <code>[(n, "")]</code> and <code>n > 0 && n < 65536</code>, return <code>Right n</code>. Otherwise return <code>Left ("Invalid port: " ++ s)</code>.',
+      'For <code>parseHost</code>: pattern match on empty string vs non-empty. <code>parseHost "" = Left "Host cannot be empty"</code>; <code>parseHost h = Right h</code>.',
       'For <code>buildConfig</code>: <code>do { host <- parseHost hostStr; port <- parsePort portStr; Right (Config host port) }</code>.',
     ],
     concepts: ['either', 'monad', 'error-handling', 'do-notation'],
@@ -1842,10 +1992,27 @@ buildConfig hostStr portStr = do
     difficulty: 'intermediate',
     order: 1,
     description: `
-<p><strong>Modular arithmetic</strong> ("clock arithmetic") is the foundation of algebraic cryptography. In Z/7Z, all arithmetic wraps around at 7:</p>
-<pre><code>3 + 5 = 8 = 1  (mod 7)
-3 * 4 = 12 = 5 (mod 7)
--3 = 4          (mod 7, since 4 + 3 = 7 = 0)</code></pre>
+<p><strong>Modular arithmetic</strong> is "clock arithmetic" — numbers wrap around at a fixed modulus. Think of a clock face, but instead of 12, we use 7:</p>
+<pre><code>        0
+      /   \\
+    6       1
+    |       |
+    5       2
+      \\   /
+     4 - 3</code></pre>
+<p>Going past 6 wraps back to 0. This number system is called <strong>Z/7Z</strong> ("the integers modulo 7").</p>
+
+<h3>Arithmetic in Z/7Z</h3>
+<pre><code>3 + 5 = 8 = 1  (mod 7)     -- 8 wraps around past 6
+3 * 4 = 12 = 5 (mod 7)     -- 12 mod 7 = 5</code></pre>
+
+<h3>Negation in Z/7Z</h3>
+<p>The negation of <code>a</code> is the number you add to <code>a</code> to get 0. For example:</p>
+<pre><code>negate 3 = ?
+3 + ? = 0  (mod 7)
+3 + 4 = 7 = 0  (mod 7)
+So: negate 3 = 4</code></pre>
+<p>In general: <code>negate a = 7 - a</code> (reduced mod 7).</p>
 
 <h3>Newtypes in Haskell</h3>
 <p>A <code>newtype</code> wraps an existing type with zero runtime overhead:</p>
@@ -1853,7 +2020,7 @@ buildConfig hostStr portStr = do
 <p>This creates a distinct type so the compiler prevents mixing <code>Mod7</code> values with regular <code>Int</code>s.</p>
 
 <h3>Why Z/7Z?</h3>
-<p>7 is prime, which means Z/7Z is a <strong>field</strong> — every non-zero element has a multiplicative inverse. This property is essential for cryptographic protocols like RSA and elliptic curve cryptography.</p>
+<p>7 is prime, which means Z/7Z is a <strong>field</strong> — every non-zero element has a multiplicative inverse. We'll see why this matters in later exercises when we build up the full algebraic hierarchy.</p>
 
 <h3>Your Task</h3>
 <p>Implement a <code>Mod7</code> type with proper modular arithmetic.</p>
@@ -1873,13 +2040,19 @@ instance Eq Mod7 where
   (==) = error "implement equality"
 
 -- 3. Num instance: all arithmetic reduces mod 7.
+--    Use mkMod7 in +, *, negate, and fromInteger to ensure
+--    the result is always in range [0..6].
+--
+--    abs and signum are boilerplate — Haskell's Num class requires
+--    them, but they don't make much sense for modular arithmetic.
+--    We just define them trivially so the code compiles.
 instance Num Mod7 where
   Mod7 a + Mod7 b   = error "add mod 7"
   Mod7 a * Mod7 b   = error "multiply mod 7"
-  negate (Mod7 a)    = error "negate mod 7"
+  negate (Mod7 a)    = error "negate mod 7 (hint: mkMod7 (7 - a))"
   fromInteger n      = error "convert Integer to Mod7"
-  abs    = id
-  signum _ = Mod7 1
+  abs    = id        -- boilerplate: required by Num, not meaningful here
+  signum _ = Mod7 1  -- boilerplate: required by Num, not meaningful here
 `,
     solutionCode: `module ModularArithmetic where
 
@@ -1908,7 +2081,7 @@ instance Num Mod7 where
     hints: [
       '<code>mkMod7 n = Mod7 (n \\`mod\\` 7)</code> — use Haskell\'s <code>mod</code> to reduce.',
       'For addition: <code>Mod7 a + Mod7 b = mkMod7 (a + b)</code>. Same pattern for multiplication.',
-      'Negation in mod 7: <code>negate (Mod7 a) = mkMod7 (7 - a)</code>. For example, -3 = 4 mod 7.',
+      'Negation in mod 7: <code>negate (Mod7 a) = mkMod7 (7 - a)</code>. For example, negate 3 = 4 because 3 + 4 = 7 = 0 mod 7.',
       '<code>fromInteger n = mkMod7 (fromInteger n)</code> converts Integer literals to Mod7.',
     ],
     concepts: ['modular-arithmetic', 'newtype', 'Num', 'cryptography'],
@@ -1941,15 +2114,31 @@ instance Num Mod7 where
   <li><strong>Inverse:</strong> <code>a &lt;&gt; invert a == mempty</code></li>
 </ol>
 
-<p>You already know Semigroup (axiom 1-2) and Monoid (axiom 3). Groups add axiom 4.</p>
+<p>You already know Semigroup (axioms 1-2) and Monoid (axiom 3). Groups add axiom 4.</p>
 
-<h3>The Typeclass Hierarchy</h3>
-<pre><code>Semigroup  -- has (&lt;&gt;)
-  => Monoid   -- adds mempty
-    => Group  -- adds invert</code></pre>
+<h3>Defining Your Own Typeclass</h3>
+<p>Until now, you've only <em>written instances</em> of existing typeclasses (Eq, Show, Semigroup, etc.). Now you'll <strong>define a brand-new typeclass</strong>. The syntax is:</p>
+<pre><code>class ClassName a where
+  methodName :: TypeSignature</code></pre>
+<p>For example, you'll write a <code>Group</code> class with one method, <code>invert</code>:</p>
+<pre><code>class Monoid a => Group a where
+  invert :: a -> a</code></pre>
+<p>After defining the class, you write instances for it — the same <code>instance ... where</code> syntax you already know.</p>
+
+<h3>Superclass Constraints</h3>
+<p>The <code>Monoid a =></code> before <code>Group a</code> is a <strong>superclass constraint</strong>. It means: "to be a Group, a type must already be a Monoid." This ensures that any Group has <code>(&lt;&gt;)</code> and <code>mempty</code> available. It mirrors the mathematical fact that every group is also a monoid.</p>
+
+<h3>What You're Building</h3>
+<pre><code>Semigroup   -- has (&lt;&gt;)
+  |
+  v
+Monoid      -- adds mempty
+  |
+  v
+Group       -- adds invert  &lt;-- YOU DEFINE THIS</code></pre>
 
 <h3>Your Task</h3>
-<p>Define a <code>Group</code> typeclass, implement it for <code>Mod7</code> (additive group), and write a law-checking function.</p>
+<p>Write the Semigroup and Monoid instances for Mod7, define the Group typeclass, implement it for Mod7, and write a law-checking function.</p>
 `,
     starterCode: `module GroupTypeclass where
 
@@ -1972,6 +2161,7 @@ instance Num Mod7 where
 -- EXERCISE: Define Group and implement it for Mod7.
 
 -- 1. Make Mod7 a Semigroup (use + as the operation).
+--    This is a one-liner: (<>) is the same as (+) for our additive group.
 instance Semigroup Mod7 where
   (<>) = error "implement (<>) using +"
 
@@ -1980,14 +2170,17 @@ instance Monoid Mod7 where
   mempty = error "implement mempty"
 
 -- 3. Define the Group typeclass.
+--    Uncomment and complete:
 -- class Monoid a => Group a where
 --   invert :: a -> a
 
 -- 4. Implement Group for Mod7 (additive inverse = negate).
+--    Uncomment and complete:
 -- instance Group Mod7 where
 --   invert = ???
 
--- 5. Check the inverse law: a <> invert a == mempty
+-- 5. Check the inverse law: a <> invert a == mempty AND invert a <> a == mempty
+--    Uncomment and complete:
 -- inverseLaw :: (Group a, Eq a) => a -> Bool
 -- inverseLaw a = ???
 `,
@@ -2033,8 +2226,8 @@ inverseLaw a = (a <> invert a == mempty) && (invert a <> a == mempty)
     hints: [
       'For Semigroup: <code>(&lt;&gt;) = (+)</code>. We\'re using addition as the group operation.',
       'For Monoid: <code>mempty = Mod7 0</code> since 0 is the additive identity.',
-      'Define <code>class Monoid a => Group a where invert :: a -> a</code>. For Mod7: <code>invert = negate</code>.',
-      'The inverse law: <code>inverseLaw a = (a &lt;&gt; invert a == mempty) && (invert a &lt;&gt; a == mempty)</code>.',
+      'The class definition: <code>class Monoid a => Group a where invert :: a -> a</code>. For the instance: <code>invert = negate</code> (reuses the Num negation you already wrote).',
+      'The inverse law checks both sides: <code>inverseLaw a = (a &lt;&gt; invert a == mempty) && (invert a &lt;&gt; a == mempty)</code>.',
     ],
     concepts: ['group', 'inverse', 'typeclass-hierarchy', 'axioms'],
     successPatterns: [
@@ -2059,19 +2252,27 @@ inverseLaw a = (a <> invert a == mempty) && (invert a <> a == mempty)
     difficulty: 'advanced',
     order: 3,
     description: `
-<p>A <strong>ring</strong> adds a second operation (multiplication) to a group. A <strong>field</strong> adds multiplicative inverses.</p>
+<p>A <strong>ring</strong> adds a second operation (multiplication) to a group. A <strong>field</strong> adds multiplicative inverses. We're extending the same typeclass hierarchy you built in the previous exercise.</p>
 
 <h3>The Hierarchy</h3>
-<pre><code>Group     -- additive group: (+), 0, negate
-  => Ring  -- adds: (*), 1, with distributive law
-    => Field -- adds: multiplicative inverse for non-zero elements</code></pre>
+<pre><code>Semigroup -- has (&lt;&gt;)
+  => Monoid   -- adds mempty
+    => Group     -- adds invert
+      => Ring      -- adds mul, one
+        => Field     -- adds mulInv</code></pre>
 
 <h3>Ring Axioms</h3>
 <ul>
   <li>Addition forms a group (we have this from Group)</li>
   <li>Multiplication is associative with identity <code>one</code></li>
-  <li>Distribution: <code>mul a (b &lt;&gt; c) == mul a b &lt;&gt; mul a c</code></li>
+  <li><strong>Distribution:</strong> <code>mul a (b &lt;&gt; c) == mul a b &lt;&gt; mul a c</code></li>
 </ul>
+
+<h3>The Distribution Law</h3>
+<p>Let's verify with concrete numbers in Z/7Z:</p>
+<pre><code>mul 2 (3 &lt;&gt; 4) = mul 2 (Mod7 0)  = Mod7 0   -- since 3+4=7=0 mod 7
+mul 2 3 &lt;&gt; mul 2 4 = Mod7 6 &lt;&gt; Mod7 1 = Mod7 0   -- since 6+1=7=0 mod 7
+-- Both sides equal Mod7 0. Distribution holds!</code></pre>
 
 <h3>Why Z/7Z is a Field</h3>
 <p>Because 7 is <strong>prime</strong>, every non-zero element has a multiplicative inverse:</p>
@@ -2079,6 +2280,16 @@ inverseLaw a = (a <> invert a == mempty) && (invert a <> a == mempty)
 2 * 4 = 8 = 1   (inverse of 2 is 4)
 3 * 5 = 15 = 1  (inverse of 3 is 5)
 6 * 6 = 36 = 1  (inverse of 6 is 6)</code></pre>
+
+<h3>Finding Multiplicative Inverses</h3>
+<p>To find the multiplicative inverse of <code>a</code>, we need <code>x</code> where <code>a * x = 1 (mod 7)</code>. A simple approach: try all values from 1 to 6 and pick the one that works.</p>
+<p>Worked example for <code>a = 3</code>:</p>
+<pre><code>3 * 1 = 3  (not 1)
+3 * 2 = 6  (not 1)
+3 * 3 = 9 = 2  (not 1)
+3 * 4 = 12 = 5 (not 1)
+3 * 5 = 15 = 1  -- found it! Inverse of 3 is 5.</code></pre>
+<p>In Haskell, a list comprehension does this search: <code>head [x | x &lt;- [1..6], (a * x) \`mod\` 7 == 1]</code></p>
 
 <h3>Your Task</h3>
 <p>Define Ring and Field typeclasses, implement them for Mod7, and verify the distributive law.</p>
@@ -2108,28 +2319,35 @@ class Monoid a => Group a where invert :: a -> a
 instance Group Mod7 where invert = negate
 
 -- EXERCISE: Define Ring and Field.
+-- Same pattern as Group: define the class, then write the instance.
 
 -- 1. Ring: a Group with multiplication and a multiplicative identity.
+--    Uncomment and complete:
 -- class Group a => Ring a where
 --   one :: a
 --   mul :: a -> a -> a
 
 -- 2. Implement Ring for Mod7.
+--    Uncomment and complete:
 -- instance Ring Mod7 where
 --   one = ???
 --   mul (Mod7 a) (Mod7 b) = ???
 
 -- 3. Field: a Ring where every non-zero element has a multiplicative inverse.
+--    Uncomment and complete:
 -- class Ring a => Field a where
 --   mulInv :: a -> a
 
 -- 4. Implement Field for Mod7.
---    To find the inverse of a (mod 7): search for x where a*x = 1 (mod 7).
+--    To find the inverse of a: search 1..6 for x where a*x = 1 (mod 7).
+--    Use: head [x | x <- [1..6], (a * x) \`mod\` 7 == 1]
+--    Uncomment and complete:
 -- instance Field Mod7 where
 --   mulInv (Mod7 0) = error "no inverse for 0"
 --   mulInv (Mod7 a) = ???
 
 -- 5. Check the distributive law: mul a (b <> c) == mul a b <> mul a c
+--    Uncomment and complete:
 -- distributionLaw :: (Ring a, Eq a) => a -> a -> a -> Bool
 -- distributionLaw a b c = ???
 `,
@@ -2182,10 +2400,10 @@ distributionLaw a b c = mul a (b <> c) == (mul a b <> mul a c)
         , runTestEq "3 * inv 3 = 1" (Mod7 1) (mul (Mod7 3) (mulInv (Mod7 3)))
         , runTestEq "distributionLaw" True (distributionLaw (Mod7 2) (Mod7 3) (Mod7 4))`,
     hints: [
-      'Define <code>class Group a => Ring a where one :: a; mul :: a -> a -> a</code>.',
+      'Define <code>class Group a => Ring a where one :: a; mul :: a -> a -> a</code>. Same pattern as defining Group.',
       'For Mod7: <code>one = Mod7 1</code>, <code>mul (Mod7 a) (Mod7 b) = mkMod7 (a * b)</code>.',
-      'For <code>mulInv</code>: find <code>x</code> where <code>a * x \\`mod\\` 7 == 1</code>. Try: <code>head [x | x <- [1..6], (a*x) \\`mod\\` 7 == 1]</code>.',
-      'Distribution law: <code>mul a (b &lt;&gt; c) == (mul a b &lt;&gt; mul a c)</code>.',
+      'For <code>mulInv</code>: brute-force search! <code>mkMod7 (head [x | x <- [1..6], (a*x) \\`mod\\` 7 == 1])</code>.',
+      'Distribution law: <code>mul a (b &lt;&gt; c) == (mul a b &lt;&gt; mul a c)</code>. Remember <code>(&lt;&gt;)</code> is addition here.',
     ],
     concepts: ['ring', 'field', 'multiplicative-inverse', 'distribution'],
     successPatterns: [
@@ -2210,12 +2428,22 @@ distributionLaw a b c = mul a (b <> c) == (mul a b <> mul a c)
     difficulty: 'advanced',
     order: 4,
     description: `
-<p>A <strong>homomorphism</strong> is a structure-preserving map between algebraic structures — the algebra equivalent of a natural transformation between functors.</p>
+<p>A <strong>homomorphism</strong> is a structure-preserving map between algebraic structures.</p>
 
 <h3>The Key Property</h3>
 <p>A function <code>f</code> is a group homomorphism if:</p>
 <pre><code>f (a &lt;&gt; b) == f a &lt;&gt; f b</code></pre>
 <p>This means: combining inputs then mapping gives the same result as mapping then combining outputs.</p>
+
+<h3>Before You Code: Predict!</h3>
+<p>Which of these functions on Z/7Z do you think are homomorphisms? Make your predictions before testing:</p>
+<ul>
+  <li><code>id</code> — the identity function</li>
+  <li><code>negate</code> — additive inverse</li>
+  <li><code>doubleIt x = x &lt;&gt; x</code> — adding a number to itself</li>
+  <li><code>addOne (Mod7 x) = mkMod7 (x + 1)</code> — shift everything by 1</li>
+</ul>
+<p>Think about it: does <code>f (a &lt;&gt; b)</code> always equal <code>f a &lt;&gt; f b</code>?</p>
 
 <h3>Examples</h3>
 <pre><code>-- id is always a homomorphism:
@@ -2225,15 +2453,26 @@ id (a &lt;&gt; b) == id a &lt;&gt; id b   -- trivially true
 negate (a + b) == negate a + negate b   -- true!
 
 -- (+1) is NOT a homomorphism:
-(a + b) + 1 /= (a + 1) + (b + 1)   -- false! (extra +1)</code></pre>
+(a + b) + 1 /= (a + 1) + (b + 1)   -- left has one +1, right has two!</code></pre>
 
-<h3>The Parallel with Natural Transformations</h3>
-<p>In category theory: <code>fmap f . alpha == alpha . fmap f</code> (naturality).<br/>
-In algebra: <code>f (a &lt;&gt; b) == f a &lt;&gt; f b</code> (homomorphism).<br/>
-Both say: <strong>structure is preserved under the map</strong>.</p>
+<h3>Why Does doubleIt Work?</h3>
+<p><code>doubleIt x = x &lt;&gt; x</code> (i.e., <code>2*x</code> in the additive group). It's a homomorphism because Z/7Z addition is <strong>commutative</strong>:</p>
+<pre><code>doubleIt (a &lt;&gt; b) = (a &lt;&gt; b) &lt;&gt; (a &lt;&gt; b)
+                   = a &lt;&gt; a &lt;&gt; b &lt;&gt; b       -- associativity + commutativity
+                   = doubleIt a &lt;&gt; doubleIt b</code></pre>
+<p>The rearrangement relies on being able to swap <code>b</code> and <code>a</code> — that's commutativity.</p>
+
+<h3>The Parallel with Functors</h3>
+<p>If you've done the Functors module, you may notice a structural similarity:</p>
+<pre><code>-- Natural transformation (functors):
+fmap f . alpha == alpha . fmap f
+
+-- Homomorphism (groups):
+f (a &lt;&gt; b) == f a &lt;&gt; f b</code></pre>
+<p>Both say the same thing: <strong>structure is preserved under the map</strong>. Homomorphisms are to groups what natural transformations are to functors.</p>
 
 <h3>Your Task</h3>
-<p>Write a function that checks whether a given function is a group homomorphism, then test various functions.</p>
+<p>Write a function that checks whether a given function is a group homomorphism, then define and test various functions.</p>
 `,
     starterCode: `module GroupHomomorphism where
 
@@ -2262,14 +2501,16 @@ instance Group Mod7 where invert = negate
 -- for all a, b in the group.
 
 -- 1. Write a function that checks this property for a list of test pairs.
+--    Use "all" to verify the property holds for every pair.
 isHomomorphism :: (Group a, Group b, Eq b) => (a -> b) -> [(a, a)] -> Bool
 isHomomorphism f pairs = error "check f (a <> b) == f a <> f b for all pairs"
 
--- Test pairs for Mod7
+-- Test pairs: all combinations in Z/7Z (a complete check for this finite group)
 testPairs :: [(Mod7, Mod7)]
 testPairs = [(Mod7 a, Mod7 b) | a <- [0..6], b <- [0..6]]
 
--- 2. Try these functions — which are homomorphisms?
+-- 2. Define these functions and test them.
+--    Which are homomorphisms? (Check your predictions from the description!)
 -- doubleIt :: Mod7 -> Mod7
 -- doubleIt x = x <> x
 --
@@ -2315,8 +2556,8 @@ addOne (Mod7 x) = mkMod7 (x + 1)
     hints: [
       'For each pair <code>(a, b)</code>, check if <code>f (a &lt;&gt; b) == f a &lt;&gt; f b</code>.',
       'Use <code>all</code> to check the property for every pair: <code>all (\\(a,b) -> ...) pairs</code>.',
-      'The check: <code>all (\\(a, b) -> f (a &lt;&gt; b) == f a &lt;&gt; f b) pairs</code>.',
-      'Full: <code>isHomomorphism f pairs = all (\\(a, b) -> f (a &lt;&gt; b) == f a &lt;&gt; f b) pairs</code>. Also define <code>doubleIt x = x &lt;&gt; x</code> and <code>addOne (Mod7 x) = mkMod7 (x + 1)</code>.',
+      'The full check: <code>isHomomorphism f pairs = all (\\(a, b) -> f (a &lt;&gt; b) == f a &lt;&gt; f b) pairs</code>.',
+      'Don\'t forget to uncomment and define <code>doubleIt x = x &lt;&gt; x</code> and <code>addOne (Mod7 x) = mkMod7 (x + 1)</code>. Bonus: try <code>tripleIt x = x &lt;&gt; x &lt;&gt; x</code> — is it a homomorphism too?',
     ],
     concepts: ['homomorphism', 'structure-preservation', 'group-theory', 'cryptography'],
     successPatterns: [

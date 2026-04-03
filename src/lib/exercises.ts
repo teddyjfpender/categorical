@@ -34,6 +34,19 @@ import type { Exercise } from './types/exercise';
 //   3. expression-parser       — Expr AST, operator precedence, chainl1
 //   4. ast-evaluator           — eval, evalWithVars with Maybe monad
 //   5. interpreter             — let bindings, variables, parse-then-eval pipeline
+//
+// Lambda Calculus II: Church Encodings module (5 exercises):
+//   1. church-booleans         — Church booleans, NOT/AND/OR at concrete Bool type
+//   2. church-numerals         — Church numerals, successor, add, mul
+//   3. church-pairs-maybe      — Church pairs (fst/snd) and Church Maybe
+//   4. reduction-strategies    — lazy vs strict, WHNF, thunks, predict-the-answer
+//   5. fixpoint-recursion      — fix combinator, factorial/fibonacci via fix
+//
+// Lambda Calculus III: Types & Interpreters module (4 exercises):
+//   1. curry-howard            — Curry-Howard correspondence, types as propositions
+//   2. cps-transform           — continuation-passing style, CPS Fibonacci
+//   3. lambda-ast              — Term ADT, freeVars, substitute, step
+//   4. lambda-interpreter      — normalize, Church numerals as Terms, omega
 // ────────────────────────────────────────────────────────────────────
 
 const exercises: Record<string, Exercise> = {
@@ -8768,6 +8781,1331 @@ answer8 = 35
       'predict: myUncurry (+) (3,4) = 7',
       'predict: add3 10 20 30 = 60',
       'predict: addFive 30 = 35',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LAMBDA CALCULUS II: CHURCH ENCODINGS MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'church-booleans': {
+    id: 'church-booleans',
+    title: 'Church Booleans: Logic from Pure Functions',
+    difficulty: 'intermediate',
+    order: 1,
+    description: `
+<p>In the untyped lambda calculus there are <strong>no primitive data types</strong> — no booleans, no numbers, no pairs. Everything is a function. Alonzo Church showed that we can <em>encode</em> data as pure functions that "choose" between their arguments. These encodings are called <strong>Church encodings</strong>.</p>
+
+<h3>The Core Idea: Booleans as Selectors</h3>
+<p>A Church boolean is a function of two arguments that <em>selects</em> one of them:</p>
+<ul>
+  <li><strong>True</strong> selects the <em>first</em> argument: <code>\\x y -> x</code></li>
+  <li><strong>False</strong> selects the <em>second</em> argument: <code>\\x y -> y</code></li>
+</ul>
+<pre><code>-- In lambda calculus notation:
+-- TRUE  = \\x. \\y. x
+-- FALSE = \\x. \\y. y</code></pre>
+
+<h3>Why This Works</h3>
+<p>If a boolean <em>is</em> a selector, then "if-then-else" is just <strong>function application</strong>:</p>
+<pre><code>churchIf b t f = b t f
+-- churchIf churchTrue  "yes" "no"  -->  "yes"
+-- churchIf churchFalse "yes" "no"  -->  "no"</code></pre>
+<p>No special syntax needed — the boolean itself does the branching!</p>
+
+<h3>Church Logic without RankNTypes</h3>
+<p>In pure lambda calculus, Church booleans are polymorphic. In Haskell, we would need <code>RankNTypes</code> to give them a fully polymorphic type. Instead, we specialize the boolean combinators at <strong>concrete types</strong> where we need them.</p>
+<p>For composing logic operations (NOT, AND, OR), we specialize at <code>Bool -> Bool -> Bool</code> so that a Church boolean can return another Church boolean:</p>
+
+<table>
+  <thead><tr><th>Operation</th><th>Lambda Definition</th><th>Intuition</th></tr></thead>
+  <tbody>
+    <tr><td><code>NOT b</code></td><td><code>\\x y -> b y x</code></td><td>Swap the arguments — True becomes False and vice versa</td></tr>
+    <tr><td><code>AND a b</code></td><td><code>\\x y -> a (b x y) y</code></td><td>If <code>a</code> is true, result depends on <code>b</code>; if <code>a</code> is false, result is false</td></tr>
+    <tr><td><code>OR a b</code></td><td><code>\\x y -> a x (b x y)</code></td><td>If <code>a</code> is true, result is true; otherwise result depends on <code>b</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Converting Back</h3>
+<p>To convert a Church boolean back to Haskell's <code>Bool</code>, just apply it to <code>True</code> and <code>False</code>:</p>
+<pre><code>toBool b = b True False</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>churchTrue</code>, <code>churchFalse</code>, <code>toBool</code>, <code>churchIf</code>, <code>churchNot</code>, <code>churchAnd</code>, and <code>churchOr</code>. The logic combinators work at the concrete <code>Bool -> Bool -> Bool</code> type.</p>
+`,
+    starterCode: `module ChurchBooleans where
+
+-- Church booleans: a boolean is a function that selects one of two arguments.
+-- TRUE  picks the first,  FALSE picks the second.
+
+-- | Church-encoded True: select the first argument.
+churchTrue :: a -> a -> a
+churchTrue x y = error "select the first argument"
+
+-- | Church-encoded False: select the second argument.
+churchFalse :: a -> a -> a
+churchFalse x y = error "select the second argument"
+
+-- | Convert a Church boolean to a Haskell Bool.
+--   Apply the Church boolean to True and False.
+toBool :: (Bool -> Bool -> Bool) -> Bool
+toBool b = error "apply b to True and False"
+
+-- | Church if-then-else: the boolean IS the branching mechanism.
+churchIf :: (a -> a -> a) -> a -> a -> a
+churchIf b t f = error "apply the boolean to then and else"
+
+-- | Church NOT: swap the arguments so True becomes False and vice versa.
+--   Specialized at Bool -> Bool -> Bool for composability.
+churchNot :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchNot b = error "return a new Church boolean with swapped selection"
+
+-- | Church AND: if a is true, result depends on b; otherwise false.
+churchAnd :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchAnd a b = error "if a selects true-branch, delegate to b"
+
+-- | Church OR: if a is true, result is true; otherwise depends on b.
+churchOr :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchOr a b = error "if a selects true-branch, done; otherwise delegate to b"
+`,
+    solutionCode: `module ChurchBooleans where
+
+churchTrue :: a -> a -> a
+churchTrue x y = x
+
+churchFalse :: a -> a -> a
+churchFalse x y = y
+
+toBool :: (Bool -> Bool -> Bool) -> Bool
+toBool b = b True False
+
+churchIf :: (a -> a -> a) -> a -> a -> a
+churchIf b t f = b t f
+
+churchNot :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchNot b = \\x y -> b y x
+
+churchAnd :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchAnd a b = \\x y -> a (b x y) y
+
+churchOr :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
+churchOr a b = \\x y -> a x (b x y)
+`,
+    testCode: `runTestEq "toBool churchTrue" True (toBool churchTrue)
+        , runTestEq "toBool churchFalse" False (toBool churchFalse)
+        , runTestEq "churchIf true" "yes" (churchIf churchTrue "yes" "no")
+        , runTestEq "churchIf false" "no" (churchIf churchFalse "yes" "no")
+        , runTestEq "churchNot true" False (toBool (churchNot churchTrue))
+        , runTestEq "churchNot false" True (toBool (churchNot churchFalse))
+        , runTestEq "churchAnd true true" True (toBool (churchAnd churchTrue churchTrue))
+        , runTestEq "churchAnd true false" False (toBool (churchAnd churchTrue churchFalse))
+        , runTestEq "churchAnd false true" False (toBool (churchAnd churchFalse churchTrue))
+        , runTestEq "churchOr false false" False (toBool (churchOr churchFalse churchFalse))
+        , runTestEq "churchOr false true" True (toBool (churchOr churchFalse churchTrue))
+        , runTestEq "churchOr true false" True (toBool (churchOr churchTrue churchFalse))`,
+    hints: [
+      '<code>churchTrue</code> takes two arguments and returns the <strong>first</strong> one. <code>churchFalse</code> returns the <strong>second</strong>. These are the K and KI combinators from Module 1.',
+      'For <code>toBool</code>, pass Haskell\'s <code>True</code> as the first argument and <code>False</code> as the second: <code>b True False</code>. For <code>churchIf</code>, it\'s the same idea — the boolean <em>is</em> the selector.',
+      'For <code>churchNot</code>, you need to swap what gets selected: <code>\\x y -> b y x</code>. If <code>b</code> was selecting the first (true), it now selects the second (false).',
+      'For <code>churchAnd a b</code>: if <code>a</code> picks the true-branch, delegate to <code>b</code>: <code>\\x y -> a (b x y) y</code>. For <code>churchOr a b</code>: if <code>a</code> picks true, done; else delegate: <code>\\x y -> a x (b x y)</code>.',
+    ],
+    concepts: ['church-encoding', 'lambda-calculus', 'higher-order-functions', 'boolean-logic', 'selectors'],
+    successPatterns: [
+      'churchTrue\\s+x\\s+y\\s*=\\s*x',
+      'churchFalse\\s+x\\s+y\\s*=\\s*y',
+      'churchNot',
+      'churchAnd',
+      'churchOr',
+    ],
+    testNames: [
+      'toBool churchTrue is True',
+      'toBool churchFalse is False',
+      'churchIf churchTrue selects first',
+      'churchIf churchFalse selects second',
+      'churchNot true is False',
+      'churchNot false is True',
+      'churchAnd true true is True',
+      'churchAnd true false is False',
+      'churchAnd false true is False',
+      'churchOr false false is False',
+      'churchOr false true is True',
+      'churchOr true false is True',
+    ],
+  },
+
+  'church-numerals': {
+    id: 'church-numerals',
+    title: 'Church Numerals: Numbers from Pure Functions',
+    difficulty: 'intermediate',
+    order: 2,
+    description: `
+<p>If booleans are selectors, what are numbers? Church's insight: a natural number <strong>n</strong> is a function that applies another function <strong>n times</strong>.</p>
+
+<h3>Church Numerals</h3>
+<p>A Church numeral takes a function <code>f</code> and a base value <code>x</code>, then applies <code>f</code> to <code>x</code> exactly <em>n</em> times:</p>
+<pre><code>-- 0 applies f zero times:  \\f x -> x
+-- 1 applies f once:        \\f x -> f x
+-- 2 applies f twice:       \\f x -> f (f x)
+-- 3 applies f three times: \\f x -> f (f (f x))</code></pre>
+<p>We use a type alias to keep signatures readable:</p>
+<pre><code>type ChurchNum = (Int -> Int) -> Int -> Int</code></pre>
+<p>Note: in the pure lambda calculus this would be polymorphic, but we specialize to <code>Int</code> for simplicity.</p>
+
+<h3>Converting to Int</h3>
+<p>To see what number a Church numeral represents, pass in <code>(+1)</code> and <code>0</code>:</p>
+<pre><code>toInt n = n (+1) 0
+-- toInt two = two (+1) 0 = (+1) ((+1) 0) = 2</code></pre>
+
+<h3>Successor</h3>
+<p>The successor of <code>n</code> applies <code>f</code> one more time than <code>n</code> does:</p>
+<pre><code>successor n f x = f (n f x)</code></pre>
+<p>Think of it as: first let <code>n</code> do its thing, then apply <code>f</code> one more time on top.</p>
+
+<h3>Addition</h3>
+<p>To add <code>m + n</code>: apply <code>f</code> <em>m</em> times, then apply <code>f</code> <em>n</em> more times:</p>
+<pre><code>add m n f x = m f (n f x)</code></pre>
+<p>First <code>n</code> applies <code>f</code> <em>n</em> times to <code>x</code>, then <code>m</code> applies <code>f</code> <em>m</em> more times to that result.</p>
+
+<h3>Multiplication</h3>
+<p>To multiply <code>m * n</code>: apply "apply-f-n-times" <em>m</em> times. That is, compose <code>n f</code> with itself <code>m</code> times:</p>
+<pre><code>mul m n f = m (n f)</code></pre>
+<p><code>n f</code> is a function that applies <code>f</code> <em>n</em> times. Applying that function <em>m</em> times gives <code>m * n</code> total applications.</p>
+
+<h3>Your Task</h3>
+<p>Define <code>zero</code>, <code>one</code>, <code>two</code>, <code>toInt</code>, <code>successor</code>, <code>add</code>, and <code>mul</code>. Verify with the tests that your arithmetic works.</p>
+`,
+    starterCode: `module ChurchNumerals where
+
+-- A Church numeral applies a function f to a value x some number of times.
+type ChurchNum = (Int -> Int) -> Int -> Int
+
+-- | Zero applies f zero times.
+zero :: ChurchNum
+zero f x = error "apply f zero times"
+
+-- | One applies f once.
+one :: ChurchNum
+one f x = error "apply f once"
+
+-- | Two applies f twice.
+two :: ChurchNum
+two f x = error "apply f twice"
+
+-- | Convert a Church numeral to a Haskell Int.
+--   Pass (+1) as the function and 0 as the base.
+toInt :: ChurchNum -> Int
+toInt n = error "apply n to (+1) and 0"
+
+-- | Successor: apply f one more time than n does.
+successor :: ChurchNum -> ChurchNum
+successor n f x = error "f applied to (n f x)"
+
+-- | Addition: apply f m times after applying it n times.
+add :: ChurchNum -> ChurchNum -> ChurchNum
+add m n f x = error "m f composed with n f"
+
+-- | Multiplication: apply (n f) m times.
+mul :: ChurchNum -> ChurchNum -> ChurchNum
+mul m n f = error "m applied to (n f)"
+`,
+    solutionCode: `module ChurchNumerals where
+
+type ChurchNum = (Int -> Int) -> Int -> Int
+
+zero :: ChurchNum
+zero f x = x
+
+one :: ChurchNum
+one f x = f x
+
+two :: ChurchNum
+two f x = f (f x)
+
+toInt :: ChurchNum -> Int
+toInt n = n (+1) 0
+
+successor :: ChurchNum -> ChurchNum
+successor n f x = f (n f x)
+
+add :: ChurchNum -> ChurchNum -> ChurchNum
+add m n f x = m f (n f x)
+
+mul :: ChurchNum -> ChurchNum -> ChurchNum
+mul m n f = m (n f)
+`,
+    testCode: `runTestEq "toInt zero" 0 (toInt zero)
+        , runTestEq "toInt one" 1 (toInt one)
+        , runTestEq "toInt two" 2 (toInt two)
+        , runTestEq "successor zero" 1 (toInt (successor zero))
+        , runTestEq "successor two" 3 (toInt (successor two))
+        , runTestEq "add one two" 3 (toInt (add one two))
+        , runTestEq "add two (successor two)" 5 (toInt (add two (successor two)))
+        , runTestEq "mul two two" 4 (toInt (mul two two))
+        , runTestEq "mul two (successor two)" 6 (toInt (mul two (successor two)))
+        , runTestEq "add zero one" 1 (toInt (add zero one))
+        , runTestEq "mul zero two" 0 (toInt (mul zero two))`,
+    hints: [
+      '<code>zero</code> applies <code>f</code> zero times, so it just returns <code>x</code>. <code>one</code> applies <code>f</code> once: <code>f x</code>. <code>two</code> applies <code>f</code> twice: <code>f (f x)</code>.',
+      'For <code>toInt</code>, you need to "observe" how many times the numeral applies its function. Pass in <code>(+1)</code> and start from <code>0</code>: <code>n (+1) 0</code>. Each application increments by 1.',
+      'For <code>successor</code>, think of it as "do what <code>n</code> does, then one more <code>f</code>": <code>f (n f x)</code>. The <code>n f x</code> part applies <code>f</code> n times, then the outer <code>f</code> adds one more.',
+      'For <code>add m n</code>: first apply <code>f</code> n times via <code>n f x</code>, then apply <code>f</code> m more times via <code>m f (...)</code>. For <code>mul m n</code>: <code>n f</code> applies <code>f</code> n times; doing that m times gives <code>m * n</code> total: <code>m (n f)</code>.',
+    ],
+    concepts: ['church-encoding', 'lambda-calculus', 'natural-numbers', 'function-composition', 'iteration'],
+    successPatterns: [
+      'zero\\s+f\\s+x\\s*=\\s*x',
+      'one\\s+f\\s+x\\s*=\\s*f\\s+x',
+      'successor\\s+n\\s+f\\s+x\\s*=\\s*f\\s*\\(n\\s+f\\s+x\\)',
+      'add\\s+m\\s+n\\s+f\\s+x\\s*=\\s*m\\s+f\\s*\\(n\\s+f\\s+x\\)',
+    ],
+    testNames: [
+      'toInt zero is 0',
+      'toInt one is 1',
+      'toInt two is 2',
+      'successor zero is 1',
+      'successor two is 3',
+      'add one two is 3',
+      'add two (successor two) is 5',
+      'mul two two is 4',
+      'mul two (successor two) is 6',
+      'add zero one is 1',
+      'mul zero two is 0',
+    ],
+  },
+
+  'church-pairs-maybe': {
+    id: 'church-pairs-maybe',
+    title: 'Church Pairs and Maybe',
+    difficulty: 'intermediate',
+    order: 3,
+    description: `
+<p>Church encodings extend beyond booleans and numbers. We can encode <strong>pairs</strong> (tuples) and <strong>option types</strong> (Maybe) as pure functions too. The key idea remains the same: data is represented by the function that <em>eliminates</em> it.</p>
+
+<h3>Church Pairs</h3>
+<p>A pair holds two values and lets you extract either one. We encode a pair as a function waiting for an "accessor":</p>
+<pre><code>-- A Church pair stores a and b, and takes an accessor function:
+churchPair a b = \\f -> f a b</code></pre>
+<p>To extract the first or second element, pass the right accessor:</p>
+<pre><code>churchFst p = p (\\a _ -> a)   -- pass accessor that picks first
+churchSnd p = p (\\_ b -> b)   -- pass accessor that picks second</code></pre>
+<p>Notice the beautiful symmetry: a pair is just a function that holds two values "in closure" and feeds them to whatever accessor you provide.</p>
+
+<h3>The Types</h3>
+<p>The types look unusual but follow directly from the encoding:</p>
+<pre><code>churchPair :: a -> b -> (a -> b -> c) -> c
+churchFst  :: ((a -> b -> a) -> a) -> a
+churchSnd  :: ((a -> b -> b) -> b) -> b</code></pre>
+<p>Read <code>churchPair</code> as: "give me two values and an accessor, I'll apply the accessor to the values." The result type <code>c</code> is determined by the accessor.</p>
+
+<h3>Church Maybe</h3>
+<p>Haskell's <code>Maybe a</code> is either <code>Nothing</code> or <code>Just x</code>. Church-encoded, a Maybe is a function that takes two arguments: a default value and a function for the Just case:</p>
+<pre><code>-- Church Nothing: ignore the function, return the default
+churchNothing :: b -> (a -> b) -> b
+churchNothing def f = def
+
+-- Church Just: ignore the default, apply the function
+churchJust :: a -> b -> (a -> b) -> b
+churchJust x def f = f x
+
+-- Convert back to Haskell Maybe:
+toMaybe :: (Maybe a -> (a -> Maybe a) -> Maybe a) -> Maybe a
+toMaybe m = m Nothing Just</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>churchPair</code>, <code>churchFst</code>, <code>churchSnd</code>, <code>churchNothing</code>, <code>churchJust</code>, and <code>toMaybe</code>. These simple building blocks demonstrate that <em>all</em> standard data types can emerge from pure lambda calculus.</p>
+`,
+    starterCode: `module ChurchPairsMaybe where
+
+-- ── Church Pairs ────────────────────────────────────────────────
+
+-- | Construct a Church pair: store a and b, wait for an accessor.
+churchPair :: a -> b -> (a -> b -> c) -> c
+churchPair a b f = error "apply f to a and b"
+
+-- | Extract the first element of a Church pair.
+churchFst :: ((a -> b -> a) -> a) -> a
+churchFst p = error "pass an accessor that picks the first"
+
+-- | Extract the second element of a Church pair.
+churchSnd :: ((a -> b -> b) -> b) -> b
+churchSnd p = error "pass an accessor that picks the second"
+
+-- ── Church Maybe ────────────────────────────────────────────────
+
+-- | Church Nothing: ignore the function, return the default.
+churchNothing :: b -> (a -> b) -> b
+churchNothing def f = error "return the default value"
+
+-- | Church Just: apply the function to the wrapped value.
+churchJust :: a -> b -> (a -> b) -> b
+churchJust x def f = error "apply f to x"
+
+-- | Convert a Church Maybe to a Haskell Maybe.
+--   Pass Nothing as the default and Just as the function.
+toMaybe :: (Maybe a -> (a -> Maybe a) -> Maybe a) -> Maybe a
+toMaybe m = error "apply m to Nothing and Just"
+`,
+    solutionCode: `module ChurchPairsMaybe where
+
+-- ── Church Pairs ────────────────────────────────────────────────
+
+churchPair :: a -> b -> (a -> b -> c) -> c
+churchPair a b f = f a b
+
+churchFst :: ((a -> b -> a) -> a) -> a
+churchFst p = p (\\a _ -> a)
+
+churchSnd :: ((a -> b -> b) -> b) -> b
+churchSnd p = p (\\_ b -> b)
+
+-- ── Church Maybe ────────────────────────────────────────────────
+
+churchNothing :: b -> (a -> b) -> b
+churchNothing def f = def
+
+churchJust :: a -> b -> (a -> b) -> b
+churchJust x def f = f x
+
+toMaybe :: (Maybe a -> (a -> Maybe a) -> Maybe a) -> Maybe a
+toMaybe m = m Nothing Just
+`,
+    testCode: `runTestEq "churchFst (pair 1 2)" (1 :: Int) (churchFst (churchPair 1 2))
+        , runTestEq "churchSnd (pair 1 2)" (2 :: Int) (churchSnd (churchPair 1 2))
+        , runTestEq "churchFst (pair True False)" True (churchFst (churchPair True False))
+        , runTestEq "churchSnd (pair True False)" False (churchSnd (churchPair True False))
+        , runTestEq "churchFst strings" "hello" (churchFst (churchPair "hello" "world"))
+        , runTestEq "churchSnd strings" "world" (churchSnd (churchPair "hello" "world"))
+        , runTestEq "nested pair fst" (1 :: Int) (churchFst (churchPair 1 (churchPair 2 3)))
+        , runTestEq "churchNothing" (0 :: Int) (churchNothing 0 (+1))
+        , runTestEq "churchJust 5" (6 :: Int) (churchJust 5 0 (+1))
+        , runTestEq "toMaybe churchNothing" (Nothing :: Maybe Int) (toMaybe (churchNothing :: Maybe Int -> (Int -> Maybe Int) -> Maybe Int))
+        , runTestEq "toMaybe churchJust" (Just 42 :: Maybe Int) (toMaybe (churchJust 42))`,
+    hints: [
+      'For <code>churchPair</code>: you have values <code>a</code> and <code>b</code> and an accessor <code>f</code>. Just apply: <code>f a b</code>. The pair "stores" its values in a closure.',
+      'For <code>churchFst</code>: you need to pass an accessor that ignores the second argument: <code>p (\\a _ -> a)</code>. For <code>churchSnd</code>: <code>p (\\_ b -> b)</code>.',
+      'For <code>churchNothing</code>: it represents "no value" — just return <code>def</code> and ignore <code>f</code>. For <code>churchJust x</code>: it wraps a value — apply <code>f</code> to <code>x</code> and ignore <code>def</code>.',
+      'For <code>toMaybe</code>: a Church Maybe takes a default and a function. Pass <code>Nothing</code> as the default and <code>Just</code> as the function: <code>m Nothing Just</code>.',
+    ],
+    concepts: ['church-encoding', 'lambda-calculus', 'pairs', 'maybe', 'closures', 'elimination'],
+    successPatterns: [
+      'churchPair\\s+a\\s+b\\s+f\\s*=\\s*f\\s+a\\s+b',
+      'churchFst',
+      'churchSnd',
+      'churchNothing\\s+def\\s+f\\s*=\\s*def',
+      'churchJust\\s+x\\s+def\\s+f\\s*=\\s*f\\s+x',
+    ],
+    testNames: [
+      'churchFst (churchPair 1 2) is 1',
+      'churchSnd (churchPair 1 2) is 2',
+      'churchFst on Bool pair is True',
+      'churchSnd on Bool pair is False',
+      'churchFst on String pair',
+      'churchSnd on String pair',
+      'nested pair: fst of pair with nested snd',
+      'churchNothing returns default',
+      'churchJust applies function',
+      'toMaybe churchNothing is Nothing',
+      'toMaybe (churchJust 42) is Just 42',
+    ],
+  },
+
+  'reduction-strategies': {
+    id: 'reduction-strategies',
+    title: 'Reduction Strategies: How Haskell Evaluates',
+    difficulty: 'intermediate',
+    order: 4,
+    description: `
+<p>Lambda calculus defines <em>what</em> to compute but not <em>in what order</em>. Different <strong>reduction strategies</strong> specify which redex (reducible expression) to evaluate first. Haskell's choice — <strong>lazy evaluation</strong> (call-by-need) — has profound consequences.</p>
+
+<h3>Reduction Strategies in Lambda Calculus</h3>
+<table>
+  <thead><tr><th>Strategy</th><th>Rule</th><th>Used By</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Normal order</strong></td><td>Reduce the <em>leftmost, outermost</em> redex first</td><td>Theoretical lambda calculus</td></tr>
+    <tr><td><strong>Applicative order</strong></td><td>Reduce the <em>leftmost, innermost</em> redex first (evaluate arguments before substitution)</td><td>Most languages (C, Python, Java)</td></tr>
+    <tr><td><strong>Call-by-need (lazy)</strong></td><td>Normal order + <em>sharing</em>: a thunk is evaluated at most once, then cached</td><td>Haskell</td></tr>
+  </tbody>
+</table>
+
+<h3>Why It Matters</h3>
+<p>In strict (applicative-order) languages, <code>fst (1 + 2, error "boom")</code> would crash — both components of the tuple are evaluated before <code>fst</code> runs. In Haskell's lazy evaluation, the second component is never needed, so the error is never triggered:</p>
+<pre><code>fst (1 + 2, error "boom")   -- Haskell: evaluates to 3
+                              -- Strict: crashes!</code></pre>
+
+<h3>Thunks and Weak Head Normal Form (WHNF)</h3>
+<p>Haskell evaluates expressions to <strong>Weak Head Normal Form</strong> (WHNF) — just enough to determine the outermost constructor or lambda, leaving the rest as unevaluated <em>thunks</em>:</p>
+<ul>
+  <li><code>[1, 2, error "boom"]</code> in WHNF is <code>1 : (2 : error "boom" : [])</code> — the spine is a cons cell</li>
+  <li><code>null</code> only checks if the list is <code>[]</code> or <code>(_ : _)</code> — it doesn't evaluate elements</li>
+  <li><code>take 3 [1..]</code> only forces the first 3 elements of an infinite list</li>
+</ul>
+
+<h3>Key Patterns</h3>
+<p>These patterns appear constantly in Haskell:</p>
+<ul>
+  <li><code>const a b = a</code> — the second argument is never evaluated</li>
+  <li><code>head (map f xs)</code> — only <code>f (head xs)</code> is computed</li>
+  <li><code>take n infinite</code> — laziness makes infinite structures usable</li>
+</ul>
+
+<h3>Your Task</h3>
+<p>Predict what each expression evaluates to. Think carefully about which sub-expressions are actually <em>needed</em> and which remain as unevaluated thunks.</p>
+`,
+    starterCode: `module ReductionStrategies where
+
+-- EXERCISE: Predict the result of each expression.
+-- Replace each \`error "..."\` with the value you think it evaluates to.
+-- Think about Haskell's LAZY evaluation: what gets evaluated and what doesn't?
+
+-- 1. fst (1 + 2, error "boom")
+--    Does the second element of the tuple get evaluated?
+answer1 :: Int
+answer1 = error "what does fst do with the pair?"
+
+-- 2. take 3 [1..]
+--    [1..] is an infinite list. How many elements does take force?
+answer2 :: [Int]
+answer2 = error "first three elements of the infinite list"
+
+-- 3. const 42 (error "nope")
+--    const a b = a. Is the second argument needed?
+answer3 :: Int
+answer3 = error "what does const return?"
+
+-- 4. head (map (*2) [1..])
+--    map (*2) [1..] is an infinite list. What does head need?
+answer4 :: Int
+answer4 = error "head only needs the first element"
+
+-- 5. null [error "boom"]
+--    null checks if a list is empty. Does it look at the elements?
+answer5 :: Bool
+answer5 = error "is the list empty?"
+
+-- 6. snd (error "left", 42)
+--    snd only needs the second component.
+answer6 :: Int
+answer6 = error "what does snd extract?"
+
+-- 7. length (take 5 [1..])
+--    How many elements does take 5 produce from an infinite list?
+answer7 :: Int
+answer7 = error "how long is the taken list?"
+
+-- 8. head [3, error "never"]
+--    head only looks at the first element of a list.
+answer8 :: Int
+answer8 = error "what is the first element?"
+`,
+    solutionCode: `module ReductionStrategies where
+
+answer1 :: Int
+answer1 = 3
+
+answer2 :: [Int]
+answer2 = [1, 2, 3]
+
+answer3 :: Int
+answer3 = 42
+
+answer4 :: Int
+answer4 = 2
+
+answer5 :: Bool
+answer5 = False
+
+answer6 :: Int
+answer6 = 42
+
+answer7 :: Int
+answer7 = 5
+
+answer8 :: Int
+answer8 = 3
+`,
+    testCode: `runTestEq "fst (1+2, error)" (3 :: Int) answer1
+        , runTestEq "take 3 [1..]" [1, 2, 3 :: Int] answer2
+        , runTestEq "const 42 (error)" (42 :: Int) answer3
+        , runTestEq "head (map (*2) [1..])" (2 :: Int) answer4
+        , runTestEq "null [error boom]" False answer5
+        , runTestEq "snd (error, 42)" (42 :: Int) answer6
+        , runTestEq "length (take 5 [1..])" (5 :: Int) answer7
+        , runTestEq "head [3, error]" (3 :: Int) answer8`,
+    hints: [
+      '<code>fst</code> only needs the first element of a pair, and <code>snd</code> only needs the second. Haskell won\'t evaluate the component that isn\'t needed, so <code>error</code> in the unused component is harmless.',
+      '<code>take 3 [1..]</code> forces exactly 3 elements from the infinite list. <code>const a b = a</code> discards <code>b</code> entirely. In both cases, laziness means unnecessary expressions stay as unevaluated thunks.',
+      '<code>null</code> checks the <em>structure</em> of a list — is it <code>[]</code> or <code>(_ : _)</code>? It does NOT evaluate the elements. A non-empty list with <code>error</code> as its element is still non-empty, so <code>null</code> returns <code>False</code>.',
+      '<code>head (map (*2) [1..])</code> only computes <code>(*2) 1 = 2</code>. Lazy evaluation means <code>map</code> only transforms the element that <code>head</code> demands. <code>head [3, error "never"]</code> returns <code>3</code> because the second element is never forced.',
+    ],
+    concepts: ['lazy-evaluation', 'reduction-strategy', 'thunks', 'WHNF', 'normal-order', 'applicative-order', 'call-by-need'],
+    successPatterns: [
+      'answer1\\s*=\\s*3',
+      'answer2\\s*=\\s*\\[1,\\s*2,\\s*3\\]',
+      'answer3\\s*=\\s*42',
+      'answer5\\s*=\\s*False',
+    ],
+    testNames: [
+      'fst (1+2, error "boom") evaluates to 3',
+      'take 3 [1..] evaluates to [1,2,3]',
+      'const 42 (error "nope") evaluates to 42',
+      'head (map (*2) [1..]) evaluates to 2',
+      'null [error "boom"] evaluates to False',
+      'snd (error "left", 42) evaluates to 42',
+      'length (take 5 [1..]) evaluates to 5',
+      'head [3, error "never"] evaluates to 3',
+    ],
+  },
+
+  'fixpoint-recursion': {
+    id: 'fixpoint-recursion',
+    title: 'Fixed Points: Recursion from Lambda Calculus',
+    difficulty: 'intermediate',
+    order: 5,
+    description: `
+<p>The pure untyped lambda calculus has no built-in recursion — there's no way to name a function and refer to that name inside the body. Yet Church and his students proved that recursion <em>is</em> still possible, using <strong>fixed-point combinators</strong>.</p>
+
+<h3>What Is a Fixed Point?</h3>
+<p>A <em>fixed point</em> of a function <code>f</code> is a value <code>x</code> such that <code>f x = x</code>. For example, 0 is a fixed point of <code>(*2)</code> because <code>0 * 2 = 0</code>.</p>
+<p>A <strong>fixed-point combinator</strong> <code>fix</code> finds fixed points of <em>higher-order</em> functions:</p>
+<pre><code>fix f = f (fix f)</code></pre>
+<p>This equation says: <code>fix f</code> is a value <code>x</code> such that <code>x = f x</code>.</p>
+
+<h3>How fix Enables Recursion</h3>
+<p>Suppose we want factorial but can't use recursion directly. We write a "blueprint" function that takes its recursive self as an argument:</p>
+<pre><code>factBlueprint :: (Int -> Int) -> (Int -> Int)
+factBlueprint recur n = if n <= 0 then 1 else n * recur (n - 1)</code></pre>
+<p><code>factBlueprint</code> doesn't call itself — it calls whatever <code>recur</code> function is passed in. The magic of <code>fix</code> is that it feeds the blueprint <em>its own output</em> as the <code>recur</code> argument:</p>
+<pre><code>factorial = fix factBlueprint
+-- fix factBlueprint
+-- = factBlueprint (fix factBlueprint)
+-- = factBlueprint (factBlueprint (fix factBlueprint))
+-- = ...</code></pre>
+<p>Laziness ensures this infinite unfolding only proceeds as far as needed.</p>
+
+<h3>The Y Combinator</h3>
+<p>In the untyped lambda calculus, the fixed-point combinator is written as:</p>
+<pre><code>Y = \\f. (\\x. f (x x)) (\\x. f (x x))</code></pre>
+<p>In Haskell, we can write it more directly thanks to recursive let-bindings:</p>
+<pre><code>fix :: (a -> a) -> a
+fix f = let x = f x in x</code></pre>
+<p>Both definitions satisfy the equation <code>fix f = f (fix f)</code>.</p>
+
+<h3>Your Task</h3>
+<p>Implement <code>fix</code>, then use it to define <code>factorial</code> and <code>fibonacci</code> without explicit recursion in their definitions. Each function is defined by passing a "blueprint" to <code>fix</code>.</p>
+`,
+    starterCode: `module FixpointRecursion where
+
+-- | The fixed-point combinator: fix f = f (fix f)
+--   This enables recursion without self-reference.
+fix :: (a -> a) -> a
+fix f = error "f applied to (fix f)"
+
+-- | Factorial via fix.
+--   Write a lambda \\recur n -> ... that uses recur for the recursive call.
+--   factorial 0 = 1, factorial n = n * factorial (n-1)
+factorial :: Int -> Int
+factorial = error "fix (\\\\recur n -> ...)"
+
+-- | Fibonacci via fix.
+--   fib 0 = 0, fib 1 = 1, fib n = fib (n-1) + fib (n-2)
+fibonacci :: Int -> Int
+fibonacci = error "fix (\\\\recur n -> ...)"
+
+-- | sumTo via fix: sum of [1..n]
+--   sumTo 0 = 0, sumTo n = n + sumTo (n-1)
+sumTo :: Int -> Int
+sumTo = error "fix (\\\\recur n -> ...)"
+`,
+    solutionCode: `module FixpointRecursion where
+
+fix :: (a -> a) -> a
+fix f = f (fix f)
+
+factorial :: Int -> Int
+factorial = fix (\\recur n -> if n <= 0 then 1 else n * recur (n - 1))
+
+fibonacci :: Int -> Int
+fibonacci = fix (\\recur n -> if n <= 1 then n else recur (n - 1) + recur (n - 2))
+
+sumTo :: Int -> Int
+sumTo = fix (\\recur n -> if n <= 0 then 0 else n + recur (n - 1))
+`,
+    testCode: `runTestEq "factorial 0" (1 :: Int) (factorial 0)
+        , runTestEq "factorial 1" (1 :: Int) (factorial 1)
+        , runTestEq "factorial 5" (120 :: Int) (factorial 5)
+        , runTestEq "factorial 10" (3628800 :: Int) (factorial 10)
+        , runTestEq "fibonacci 0" (0 :: Int) (fibonacci 0)
+        , runTestEq "fibonacci 1" (1 :: Int) (fibonacci 1)
+        , runTestEq "fibonacci 10" (55 :: Int) (fibonacci 10)
+        , runTestEq "fibonacci 6" (8 :: Int) (fibonacci 6)
+        , runTestEq "sumTo 0" (0 :: Int) (sumTo 0)
+        , runTestEq "sumTo 5" (15 :: Int) (sumTo 5)
+        , runTestEq "sumTo 100" (5050 :: Int) (sumTo 100)`,
+    hints: [
+      '<code>fix</code> satisfies the equation <code>fix f = f (fix f)</code>. That\'s literally the implementation: <code>fix f = f (fix f)</code>. Haskell\'s laziness ensures this doesn\'t loop infinitely — it only unfolds as much as needed.',
+      'For <code>factorial</code>: write a blueprint that receives its own recursive self. <code>fix (\\recur n -> if n <= 0 then 1 else n * recur (n - 1))</code>. The <code>recur</code> parameter IS the factorial function — <code>fix</code> makes it so.',
+      'For <code>fibonacci</code>: the blueprint takes <code>recur</code> and <code>n</code>. Base cases: <code>n <= 1</code> returns <code>n</code> (so fib 0 = 0, fib 1 = 1). Recursive: <code>recur (n-1) + recur (n-2)</code>.',
+      'For <code>sumTo</code>: similar pattern. The blueprint is <code>\\recur n -> if n <= 0 then 0 else n + recur (n - 1)</code>. Each recursive function follows the same pattern: pass a lambda to <code>fix</code> where the first argument is the recursive call.',
+    ],
+    concepts: ['fixed-point', 'Y-combinator', 'recursion', 'lambda-calculus', 'lazy-evaluation', 'self-reference'],
+    successPatterns: [
+      'fix\\s+f\\s*=\\s*f\\s*\\(fix\\s+f\\)',
+      'factorial\\s*=\\s*fix',
+      'fibonacci\\s*=\\s*fix',
+      'sumTo\\s*=\\s*fix',
+    ],
+    testNames: [
+      'factorial 0 is 1',
+      'factorial 1 is 1',
+      'factorial 5 is 120',
+      'factorial 10 is 3628800',
+      'fibonacci 0 is 0',
+      'fibonacci 1 is 1',
+      'fibonacci 10 is 55',
+      'fibonacci 6 is 8',
+      'sumTo 0 is 0',
+      'sumTo 5 is 15',
+      'sumTo 100 is 5050',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LAMBDA CALCULUS III: TYPES & INTERPRETERS MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'curry-howard': {
+    id: 'curry-howard',
+    title: 'Curry-Howard: Types as Propositions, Programs as Proofs',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Curry-Howard Correspondence</h3>
+<p>One of the deepest ideas in computer science: <strong>types are propositions</strong> and <strong>programs are proofs</strong>. Every type signature is a logical statement, and every function that satisfies that signature is a constructive proof that the statement is true.</p>
+
+<h3>The Dictionary</h3>
+<table>
+  <thead><tr><th>Logic</th><th>Types</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Proposition A</td><td>Type <code>a</code></td><td>Any inhabited type</td></tr>
+    <tr><td>A AND B</td><td><code>(a, b)</code></td><td>Pairs / tuples</td></tr>
+    <tr><td>A OR B</td><td><code>Either a b</code></td><td>Sum types</td></tr>
+    <tr><td>A IMPLIES B</td><td><code>a -> b</code></td><td>Functions</td></tr>
+    <tr><td>TRUE</td><td><code>()</code></td><td>Unit &mdash; always provable</td></tr>
+    <tr><td>Proof</td><td>A program of that type</td><td>Writing the function body</td></tr>
+  </tbody>
+</table>
+
+<h3>Key Logical Rules as Types</h3>
+<ul>
+  <li><strong>Reflexivity (identity):</strong> <code>a -> a</code> &mdash; "A implies A" is trivially true</li>
+  <li><strong>AND elimination:</strong> <code>(a, b) -> a</code> &mdash; from "A and B", we can conclude A</li>
+  <li><strong>AND commutativity:</strong> <code>(a, b) -> (b, a)</code> &mdash; "A and B" implies "B and A"</li>
+  <li><strong>OR introduction:</strong> <code>a -> Either a b</code> &mdash; from A, we know "A or B"</li>
+  <li><strong>Case analysis:</strong> <code>(a -> c) -> (b -> c) -> Either a b -> c</code> &mdash; if both A and B imply C, and we have "A or B", then C</li>
+  <li><strong>Transitivity (composition):</strong> <code>(a -> b) -> (b -> c) -> (a -> c)</code> &mdash; if A implies B and B implies C, then A implies C</li>
+  <li><strong>Uncurrying:</strong> <code>(a -> b -> c) -> (a, b) -> c</code> &mdash; converts curried to uncurried</li>
+  <li><strong>Currying:</strong> <code>((a, b) -> c) -> a -> b -> c</code> &mdash; converts uncurried to curried</li>
+</ul>
+
+<h3>Why This Matters</h3>
+<p>In dependently typed languages like Agda, Coq, and Lean, this correspondence is used to write <em>machine-checked proofs</em>. In Haskell, it gives us intuition: if you can write a total function with a given type, you've proved the corresponding logical statement.</p>
+
+<h3>Your Task</h3>
+<p>Write eight functions that "prove" type-theoretic propositions. Each function's type signature <em>is</em> the proposition &mdash; your implementation is the proof. The types constrain your code so much that there is essentially only one way to write each function.</p>
+`,
+    starterCode: `module CurryHoward where
+
+-- The Curry-Howard correspondence: types = propositions, programs = proofs.
+-- Each function below has a type that represents a logical proposition.
+-- Your job: write the ONLY possible implementation (the proof).
+
+-- 1. Identity = Reflexivity: "A implies A"
+proof1 :: a -> a
+proof1 = error "prove: A implies A"
+
+-- 2. AND elimination: "A and B implies A"
+proof2 :: (a, b) -> a
+proof2 = error "prove: (A AND B) implies A"
+
+-- 3. AND commutativity: "A and B implies B and A"
+proof3 :: (a, b) -> (b, a)
+proof3 = error "prove: (A AND B) implies (B AND A)"
+
+-- 4. OR introduction: "A implies A or B"
+proof4 :: a -> Either a b
+proof4 = error "prove: A implies (A OR B)"
+
+-- 5. Case analysis: "If A->C and B->C and (A or B), then C"
+proof5 :: (a -> c) -> (b -> c) -> Either a b -> c
+proof5 = error "prove: case analysis on Either"
+
+-- 6. Transitivity = Composition: "A->B and B->C implies A->C"
+proof6 :: (a -> b) -> (b -> c) -> (a -> c)
+proof6 = error "prove: transitivity of implication"
+
+-- 7. Uncurrying: "If A implies (B implies C), then (A AND B) implies C"
+proof7 :: (a -> b -> c) -> (a, b) -> c
+proof7 = error "prove: uncurrying"
+
+-- 8. Currying: "If (A AND B) implies C, then A implies B implies C"
+proof8 :: ((a, b) -> c) -> a -> b -> c
+proof8 = error "prove: currying"
+`,
+    solutionCode: `module CurryHoward where
+
+-- 1. Identity = Reflexivity
+proof1 :: a -> a
+proof1 x = x
+
+-- 2. AND elimination (fst)
+proof2 :: (a, b) -> a
+proof2 (a, _) = a
+
+-- 3. AND commutativity
+proof3 :: (a, b) -> (b, a)
+proof3 (a, b) = (b, a)
+
+-- 4. OR introduction (Left)
+proof4 :: a -> Either a b
+proof4 a = Left a
+
+-- 5. Case analysis (either)
+proof5 :: (a -> c) -> (b -> c) -> Either a b -> c
+proof5 f _ (Left a)  = f a
+proof5 _ g (Right b) = g b
+
+-- 6. Transitivity = Composition
+proof6 :: (a -> b) -> (b -> c) -> (a -> c)
+proof6 f g x = g (f x)
+
+-- 7. Uncurrying
+proof7 :: (a -> b -> c) -> (a, b) -> c
+proof7 f (a, b) = f a b
+
+-- 8. Currying
+proof8 :: ((a, b) -> c) -> a -> b -> c
+proof8 f a b = f (a, b)
+`,
+    testCode: `runTestEq "proof1 42 = 42 (identity)" (42 :: Int) (proof1 42)
+        , runTestEq "proof1 True = True" True (proof1 True)
+        , runTestEq "proof2 (1, x) = 1 (AND elim)" (1 :: Int) (proof2 (1, "x"))
+        , runTestEq "proof2 (True, 42) = True" True (proof2 (True, 42 :: Int))
+        , runTestEq "proof3 (1, y) = (y, 1) (AND comm)" ("y", 1 :: Int) (proof3 (1 :: Int, "y"))
+        , runTestEq "proof4 42 = Left 42 (OR intro)" (Left 42 :: Either Int String) (proof4 42)
+        , runTestEq "proof5 Left case" (10 :: Int) (proof5 (+1) (*2) (Left (9 :: Int)))
+        , runTestEq "proof5 Right case" (10 :: Int) (proof5 (+1) (*2) (Right (5 :: Int)))
+        , runTestEq "proof6 (+1) (*2) 3 = 8 (compose)" (8 :: Int) (proof6 (+1) (*2) (3 :: Int))
+        , runTestEq "proof7 add pair" (7 :: Int) (proof7 (\\a b -> a + b) (3 :: Int, 4 :: Int))
+        , runTestEq "proof8 fst-of-pair via currying" (5 :: Int) (proof8 fst (5 :: Int) (10 :: Int))`,
+    hints: [
+      'For <code>proof1</code>: the only thing you can do with a value of type <code>a</code> is return it. The identity function <code>\\x -> x</code> is the unique proof of <code>a -> a</code>.',
+      'For <code>proof2</code> and <code>proof3</code>: pattern match the tuple <code>(a, b)</code>. For AND elimination, return the first component. For commutativity, swap the components.',
+      'For <code>proof4</code>: wrap the value with <code>Left</code>. For <code>proof5</code>: pattern match <code>Either a b</code> &mdash; apply the first function to <code>Left</code> values, the second to <code>Right</code> values. This is exactly <code>either</code>.',
+      'For <code>proof6</code>: compose the two functions &mdash; <code>\\x -> g (f x)</code>. For <code>proof7</code>: pattern match the tuple and apply the curried function. For <code>proof8</code>: take two extra arguments and build the tuple to pass to <code>f</code>.',
+    ],
+    concepts: ['curry-howard', 'propositions-as-types', 'proofs-as-programs', 'logic', 'composition', 'currying'],
+    successPatterns: [
+      'proof1\\s+x\\s*=\\s*x',
+      'proof2.*\\(a.*,',
+      'proof5.*Left|proof5.*Right',
+      'proof6.*g\\s*\\(f|proof6.*\\.\\s*',
+    ],
+    testNames: [
+      'proof1 identity on Int',
+      'proof1 identity on Bool',
+      'proof2 AND elimination (fst)',
+      'proof2 AND elimination (Bool, Int)',
+      'proof3 AND commutativity',
+      'proof4 OR introduction (Left)',
+      'proof5 case analysis Left branch',
+      'proof5 case analysis Right branch',
+      'proof6 transitivity/composition',
+      'proof7 uncurrying',
+      'proof8 currying',
+    ],
+  },
+
+  'cps-transform': {
+    id: 'cps-transform',
+    title: 'Continuation-Passing Style',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>What Is CPS?</h3>
+<p>In <strong>continuation-passing style</strong>, functions never "return" a value. Instead, they receive an extra argument &mdash; a <em>continuation</em> <code>k</code> &mdash; and pass their result to <code>k</code> instead of returning it. This transforms the implicit call stack into an explicit chain of function calls.</p>
+
+<h3>Direct Style vs CPS</h3>
+<table>
+  <thead><tr><th>Direct Style</th><th>CPS</th></tr></thead>
+  <tbody>
+    <tr><td><code>add x y = x + y</code></td><td><code>addCPS x y k = k (x + y)</code></td></tr>
+    <tr><td><code>square x = x * x</code></td><td><code>squareCPS x k = k (x * x)</code></td></tr>
+    <tr><td><code>f (g x)</code></td><td><code>gCPS x (\\r -> fCPS r k)</code></td></tr>
+  </tbody>
+</table>
+<p>The continuation <code>k</code> says "what to do next with the result." To extract the final value, pass <code>id</code> as the continuation.</p>
+
+<h3>Composing CPS Functions</h3>
+<p>The power of CPS emerges when you <strong>chain</strong> computations. Instead of nested calls like <code>mul (add x y) (add x y)</code>, you thread continuations:</p>
+<pre><code>squareSumCPS x y k = addCPS x y (\\s -> mulCPS s s k)
+-- "add x and y, then take that sum s, multiply s*s, pass to k"</code></pre>
+
+<h3>CPS Conversion</h3>
+<p>Any direct-style function <code>f :: a -> b</code> can be converted to CPS:</p>
+<pre><code>toCPS :: (a -> b) -> a -> (b -> r) -> r
+toCPS f a k = k (f a)</code></pre>
+
+<h3>Extracting Results</h3>
+<p>To get the final value out of a CPS computation, pass <code>id</code> as the continuation:</p>
+<pre><code>runCPS :: ((a -> a) -> a) -> a
+runCPS f = f id</code></pre>
+
+<h3>Recursive CPS: Fibonacci</h3>
+<p>CPS really shines with recursion. The recursive calls pass their results to lambdas instead of returning:</p>
+<pre><code>fibCPS 0 k = k 0
+fibCPS 1 k = k 1
+fibCPS n k = fibCPS (n-1) (\\a ->
+             fibCPS (n-2) (\\b ->
+             k (a + b)))</code></pre>
+<p>Each recursive call says "when you have the answer, continue with this lambda." The two branches of Fibonacci are sequenced explicitly.</p>
+
+<h3>Your Task</h3>
+<p>Implement seven CPS functions: basic arithmetic in CPS, a composed computation, CPS conversion, CPS extraction, and recursive Fibonacci in CPS.</p>
+`,
+    starterCode: `module CPSTransform where
+
+-- Continuation-Passing Style: functions don't return -- they pass
+-- results to a continuation k.
+
+-- 1. addCPS: add two integers, pass result to k
+addCPS :: Int -> Int -> (Int -> r) -> r
+addCPS x y k = error "pass (x + y) to the continuation"
+
+-- 2. mulCPS: multiply two integers, pass result to k
+mulCPS :: Int -> Int -> (Int -> r) -> r
+mulCPS x y k = error "pass (x * y) to the continuation"
+
+-- 3. squareCPS: square an integer, pass result to k
+squareCPS :: Int -> (Int -> r) -> r
+squareCPS x k = error "pass (x * x) to the continuation"
+
+-- 4. squareSumCPS: add x and y, then square the sum, pass to k
+--    Hint: use addCPS and mulCPS in sequence via continuations
+squareSumCPS :: Int -> Int -> (Int -> r) -> r
+squareSumCPS x y k = error "chain addCPS then mulCPS"
+
+-- 5. toCPS: convert any direct-style function to CPS
+toCPS :: (a -> b) -> a -> (b -> r) -> r
+toCPS f a k = error "apply f to a, pass result to k"
+
+-- 6. runCPS: extract the final value by passing id as continuation
+runCPS :: ((a -> a) -> a) -> a
+runCPS f = error "pass id to f"
+
+-- 7. fibCPS: Fibonacci in CPS
+--    Base cases: fibCPS 0 k = k 0, fibCPS 1 k = k 1
+--    Recursive: fibCPS (n-1) and fibCPS (n-2), combine with k
+fibCPS :: Int -> (Int -> r) -> r
+fibCPS n k = error "implement Fibonacci in CPS"
+`,
+    solutionCode: `module CPSTransform where
+
+addCPS :: Int -> Int -> (Int -> r) -> r
+addCPS x y k = k (x + y)
+
+mulCPS :: Int -> Int -> (Int -> r) -> r
+mulCPS x y k = k (x * y)
+
+squareCPS :: Int -> (Int -> r) -> r
+squareCPS x k = k (x * x)
+
+squareSumCPS :: Int -> Int -> (Int -> r) -> r
+squareSumCPS x y k = addCPS x y (\\s -> mulCPS s s k)
+
+toCPS :: (a -> b) -> a -> (b -> r) -> r
+toCPS f a k = k (f a)
+
+runCPS :: ((a -> a) -> a) -> a
+runCPS f = f id
+
+fibCPS :: Int -> (Int -> r) -> r
+fibCPS 0 k = k 0
+fibCPS 1 k = k 1
+fibCPS n k = fibCPS (n - 1) (\\a -> fibCPS (n - 2) (\\b -> k (a + b)))
+`,
+    testCode: `runTestEq "addCPS 3 4 id = 7" (7 :: Int) (addCPS 3 4 id)
+        , runTestEq "addCPS 0 0 id = 0" (0 :: Int) (addCPS 0 0 id)
+        , runTestEq "mulCPS 3 4 id = 12" (12 :: Int) (mulCPS 3 4 id)
+        , runTestEq "mulCPS 5 0 id = 0" (0 :: Int) (mulCPS 5 0 id)
+        , runTestEq "squareCPS 5 id = 25" (25 :: Int) (squareCPS 5 id)
+        , runTestEq "squareSumCPS 3 4 id = 49" (49 :: Int) (squareSumCPS 3 4 id)
+        , runTestEq "squareSumCPS 0 0 id = 0" (0 :: Int) (squareSumCPS 0 0 id)
+        , runTestEq "toCPS (+1) 5 id = 6" (6 :: Int) (toCPS (+1) 5 id)
+        , runTestEq "toCPS (*2) 10 id = 20" (20 :: Int) (toCPS (*2) 10 id)
+        , runTestEq "fibCPS 0 id = 0" (0 :: Int) (fibCPS 0 id)
+        , runTestEq "fibCPS 1 id = 1" (1 :: Int) (fibCPS 1 id)
+        , runTestEq "fibCPS 10 id = 55" (55 :: Int) (fibCPS 10 id)
+        , runTestEq "addCPS 3 4 (*2) = 14" (14 :: Int) (addCPS 3 4 (*2))`,
+    hints: [
+      'The CPS pattern is simple: where you would <code>return x</code>, instead write <code>k x</code>. For <code>addCPS</code>: <code>k (x + y)</code>.',
+      'For <code>squareSumCPS</code>: first call <code>addCPS x y</code> with a lambda continuation <code>\\s -> ...</code>. Inside that lambda, call <code>mulCPS s s k</code> to square the sum and pass it to the outer continuation.',
+      'For <code>toCPS</code>: apply <code>f</code> to <code>a</code> to get the result, then pass it to <code>k</code>. For <code>runCPS</code>: the identity function <code>id</code> is the "do nothing" continuation that just returns the value.',
+      'For <code>fibCPS</code>: the base cases pass 0 or 1 to <code>k</code>. The recursive case calls <code>fibCPS (n-1)</code> with <code>\\a -> fibCPS (n-2) (\\b -> k (a + b))</code> &mdash; each recursive result is received by a lambda that continues the computation.',
+    ],
+    concepts: ['continuation-passing-style', 'CPS', 'continuations', 'higher-order-functions', 'recursion', 'control-flow'],
+    successPatterns: [
+      'addCPS.*k\\s*\\(x\\s*\\+\\s*y\\)',
+      'squareSumCPS.*addCPS',
+      'toCPS.*k\\s*\\(f\\s+a\\)',
+      'fibCPS.*fibCPS\\s*\\(n',
+    ],
+    testNames: [
+      'addCPS 3 4 = 7',
+      'addCPS 0 0 = 0',
+      'mulCPS 3 4 = 12',
+      'mulCPS 5 0 = 0',
+      'squareCPS 5 = 25',
+      'squareSumCPS 3 4 = 49',
+      'squareSumCPS 0 0 = 0',
+      'toCPS (+1) 5 = 6',
+      'toCPS (*2) 10 = 20',
+      'fibCPS 0 = 0',
+      'fibCPS 1 = 1',
+      'fibCPS 10 = 55',
+      'addCPS with non-id continuation',
+    ],
+  },
+
+  'lambda-ast': {
+    id: 'lambda-ast',
+    title: 'Lambda Calculus AST',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>Representing Lambda Calculus in Haskell</h3>
+<p>The untyped lambda calculus has only three constructs, which we represent as a Haskell algebraic data type:</p>
+<pre><code>data Term = Var String        -- variable reference
+          | Lam String Term   -- lambda abstraction (\\x. body)
+          | App Term Term     -- function application (f arg)
+          deriving (Show, Eq)</code></pre>
+
+<h3>Examples</h3>
+<table>
+  <thead><tr><th>Lambda Expression</th><th>Haskell Term</th></tr></thead>
+  <tbody>
+    <tr><td><code>x</code></td><td><code>Var "x"</code></td></tr>
+    <tr><td><code>\\x. x</code> (identity)</td><td><code>Lam "x" (Var "x")</code></td></tr>
+    <tr><td><code>(\\x. x) y</code></td><td><code>App (Lam "x" (Var "x")) (Var "y")</code></td></tr>
+    <tr><td><code>\\f. \\x. f x</code></td><td><code>Lam "f" (Lam "x" (App (Var "f") (Var "x")))</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Free Variables</h3>
+<p>A variable is <strong>free</strong> if it is not bound by any enclosing lambda. For example, in <code>\\x. x y</code>, <code>x</code> is bound but <code>y</code> is free.</p>
+<pre><code>freeVars (Var x)      = [x]
+freeVars (Lam x body) = filter (/= x) (freeVars body)
+freeVars (App f a)    = nub (freeVars f ++ freeVars a)</code></pre>
+<p>Use <code>import Data.List (nub)</code> to remove duplicates.</p>
+
+<h3>Substitution</h3>
+<p>Substitution <code>[x := s]</code> replaces free occurrences of <code>x</code> with the term <code>s</code>:</p>
+<ul>
+  <li><code>Var y</code>: if <code>y == x</code>, return <code>s</code>; otherwise <code>Var y</code></li>
+  <li><code>App f a</code>: substitute in both sub-terms</li>
+  <li><code>Lam y body</code>: if <code>y == x</code>, the variable is <strong>shadowed</strong> &mdash; don't substitute inside. Otherwise, substitute in the body.</li>
+</ul>
+
+<h3>Values and Single-Step Reduction</h3>
+<p>In the lambda calculus, the only <strong>values</strong> (fully evaluated terms) are lambda abstractions. The single-step reduction function <code>step</code> performs one beta-reduction:</p>
+<ul>
+  <li><code>App (Lam x body) arg</code> &rarr; <code>substitute x arg body</code> (beta reduction)</li>
+  <li><code>App f arg</code> where <code>f</code> can step &rarr; <code>App f' arg</code> (reduce the function first)</li>
+  <li>Everything else &rarr; <code>Nothing</code> (already a value or stuck)</li>
+</ul>
+
+<h3>Your Task</h3>
+<p>Define the <code>Term</code> type and implement <code>freeVars</code>, <code>substitute</code>, <code>isValue</code>, and <code>step</code>.</p>
+`,
+    starterCode: `module LambdaAST where
+
+import Data.List (nub)
+
+-- The lambda calculus has exactly three constructs:
+data Term = Var String        -- variable
+          | Lam String Term   -- \\x. body
+          | App Term Term     -- f arg
+          deriving (Show, Eq)
+
+-- 1. freeVars: collect all free variables in a term
+--    Var x -> [x]
+--    Lam x body -> remove x from freeVars of body
+--    App f a -> nub of combined free vars
+freeVars :: Term -> [String]
+freeVars t = error "implement freeVars"
+
+-- 2. substitute: substitute [x := s] in a term
+--    Var y -> if x==y then s, else Var y
+--    App f a -> substitute in both
+--    Lam y body -> if x==y then leave alone (shadowed), else substitute in body
+substitute :: String -> Term -> Term -> Term
+substitute x s t = error "implement substitute"
+
+-- 3. isValue: only lambdas are values
+isValue :: Term -> Bool
+isValue t = error "implement isValue"
+
+-- 4. step: single-step beta reduction
+--    App (Lam x body) arg -> Just (substitute x arg body)
+--    App f arg | step f succeeds -> Just (App f' arg)
+--    otherwise -> Nothing
+step :: Term -> Maybe Term
+step t = error "implement step"
+`,
+    solutionCode: `module LambdaAST where
+
+import Data.List (nub)
+
+data Term = Var String
+          | Lam String Term
+          | App Term Term
+          deriving (Show, Eq)
+
+freeVars :: Term -> [String]
+freeVars (Var x)      = [x]
+freeVars (Lam x body) = filter (/= x) (freeVars body)
+freeVars (App f a)    = nub (freeVars f ++ freeVars a)
+
+substitute :: String -> Term -> Term -> Term
+substitute x s (Var y)
+  | x == y    = s
+  | otherwise = Var y
+substitute x s (App f a) = App (substitute x s f) (substitute x s a)
+substitute x s (Lam y body)
+  | x == y    = Lam y body
+  | otherwise = Lam y (substitute x s body)
+
+isValue :: Term -> Bool
+isValue (Lam _ _) = True
+isValue _         = False
+
+step :: Term -> Maybe Term
+step (App (Lam x body) arg) = Just (substitute x arg body)
+step (App f arg) = case step f of
+  Just f' -> Just (App f' arg)
+  Nothing -> Nothing
+step _ = Nothing
+`,
+    testCode: `runTestEq "freeVars (Var x) = [x]" ["x"] (freeVars (Var "x"))
+        , runTestEq "freeVars (Lam x (Var x)) = []" ([] :: [String]) (freeVars (Lam "x" (Var "x")))
+        , runTestEq "freeVars (Lam x (Var y)) = [y]" ["y"] (freeVars (Lam "x" (Var "y")))
+        , runTestEq "freeVars (App (Var f) (Var x)) = [f,x]" ["f","x"] (freeVars (App (Var "f") (Var "x")))
+        , runTestEq "substitute x->a in Var x = Var a" (Var "a") (substitute "x" (Var "a") (Var "x"))
+        , runTestEq "substitute x->a in Var y = Var y" (Var "y") (substitute "x" (Var "a") (Var "y"))
+        , runTestEq "substitute x->a in Lam x (Var x) = unchanged" (Lam "x" (Var "x")) (substitute "x" (Var "a") (Lam "x" (Var "x")))
+        , runTestEq "substitute x->a in App" (App (Var "a") (Var "a")) (substitute "x" (Var "a") (App (Var "x") (Var "x")))
+        , runTestEq "isValue (Lam x (Var x)) = True" True (isValue (Lam "x" (Var "x")))
+        , runTestEq "isValue (Var x) = False" False (isValue (Var "x"))
+        , runTestEq "step identity applied" (Just (Var "a")) (step (App (Lam "x" (Var "x")) (Var "a")))
+        , runTestEq "step reduces function first" (Just (App (Lam "x" (Var "x")) (Var "b"))) (step (App (App (Lam "y" (Lam "x" (Var "x"))) (Var "a")) (Var "b")))
+        , runTestEq "step on value = Nothing" Nothing (step (Lam "x" (Var "x")))`,
+    hints: [
+      'For <code>freeVars</code>: the key insight is that <code>Lam x body</code> <em>binds</em> <code>x</code>, so remove it from the free variables of <code>body</code>. Use <code>filter (/= x)</code> and <code>nub</code> for the <code>App</code> case.',
+      'For <code>substitute</code>: pattern match on all three constructors. The critical case is <code>Lam y body</code>: if <code>x == y</code>, the inner lambda shadows <code>x</code>, so return the term unchanged. This prevents substituting into a scope where <code>x</code> is rebound.',
+      'For <code>isValue</code>: pattern match &mdash; only <code>Lam _ _</code> returns <code>True</code>. Variables and applications are not values.',
+      'For <code>step</code>: the first pattern <code>App (Lam x body) arg</code> performs beta reduction via substitution. The second pattern tries to reduce the function position. Use <code>case step f of Just f\' -> ...; Nothing -> Nothing</code>.',
+    ],
+    concepts: ['lambda-calculus', 'abstract-syntax-tree', 'free-variables', 'substitution', 'beta-reduction', 'small-step-semantics'],
+    successPatterns: [
+      'data\\s+Term\\s*=\\s*Var\\s+String',
+      'freeVars.*Var.*=.*\\[',
+      'Lam\\s+y\\s*\\(substitute',
+      'step.*App.*Lam.*substitute',
+    ],
+    testNames: [
+      'freeVars of a variable',
+      'freeVars of bound variable is empty',
+      'freeVars of free variable under lambda',
+      'freeVars of application',
+      'substitute variable match',
+      'substitute variable no match',
+      'substitute shadowed by lambda',
+      'substitute in application',
+      'lambda is a value',
+      'variable is not a value',
+      'step beta-reduces identity application',
+      'step reduces function position first',
+      'step on value returns Nothing',
+    ],
+  },
+
+  'lambda-interpreter': {
+    id: 'lambda-interpreter',
+    title: 'Build a Lambda Calculus Interpreter',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>From Single Steps to Full Evaluation</h3>
+<p>In the previous exercise, you built <code>step</code> to perform a single beta reduction. Now you'll build a <strong>multi-step normalizer</strong> that repeatedly applies <code>step</code> until the term reaches a normal form (no more reductions possible) or runs out of fuel.</p>
+
+<h3>The Normalize Function</h3>
+<pre><code>normalize :: Int -> Term -> Term
+normalize 0 t = t                     -- out of fuel
+normalize fuel t = case step t of
+  Nothing -> t                        -- normal form reached
+  Just t' -> normalize (fuel - 1) t'  -- keep reducing</code></pre>
+<p>The <code>fuel</code> parameter prevents infinite loops &mdash; some lambda terms (like the Omega combinator) never reach a normal form.</p>
+
+<h3>Church Numerals as Terms</h3>
+<p>We can represent Church numerals as explicit <code>Term</code> values in our AST:</p>
+<table>
+  <thead><tr><th>Numeral</th><th>Lambda</th><th>Term</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td><code>\\f. \\x. x</code></td><td><code>Lam "f" (Lam "x" (Var "x"))</code></td></tr>
+    <tr><td>1</td><td><code>\\f. \\x. f x</code></td><td><code>Lam "f" (Lam "x" (App (Var "f") (Var "x")))</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Church Successor</h3>
+<p>The successor function wraps one more application of <code>f</code>:</p>
+<pre><code>succ = \\n. \\f. \\x. f (n f x)</code></pre>
+<p>So <code>succ zero</code> should normalize to a term equivalent to <code>churchOne</code>.</p>
+
+<h3>The Omega Combinator</h3>
+<p>The term <code>(\\x. x x)(\\x. x x)</code> reduces to itself &mdash; it loops forever. This is why <code>normalize</code> needs a fuel parameter:</p>
+<pre><code>omega = App (Lam "x" (App (Var "x") (Var "x")))
+            (Lam "x" (App (Var "x") (Var "x")))</code></pre>
+<p>With fuel 100, <code>normalize</code> will stop after 100 steps, returning whatever term it has at that point.</p>
+
+<h3>Your Task</h3>
+<p>Implement <code>normalize</code>, define the Church numeral terms (<code>churchZero</code>, <code>churchOne</code>, <code>churchSucc</code>), and define <code>omega</code>. The <code>Term</code>, <code>substitute</code>, and <code>step</code> functions from the previous exercise are provided as helpers.</p>
+`,
+    starterCode: `module LambdaInterpreter where
+
+import Data.List (nub)
+
+-- AST and helpers from the previous exercise (provided)
+data Term = Var String | Lam String Term | App Term Term deriving (Show, Eq)
+
+freeVars :: Term -> [String]
+freeVars (Var x)      = [x]
+freeVars (Lam x body) = filter (/= x) (freeVars body)
+freeVars (App f a)    = nub (freeVars f ++ freeVars a)
+
+substitute :: String -> Term -> Term -> Term
+substitute x s (Var y)
+  | x == y    = s
+  | otherwise = Var y
+substitute x s (App f a) = App (substitute x s f) (substitute x s a)
+substitute x s (Lam y body)
+  | x == y    = Lam y body
+  | otherwise = Lam y (substitute x s body)
+
+step :: Term -> Maybe Term
+step (App (Lam x body) arg) = Just (substitute x arg body)
+step (App f arg) = case step f of
+  Just f' -> Just (App f' arg)
+  Nothing -> Nothing
+step _ = Nothing
+
+-- 1. normalize: repeatedly apply step until stuck or out of fuel
+normalize :: Int -> Term -> Term
+normalize fuel t = error "implement normalize"
+
+-- 2. Church numerals as Term values
+-- zero = \\f. \\x. x
+churchZero :: Term
+churchZero = error "define Church zero"
+
+-- one = \\f. \\x. f x
+churchOne :: Term
+churchOne = error "define Church one"
+
+-- succ = \\n. \\f. \\x. f (n f x)
+churchSucc :: Term
+churchSucc = error "define Church successor"
+
+-- 3. Omega combinator: (\\x. x x)(\\x. x x) -- infinite loop!
+omega :: Term
+omega = error "define the Omega combinator"
+`,
+    solutionCode: `module LambdaInterpreter where
+
+import Data.List (nub)
+
+data Term = Var String | Lam String Term | App Term Term deriving (Show, Eq)
+
+freeVars :: Term -> [String]
+freeVars (Var x)      = [x]
+freeVars (Lam x body) = filter (/= x) (freeVars body)
+freeVars (App f a)    = nub (freeVars f ++ freeVars a)
+
+substitute :: String -> Term -> Term -> Term
+substitute x s (Var y)
+  | x == y    = s
+  | otherwise = Var y
+substitute x s (App f a) = App (substitute x s f) (substitute x s a)
+substitute x s (Lam y body)
+  | x == y    = Lam y body
+  | otherwise = Lam y (substitute x s body)
+
+step :: Term -> Maybe Term
+step (App (Lam x body) arg) = Just (substitute x arg body)
+step (App f arg) = case step f of
+  Just f' -> Just (App f' arg)
+  Nothing -> Nothing
+step _ = Nothing
+
+normalize :: Int -> Term -> Term
+normalize 0 t = t
+normalize fuel t = case step t of
+  Nothing -> t
+  Just t' -> normalize (fuel - 1) t'
+
+churchZero :: Term
+churchZero = Lam "f" (Lam "x" (Var "x"))
+
+churchOne :: Term
+churchOne = Lam "f" (Lam "x" (App (Var "f") (Var "x")))
+
+churchSucc :: Term
+churchSucc = Lam "n" (Lam "f" (Lam "x" (App (Var "f") (App (App (Var "n") (Var "f")) (Var "x")))))
+
+omega :: Term
+omega = App (Lam "x" (App (Var "x") (Var "x"))) (Lam "x" (App (Var "x") (Var "x")))
+`,
+    testCode: `runTestEq "normalize identity app" (Var "a") (normalize 100 (App (Lam "x" (Var "x")) (Var "a")))
+        , runTestEq "normalize already normal" (Var "z") (normalize 100 (Var "z"))
+        , runTestEq "normalize nested app" (Var "a") (normalize 100 (App (Lam "y" (Var "y")) (App (Lam "x" (Var "x")) (Var "a"))))
+        , runTestEq "churchZero structure" (Lam "f" (Lam "x" (Var "x"))) churchZero
+        , runTestEq "churchOne structure" (Lam "f" (Lam "x" (App (Var "f") (Var "x")))) churchOne
+        , runTest "succ zero normalizes to a lambda" (case normalize 100 (App churchSucc churchZero) of Lam _ _ -> True; _ -> False)
+        , runTestEq "omega is self-application pair" (App (Lam "x" (App (Var "x") (Var "x"))) (Lam "x" (App (Var "x") (Var "x")))) omega
+        , runTestEq "normalize 0 fuel stops immediately" (App (Lam "x" (Var "x")) (Var "a")) (normalize 0 (App (Lam "x" (Var "x")) (Var "a")))
+        , runTestEq "omega with fuel 50 does not crash" True (let t = normalize 50 omega in t == t)
+        , runTestEq "normalize double app" (Var "b") (normalize 100 (App (Lam "x" (Var "x")) (App (Lam "y" (Var "y")) (Var "b"))))`,
+    hints: [
+      'For <code>normalize</code>: the base case <code>normalize 0 t = t</code> stops when fuel runs out. Otherwise, try <code>step t</code>: if <code>Nothing</code>, the term is in normal form &mdash; return it. If <code>Just t\'</code>, recurse with <code>fuel - 1</code>.',
+      'For <code>churchZero</code>: it is <code>\\f. \\x. x</code>, which ignores <code>f</code> and returns <code>x</code>. In our AST: <code>Lam "f" (Lam "x" (Var "x"))</code>. For <code>churchOne</code>: <code>Lam "f" (Lam "x" (App (Var "f") (Var "x")))</code>.',
+      'For <code>churchSucc</code>: the successor <code>\\n. \\f. \\x. f (n f x)</code> takes a numeral <code>n</code> and wraps one more <code>f</code> around it. Translate directly: <code>Lam "n" (Lam "f" (Lam "x" (App (Var "f") (App (App (Var "n") (Var "f")) (Var "x")))))</code>.',
+      'For <code>omega</code>: <code>(\\x. x x)(\\x. x x)</code> = <code>App (Lam "x" (App (Var "x") (Var "x"))) (Lam "x" (App (Var "x") (Var "x")))</code>. This reduces to itself, so <code>normalize</code> with finite fuel will just stop without crashing.',
+    ],
+    concepts: ['lambda-calculus', 'normalization', 'church-numerals', 'omega-combinator', 'interpreter', 'small-step-semantics'],
+    successPatterns: [
+      'normalize\\s+0.*=',
+      'normalize.*case\\s+step',
+      'churchZero.*Lam.*Lam.*Var',
+      'omega.*App.*Lam.*App.*Var.*Var',
+    ],
+    testNames: [
+      'normalize identity application',
+      'normalize already-normal term',
+      'normalize nested application',
+      'churchZero structure correct',
+      'churchOne structure correct',
+      'succ zero normalizes to one',
+      'omega structure correct',
+      'normalize with 0 fuel stops immediately',
+      'omega with finite fuel does not crash',
+      'normalize double application',
     ],
   },
 };

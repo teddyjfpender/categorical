@@ -7,7 +7,7 @@
 
 export type ModuleStatus = 'available' | 'coming-soon';
 export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms'
-  | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto';
+  | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto' | 'lambda-calculus';
 
 export interface Track {
   slug: TrackSlug;
@@ -85,6 +85,12 @@ export const tracks: Track[] = [
     title: 'Verified Cryptographic Protocols',
     description: 'Polynomials, Lagrange interpolation, secret sharing, and zero-knowledge proofs',
     order: 8,
+  },
+  {
+    slug: 'lambda-calculus',
+    title: 'Lambda Calculus',
+    description: 'The theoretical foundations of functional programming: lambda expressions, Church encodings, reduction, types, and Curry-Howard',
+    order: 9,
   },
 ];
 
@@ -294,6 +300,54 @@ export const modules: CurriculumModule[] = [
       title: 'Cryptographic Protocols',
       path: '/verified-cryptographic-protocols/protocols',
       exerciseIds: ['polynomial-arithmetic', 'lagrange-interpolation', 'shamir-secret-sharing', 'schnorr-protocol'],
+    }],
+  },
+  {
+    slug: 'lambda-calculus',
+    title: 'Lambda Calculus I: Foundations',
+    description: 'Lambda expressions, beta reduction, combinators, higher-order functions, and currying.',
+    icon: '\u03BB',
+    order: 12,
+    track: 'lambda-calculus',
+    status: 'available',
+    prerequisites: ['reading-haskell'],
+    lessons: [{
+      slug: 'foundations',
+      title: 'Lambda Calculus Foundations',
+      path: '/lambda-calculus/foundations',
+      exerciseIds: ['lambda-identity', 'beta-reduction', 'lambda-combinators', 'higher-order-lambdas', 'currying-partial'],
+    }],
+  },
+  {
+    slug: 'lambda-calculus-ii',
+    title: 'Lambda Calculus II: Church Encodings',
+    description: 'Church booleans, numerals, pairs, reduction strategies, and fixed-point recursion.',
+    icon: '\u03BB',
+    order: 13,
+    track: 'lambda-calculus',
+    status: 'available',
+    prerequisites: ['lambda-calculus', 'type-systems'],
+    lessons: [{
+      slug: 'church-encodings',
+      title: 'Church Encodings and Reduction',
+      path: '/lambda-calculus-ii/church-encodings',
+      exerciseIds: ['church-booleans', 'church-numerals', 'church-pairs-maybe', 'reduction-strategies', 'fixpoint-recursion'],
+    }],
+  },
+  {
+    slug: 'lambda-calculus-iii',
+    title: 'Lambda Calculus III: Types & Interpreters',
+    description: 'Curry-Howard correspondence, CPS transforms, and building a lambda calculus interpreter.',
+    icon: '\u03BB',
+    order: 14,
+    track: 'lambda-calculus',
+    status: 'available',
+    prerequisites: ['lambda-calculus-ii', 'category-theory'],
+    lessons: [{
+      slug: 'types-and-interpreters',
+      title: 'Types, Curry-Howard, and Interpreters',
+      path: '/lambda-calculus-iii/types-and-interpreters',
+      exerciseIds: ['curry-howard', 'cps-transform', 'lambda-ast', 'lambda-interpreter'],
     }],
   },
 ];

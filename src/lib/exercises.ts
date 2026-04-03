@@ -1287,61 +1287,99 @@ maybeApply f _        (Just x) = f x
     difficulty: 'beginner',
     order: 4,
     description: `
-<p>Now that you can pattern match on existing types, let's <strong>define your own type</strong> using the <code>data</code> keyword.</p>
+<p>So far you've pattern matched on types that already exist (<code>Bool</code>, lists, <code>Maybe</code>). Now you'll <strong>create your own type</strong>.</p>
 
-<h3>Algebraic Data Types</h3>
-<p>An algebraic data type (ADT) has one or more <strong>constructors</strong>, each of which can hold data:</p>
+<h3>Step 1: Defining a Simple Type</h3>
+<p>The <code>data</code> keyword creates a new type. The simplest form lists possible values separated by <code>|</code> (read as "or"):</p>
 <pre><code>data Color = Red | Green | Blue</code></pre>
-<p>This defines a type <code>Color</code> with three possible values. You pattern match on them just like <code>Bool</code>:</p>
+<p>This says: "A <code>Color</code> is either <code>Red</code>, <code>Green</code>, or <code>Blue</code>." These are called <strong>constructors</strong> — they construct values of the type.</p>
+<p>You pattern match on your own type exactly like you did with <code>Bool</code>:</p>
 <pre><code>colorName :: Color -> String
 colorName Red   = "red"
 colorName Green = "green"
 colorName Blue  = "blue"</code></pre>
+<p>This is the same pattern as <code>boolToString</code> — one equation per constructor.</p>
 
-<h3>Constructors with Fields</h3>
-<p>Constructors can carry data — just list the types after the constructor name:</p>
-<pre><code>data Expr
-  = Lit Double          -- holds one Double
-  | Add Expr Expr       -- holds two sub-expressions</code></pre>
-<pre><code>eval :: Expr -> Double
-eval (Lit n)     = n
-eval (Add e1 e2) = eval e1 + eval e2</code></pre>
+<h3>Step 2: Constructors That Hold Data</h3>
+<p>Constructors can carry values! List the types after the constructor name:</p>
+<pre><code>data Temperature
+  = Celsius Double       -- holds one Double (the temperature)
+  | Fahrenheit Double    -- holds one Double</code></pre>
+<p>Now <code>Celsius 100.0</code> and <code>Fahrenheit 212.0</code> are both <code>Temperature</code> values. The key: when you pattern match, you can <strong>pull the data out</strong>:</p>
+<pre><code>toCelsius :: Temperature -> Double
+toCelsius (Celsius c)    = c                     -- already Celsius, just return c
+toCelsius (Fahrenheit f) = (f - 32) * 5 / 9     -- convert from Fahrenheit</code></pre>
+<p>Inside the pattern <code>(Celsius c)</code>, the variable <code>c</code> gets bound to the Double inside. This is the same destructuring you learned with <code>(x:xs)</code> and <code>(Just x)</code>.</p>
 
-<h3>Deriving</h3>
-<p><code>deriving (Show, Eq)</code> at the end of a data definition asks the compiler to automatically generate:</p>
+<h3>Step 3: Constructors with Multiple Fields</h3>
+<p>A constructor can hold more than one value — just list more types:</p>
+<pre><code>data Point = Point Double Double    -- holds an x and a y
+
+distanceFromOrigin :: Point -> Double
+distanceFromOrigin (Point x y) = sqrt (x*x + y*y)</code></pre>
+<p>The pattern <code>(Point x y)</code> binds <code>x</code> to the first Double and <code>y</code> to the second.</p>
+
+<h3>Step 4: deriving (Show, Eq)</h3>
+<p>Adding <code>deriving (Show, Eq)</code> at the end tells the compiler to automatically generate:</p>
 <ul>
-  <li><code>Show</code> — ability to print values (e.g., in the REPL)</li>
-  <li><code>Eq</code> — ability to compare values with <code>==</code></li>
+  <li><code>Show</code> — lets you print values: <code>show (Celsius 100) = "Celsius 100.0"</code></li>
+  <li><code>Eq</code> — lets you compare values: <code>Celsius 100 == Celsius 100</code> is <code>True</code></li>
 </ul>
 
+<h3>Putting It All Together</h3>
+<p>Here's the complete pattern for defining a type and writing a function on it:</p>
+<pre><code>-- 1. Define the type (what shapes can values have?)
+data Animal
+  = Dog String          -- holds the dog's name
+  | Cat String          -- holds the cat's name
+  | Fish                -- no extra data
+  deriving (Show, Eq)
+
+-- 2. Write a function by matching each constructor
+speak :: Animal -> String
+speak (Dog name) = name ++ " says Woof!"
+speak (Cat name) = name ++ " says Meow!"
+speak Fish       = "..."</code></pre>
+
 <h3>Your Task</h3>
-<p>Define a <code>Shape</code> type and an <code>area</code> function:</p>
+<p>Define a <code>Shape</code> type with three constructors, then write an <code>area</code> function. Here's what each constructor needs:</p>
 <table>
-  <thead><tr><th>Constructor</th><th>Fields</th><th>Area formula</th></tr></thead>
+  <thead><tr><th>Constructor</th><th>Data it holds</th><th>Area formula</th></tr></thead>
   <tbody>
-    <tr><td><code>Circle</code></td><td>radius (<code>Double</code>)</td><td><code>pi * r * r</code></td></tr>
-    <tr><td><code>Rectangle</code></td><td>width, height (<code>Double</code>, <code>Double</code>)</td><td><code>w * h</code></td></tr>
-    <tr><td><code>Triangle</code></td><td>base, height (<code>Double</code>, <code>Double</code>)</td><td><code>0.5 * b * h</code></td></tr>
+    <tr><td><code>Circle</code></td><td>one <code>Double</code> (the radius)</td><td><code>pi * r * r</code></td></tr>
+    <tr><td><code>Rectangle</code></td><td>two <code>Double</code>s (width and height)</td><td><code>w * h</code></td></tr>
+    <tr><td><code>Triangle</code></td><td>two <code>Double</code>s (base and height)</td><td><code>0.5 * b * h</code></td></tr>
   </tbody>
 </table>
+<p><code>pi</code> is built into Haskell — you can use it directly.</p>
 `,
     starterCode: `module Shapes where
 
--- EXERCISE: Define the Shape data type and an area function.
+-- EXERCISE: Two steps — define a type, then write a function on it.
 --
--- Uncomment the code below and replace the underscores.
+-- STEP 1: Define the Shape type.
+--         Uncomment the block below and replace each _ with Double.
+--
+--   Circle holds 1 Double (radius)        → Circle Double
+--   Rectangle holds 2 Doubles (w, h)      → Rectangle Double Double
+--   Triangle holds 2 Doubles (base, h)    → Triangle Double Double
 
--- 1. Define Shape with three constructors.
---    Each constructor holds the dimensions as Doubles.
---
 -- data Shape
 --   = Circle _
 --   | Rectangle _ _
 --   | Triangle _ _
 --   deriving (Show, Eq)
 
--- 2. Implement area by pattern matching on each constructor.
+-- STEP 2: Write the area function.
+--         Uncomment the block below and replace each _ with the formula.
 --
+--   The pattern on the left (e.g., Circle r) pulls out the data.
+--   The formula on the right computes the area.
+--
+--   Circle r      → pi * r * r        (pi is built in)
+--   Rectangle w h → w * h
+--   Triangle b h  → 0.5 * b * h
+
 -- area :: Shape -> Double
 -- area (Circle r)      = _
 -- area (Rectangle w h) = _
@@ -1366,10 +1404,10 @@ area (Triangle b h)  = 0.5 * b * h
         , runTestApprox "area (Circle 1)" pi (area (Circle 1)) 0.01
         , runTestEq "area (Rectangle 0 5)" (0.0 :: Double) (area (Rectangle 0 5))`,
     hints: [
-      'Start by uncommenting the <code>data Shape</code> block. Replace each underscore with <code>Double</code>.',
-      'Circle has one field (radius), so it\'s <code>Circle Double</code>. Rectangle and Triangle each have two fields: <code>Rectangle Double Double</code>.',
-      'For <code>area</code>, uncomment the function and replace underscores with the formula from the table. <code>pi</code> is built into Haskell.',
-      'The complete area: <code>area (Circle r) = pi * r * r</code>, <code>area (Rectangle w h) = w * h</code>, <code>area (Triangle b h) = 0.5 * b * h</code>.',
+      'Start with Step 1: remove the <code>--</code> from the <code>data Shape</code> block (4 lines). Then replace each <code>_</code> with <code>Double</code>. Circle needs one Double, Rectangle and Triangle need two each.',
+      'After uncommenting, your data type should look like: <code>data Shape = Circle Double | Rectangle Double Double | Triangle Double Double deriving (Show, Eq)</code>. Now move to Step 2.',
+      'For Step 2: uncomment the <code>area</code> function (4 lines). The patterns on the left already pull out the values (<code>r</code>, <code>w</code>, <code>h</code>, <code>b</code>). Replace each <code>_</code> on the right with the area formula using those variables.',
+      'The formulas: <code>area (Circle r) = pi * r * r</code>, <code>area (Rectangle w h) = w * h</code>, <code>area (Triangle b h) = 0.5 * b * h</code>.',
     ],
     concepts: ['algebraic-data-types', 'pattern-matching', 'constructors', 'deriving'],
     successPatterns: [

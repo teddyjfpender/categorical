@@ -551,6 +551,36 @@ answer8 = 14
 </ul>
 <p>The arrow inside parens doesn't count as a top-level arrow — it describes the <em>type</em> of the first argument.</p>
 
+<h3>The Two Arrows: <code>-></code> vs <code>=></code></h3>
+<p>Haskell has <strong>two</strong> different arrows in type signatures. Don't confuse them:</p>
+<table>
+  <thead><tr><th>Arrow</th><th>Name</th><th>Meaning</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><code>-></code></td><td>Function arrow</td><td>Separates arguments from return type</td><td><code>Int -> Bool</code></td></tr>
+    <tr><td><code>=></code></td><td>Constraint arrow</td><td>Separates a <em>requirement</em> from the actual type</td><td><code>Show a => a -> String</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Reading <code>=></code> (the Fat Arrow)</h3>
+<p>The <code>=></code> arrow means "given that" or "as long as." Everything <strong>before</strong> <code>=></code> is a <em>constraint</em> (a requirement). Everything <strong>after</strong> is the actual function type. For example:</p>
+<pre><code>show :: Show a => a -> String
+--      ^^^^^^^^    ^^^^^^^^^^^
+--      constraint  actual type
+--      "as long    "takes an a,
+--       as a has    returns a
+--       Show"       String"</code></pre>
+<p>Read this aloud: "show takes any type <code>a</code> <strong>as long as</strong> <code>a</code> has <code>Show</code>, and returns a <code>String</code>."</p>
+
+<p>The constraint doesn't add an argument — it's a <em>requirement</em> on the type variable. When reading the type, <strong>skip everything before <code>=></code></strong> to find the function's actual argument and return types:</p>
+<pre><code>show :: Show a => a -> String
+-- Skip "Show a =>" → actual type is "a -> String"
+-- So: 1 argument (a), returns String</code></pre>
+
+<p>More examples:</p>
+<pre><code>(+)  :: Num a  => a -> a -> a    -- "for any numeric type, takes two a's, returns an a"
+(==) :: Eq a   => a -> a -> Bool  -- "for any comparable type, takes two a's, returns Bool"
+sort :: Ord a  => [a] -> [a]      -- "for any orderable type, takes a list, returns a list"</code></pre>
+
 <h3>The Big Insight: Partial Application</h3>
 <p><code>-></code> is right-associative, so <code>add :: Int -> Int -> Int</code> really means:</p>
 <pre><code>add :: Int -> (Int -> Int)</code></pre>
@@ -576,7 +606,9 @@ answer2 = error "count the arrows"
 
 -- Given: show :: Show a => a -> String
 -- 3. What type does \`show True\` return?
---    Write your answer as a String.
+--    Remember: skip the constraint (Show a =>) and read the actual type.
+--    The actual type is: a -> String
+--    So show takes an \`a\` and returns a...?
 answer3 :: String
 answer3 = error "what type does show return?"
 
@@ -643,8 +675,8 @@ answer8 = "Bool"
         , runTestEq "filter takes 2 args" (2 :: Int) answer7
         , runTestEq "predicate returns Bool" "Bool" answer8`,
     hints: [
-      'Count only the <strong>top-level</strong> arrows. In <code>(a -> b) -> [a] -> [b]</code>, the arrow inside <code>(a -> b)</code> is nested, not top-level. There are 2 top-level arrows.',
-      'When a type has parentheses around an arrow like <code>(a -> b)</code>, that whole thing is a <strong>function</strong> type being passed as an argument.',
+      'Count only the <strong>top-level</strong> <code>-></code> arrows (not <code>=></code>). The <code>=></code> arrow is a constraint, not an argument separator. In <code>Show a => a -> String</code>, there is 1 top-level <code>-></code>, so 1 argument.',
+      'When you see <code>=></code>, skip everything before it. <code>show :: Show a => a -> String</code> — the actual type is <code>a -> String</code>. So <code>show</code> takes one argument and returns a <code>String</code>.',
       'Partial application: <code>add :: Int -> (Int -> Int)</code>. Applying one argument peels off one layer: <code>add 3 :: Int -> Int</code>.',
       'The predicate in <code>filter :: (a -> Bool) -> [a] -> [a]</code> has type <code>(a -> Bool)</code> — it returns <code>Bool</code>.',
     ],

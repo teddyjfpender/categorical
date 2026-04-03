@@ -6,7 +6,8 @@
  */
 
 export type ModuleStatus = 'available' | 'coming-soon';
-export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms';
+export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms'
+  | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto';
 
 export interface Track {
   slug: TrackSlug;
@@ -60,6 +61,30 @@ export const tracks: Track[] = [
     title: 'Algorithms',
     description: 'Functional algorithm patterns: recursion, higher-order design, laziness, and memoization',
     order: 4,
+  },
+  {
+    slug: 'applied-ct',
+    title: 'Applied Category Theory',
+    description: 'State, Reader, monad transformers, and free monads — practical patterns from category theory',
+    order: 5,
+  },
+  {
+    slug: 'languages',
+    title: 'Compiler & Language Theory',
+    description: 'Parser combinators, expression parsing, evaluation, and interpretation',
+    order: 6,
+  },
+  {
+    slug: 'linear-algebra',
+    title: 'Typed Linear Algebra',
+    description: 'Vectors, matrices, linear transformations, and Gaussian elimination',
+    order: 7,
+  },
+  {
+    slug: 'verified-crypto',
+    title: 'Verified Cryptographic Protocols',
+    description: 'Polynomials, Lagrange interpolation, secret sharing, and zero-knowledge proofs',
+    order: 8,
   },
 ];
 
@@ -186,6 +211,70 @@ export const modules: CurriculumModule[] = [
         'recursion-patterns', 'higher-order-algorithms', 'lazy-infinite-lists',
         'divide-and-conquer', 'lazy-memoization',
       ],
+    }],
+  },
+  {
+    slug: 'category-theory-ii',
+    title: 'Applied Category Theory',
+    description: 'State, Reader, monad transformers, and free monads — practical patterns from category theory.',
+    icon: '\u21D2',
+    order: 8,
+    track: 'applied-ct',
+    status: 'available',
+    prerequisites: ['applicative-monad'],
+    lessons: [{
+      slug: 'applied-ct',
+      title: 'Practical CT Patterns',
+      path: '/category-theory-ii/applied-ct',
+      exerciseIds: ['state-monad', 'reader-monad', 'monad-transformers', 'free-monads'],
+    }],
+  },
+  {
+    slug: 'languages',
+    title: 'Compiler & Language Theory',
+    description: 'Build a complete mini-language: parser combinators, expression parsing, evaluation, and interpretation.',
+    icon: '\u03B3',
+    order: 9,
+    track: 'languages',
+    status: 'available',
+    prerequisites: ['category-theory-ii', 'functional-algorithms'],
+    lessons: [{
+      slug: 'compilers',
+      title: 'Building a Mini-Language',
+      path: '/languages/compilers',
+      exerciseIds: ['parser-type', 'parser-combinators', 'expression-parser', 'ast-evaluator', 'interpreter'],
+    }],
+  },
+  {
+    slug: 'typed-linear-algebra',
+    title: 'Typed Linear Algebra',
+    description: 'Vectors, matrices, linear transformations, and Gaussian elimination — algebra meets geometry.',
+    icon: '\u27E8',
+    order: 10,
+    track: 'linear-algebra',
+    status: 'available',
+    prerequisites: ['type-systems', 'monoids-foldable', 'abstract-algebra'],
+    lessons: [{
+      slug: 'linear',
+      title: 'Vectors, Matrices, and Transforms',
+      path: '/typed-linear-algebra/linear',
+      exerciseIds: ['vector-operations', 'matrix-operations', 'linear-transformations', 'gaussian-elimination'],
+    }],
+  },
+  {
+    slug: 'verified-cryptographic-protocols',
+    title: 'Verified Cryptographic Protocols',
+    description: 'Polynomial arithmetic, Lagrange interpolation, Shamir secret sharing, and the Schnorr protocol.',
+    icon: '\uD83D\uDD12',
+    order: 11,
+    track: 'verified-crypto',
+    status: 'available',
+    prerequisites: ['algebraic-cryptography', 'typed-linear-algebra'],
+    lessons: [{
+      slug: 'protocols',
+      title: 'Cryptographic Protocols',
+      path: '/verified-cryptographic-protocols/protocols',
+      exerciseIds: ['polynomial-arithmetic', 'lagrange-interpolation', 'shamir-secret-sharing', 'schnorr-protocol'],
     }],
   },
 ];

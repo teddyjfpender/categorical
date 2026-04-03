@@ -20,6 +20,13 @@ import type { Exercise } from './types/exercise';
 //   2. functor-instance       — write a Functor instance for a custom type
 //   3. functor-laws           — verify the Functor laws
 //   4. natural-transformation — write natural transformations
+//
+// Compiler & Language Theory module (5 exercises):
+//   1. parser-type             — Parser newtype, Functor, charP, stringP
+//   2. parser-combinators      — Applicative, Monad, orElse, many, some, natP
+//   3. expression-parser       — Expr AST, operator precedence, chainl1
+//   4. ast-evaluator           — eval, evalWithVars with Maybe monad
+//   5. interpreter             — let bindings, variables, parse-then-eval pipeline
 // ────────────────────────────────────────────────────────────────────
 
 const exercises: Record<string, Exercise> = {
@@ -4100,6 +4107,2934 @@ isHomomorphic params v1 r1 v2 r2 =
       'homomorphic property holds (5,3)+(3,7)',
       'homomorphic property holds (10,4)+(7,2)',
       'homomorphic property holds (1,1)+(1,1)',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COMPILER & LANGUAGE THEORY MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'parser-type': {
+    id: 'parser-type',
+    title: 'Define a Parser Type',
+    difficulty: 'intermediate',
+    order: 1,
+    description: `
+<p>A <strong>parser</strong> is a function that consumes part of a string and returns a structured result along with the remaining unconsumed input. This is the foundational idea behind <em>parser combinators</em> — a powerful, composable approach to parsing that fits naturally into functional programming.</p>
+
+<h3>The Parser Type</h3>
+<p>We represent a parser as a newtype wrapping a function:</p>
+<pre><code>newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }</code></pre>
+<p>A <code>Parser a</code> takes a <code>String</code> input and returns:</p>
+<ul>
+  <li><code>Nothing</code> — the parse failed</li>
+  <li><code>Just (result, remaining)</code> — successfully parsed a value of type <code>a</code>, with <code>remaining</code> being the unconsumed input</li>
+</ul>
+
+<h3>Example: Parsing a Single Character</h3>
+<p>A parser that matches a character satisfying a predicate:</p>
+<pre><code>charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing</code></pre>
+<p>Usage:</p>
+<pre><code>runParser (charP (== 'h')) "hello"  -- Just ('h', "ello")
+runParser (charP (== 'h')) "world"  -- Nothing</code></pre>
+
+<h3>Functor Instance</h3>
+<p>To transform the result of a parser without changing what it consumes, we implement <code>Functor</code>:</p>
+<pre><code>instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')</code></pre>
+<p>This lets you write <code>fmap f letterP</code> to parse a letter and transform it.</p>
+
+<h3>Parsing Exact Strings</h3>
+<p>To parse an exact string like <code>"let"</code>, you consume characters one at a time, checking each matches. If any character fails, the whole parse fails:</p>
+<pre><code>stringP :: String -> Parser String
+stringP [] = Parser $ \\s -> Just ([], s)      -- empty string always succeeds
+stringP (c:cs) = ...  -- parse c, then recursively parse cs</code></pre>
+
+<h3>Data.Char Predicates</h3>
+<p>The <code>Data.Char</code> module provides useful predicates:</p>
+<ul>
+  <li><code>isDigit :: Char -> Bool</code> — matches '0'..'9'</li>
+  <li><code>isAlpha :: Char -> Bool</code> — matches letters</li>
+  <li><code>isSpace :: Char -> Bool</code> — matches whitespace</li>
+</ul>
+
+<h3>Your Task</h3>
+<p>Define the <code>Parser</code> newtype, implement <code>Functor</code> for it, then build the basic parsers: <code>charP</code>, <code>digitP</code>, <code>letterP</code>, and <code>stringP</code>.</p>
+`,
+    starterCode: `module ParserType where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+-- 1. Define the Parser newtype.
+--    A Parser a wraps a function: String -> Maybe (a, String)
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+-- 2. Implement Functor for Parser.
+--    fmap f p should run p and apply f to the result.
+instance Functor Parser where
+  fmap f (Parser p) = error "implement fmap for Parser"
+
+-- 3. charP: consume one character if it satisfies the predicate.
+--    If the input is empty or the predicate fails, return Nothing.
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = error "implement charP"
+
+-- 4. digitP: parse a single digit character.
+digitP :: Parser Char
+digitP = error "use charP with isDigit"
+
+-- 5. letterP: parse a single letter character.
+letterP :: Parser Char
+letterP = error "use charP with isAlpha"
+
+-- 6. stringP: parse an exact string.
+--    stringP "" always succeeds.
+--    stringP (c:cs) should parse c, then recursively parse cs.
+stringP :: String -> Parser String
+stringP str = error "implement stringP"
+`,
+    solutionCode: `module ParserType where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+letterP :: Parser Char
+letterP = charP isAlpha
+
+stringP :: String -> Parser String
+stringP []     = Parser $ \\s -> Just ([], s)
+stringP (c:cs) = Parser $ \\s -> case runParser (charP (== c)) s of
+  Nothing       -> Nothing
+  Just (_, s')  -> case runParser (stringP cs) s' of
+    Nothing        -> Nothing
+    Just (cs', s'') -> Just (c:cs', s'')
+`,
+    testCode: `runTestEq "charP (=='h') hello" (Just ('h', "ello")) (runParser (charP (== 'h')) "hello")
+        , runTestEq "charP (=='h') world" Nothing (runParser (charP (== 'h')) "world")
+        , runTestEq "charP (=='h') empty" Nothing (runParser (charP (== 'h')) "")
+        , runTestEq "digitP 9abc" (Just ('9', "abc")) (runParser digitP "9abc")
+        , runTestEq "digitP abc" Nothing (runParser digitP "abc")
+        , runTestEq "letterP abc" (Just ('a', "bc")) (runParser letterP "abc")
+        , runTestEq "letterP 123" Nothing (runParser letterP "123")
+        , runTestEq "stringP let" (Just ("let", " x")) (runParser (stringP "let") "let x")
+        , runTestEq "stringP let fails" Nothing (runParser (stringP "let") "lex x")
+        , runTestEq "stringP empty" (Just ("", "hello")) (runParser (stringP "") "hello")
+        , runTestEq "fmap on letterP" (Just ('b', "bc")) (runParser (fmap (const 'b') letterP) "abc")`,
+    hints: [
+      'For <code>fmap</code>: run the inner parser function <code>p s</code>, then pattern match. On <code>Just (a, s\')</code>, return <code>Just (f a, s\')</code>.',
+      'For <code>charP</code>: pattern match the input with <code>(c:cs)</code>, add a guard <code>| predicate c</code>, and return <code>Just (c, cs)</code>. All other cases return <code>Nothing</code>.',
+      'For <code>digitP</code> and <code>letterP</code>: simply apply <code>charP</code> to the appropriate <code>Data.Char</code> predicate.',
+      'For <code>stringP</code>: the base case <code>stringP []</code> succeeds with an empty list. The recursive case parses one character with <code>charP (== c)</code>, then calls <code>stringP cs</code> on the remaining input, combining the results.',
+    ],
+    concepts: ['parser-combinators', 'newtype', 'functor', 'pattern-matching', 'maybe'],
+    successPatterns: [
+      'newtype\\s+Parser',
+      'charP.*Parser\\s*\\$',
+      'charP\\s+isDigit',
+      'stringP.*charP',
+    ],
+    testNames: [
+      'charP matches first character',
+      'charP rejects non-matching character',
+      'charP fails on empty input',
+      'digitP parses a digit',
+      'digitP rejects letters',
+      'letterP parses a letter',
+      'letterP rejects digits',
+      'stringP parses exact string',
+      'stringP fails on mismatch',
+      'stringP empty always succeeds',
+      'fmap transforms parser result',
+    ],
+  },
+
+  'parser-combinators': {
+    id: 'parser-combinators',
+    title: 'Parser Combinators',
+    difficulty: 'intermediate',
+    order: 2,
+    description: `
+<p>Now that we have a <code>Parser</code> type and <code>Functor</code>, we need to <strong>combine</strong> parsers. This is where the real power emerges: small parsers snap together like LEGO bricks to build complex grammars.</p>
+
+<h3>Applicative Instance</h3>
+<p>The <code>Applicative</code> instance lets us sequence two parsers, combining their results:</p>
+<pre><code>pure a = Parser $ \\s -> Just (a, s)  -- succeed without consuming input
+
+Parser pf &lt;*&gt; Parser pa = Parser $ \\s ->
+  case pf s of
+    Nothing       -> Nothing
+    Just (f, s')  -> case pa s' of
+      Nothing        -> Nothing
+      Just (a, s'')  -> Just (f a, s'')</code></pre>
+<p><code>pure</code> injects a value into a parser that always succeeds. <code>&lt;*&gt;</code> runs the first parser to get a function, then the second parser to get an argument, and applies the function.</p>
+
+<h3>Monad Instance</h3>
+<p>The <code>Monad</code> instance lets subsequent parsers depend on earlier results:</p>
+<pre><code>Parser pa >>= f = Parser $ \\s ->
+  case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'</code></pre>
+<p>This runs parser <code>pa</code>, feeds the result into <code>f</code> to get a new parser, then runs that parser on the remaining input.</p>
+
+<h3>Choice: orElse</h3>
+<p>Try the first parser; if it fails, try the second on the <em>original</em> input:</p>
+<pre><code>orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s ->
+  case p1 s of
+    Nothing -> p2 s
+    result  -> result</code></pre>
+
+<h3>Repetition: many and some</h3>
+<p><code>many p</code> applies <code>p</code> zero or more times, collecting results into a list. <code>some p</code> requires at least one match:</p>
+<pre><code>many p = (do x &lt;- p; xs &lt;- many p; return (x:xs)) \`orElse\` pure []
+some p = do x &lt;- p; xs &lt;- many p; return (x:xs)</code></pre>
+
+<h3>Parsing Numbers</h3>
+<p>With <code>some</code> and <code>digitP</code>, we can parse natural numbers:</p>
+<pre><code>natP :: Parser Int
+natP = do digits &lt;- some digitP; return (read digits)</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>Applicative</code> and <code>Monad</code> instances for <code>Parser</code>, then build the combinators <code>orElse</code>, <code>many</code>, <code>some</code>, and <code>natP</code>.</p>
+`,
+    starterCode: `module ParserCombinators where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+-- PROVIDED: Parser type and Functor (from exercise 1)
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+letterP :: Parser Char
+letterP = charP isAlpha
+
+-- EXERCISE: Implement the following
+
+-- 1. Applicative instance for Parser
+instance Applicative Parser where
+  pure a = error "implement pure"
+  Parser pf <*> Parser pa = error "implement <*>"
+
+-- 2. Monad instance for Parser
+instance Monad Parser where
+  Parser pa >>= f = error "implement >>="
+
+-- 3. orElse: try the first parser, if it fails try the second
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = error "implement orElse"
+
+-- 4. many: zero or more
+many :: Parser a -> Parser [a]
+many p = error "implement many"
+
+-- 5. some: one or more (must succeed at least once)
+some :: Parser a -> Parser [a]
+some p = error "implement some"
+
+-- 6. natP: parse a natural number (one or more digits, then read)
+natP :: Parser Int
+natP = error "implement natP"
+`,
+    solutionCode: `module ParserCombinators where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+letterP :: Parser Char
+letterP = charP isAlpha
+
+instance Applicative Parser where
+  pure a = Parser $ \\s -> Just (a, s)
+  Parser pf <*> Parser pa = Parser $ \\s -> case pf s of
+    Nothing      -> Nothing
+    Just (f, s') -> case pa s' of
+      Nothing       -> Nothing
+      Just (a, s'') -> Just (f a, s'')
+
+instance Monad Parser where
+  Parser pa >>= f = Parser $ \\s -> case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'
+
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s -> case p1 s of
+  Nothing -> p2 s
+  result  -> result
+
+many :: Parser a -> Parser [a]
+many p = (do x <- p; xs <- many p; return (x:xs)) \`orElse\` pure []
+
+some :: Parser a -> Parser [a]
+some p = do x <- p; xs <- many p; return (x:xs)
+
+natP :: Parser Int
+natP = do digits <- some digitP; return (read digits)
+`,
+    testCode: `runTestEq "orElse digitP letterP on abc" (Just ('a', "bc")) (runParser (orElse digitP letterP) "abc")
+        , runTestEq "orElse digitP letterP on 9bc" (Just ('9', "bc")) (runParser (orElse digitP letterP) "9bc")
+        , runTestEq "orElse digitP letterP on !bc" Nothing (runParser (orElse digitP letterP) "!bc")
+        , runTestEq "many digitP on 123abc" (Just ("123", "abc")) (runParser (many digitP) "123abc")
+        , runTestEq "many digitP on abc" (Just ("", "abc")) (runParser (many digitP) "abc")
+        , runTestEq "some digitP on 123abc" (Just ("123", "abc")) (runParser (some digitP) "123abc")
+        , runTestEq "some digitP on abc" Nothing (runParser (some digitP) "abc")
+        , runTestEq "natP on 42+3" (Just (42 :: Int, "+3")) (runParser natP "42+3")
+        , runTestEq "natP on 0" (Just (0 :: Int, "")) (runParser natP "0")
+        , runTestEq "natP on abc" Nothing (runParser natP "abc")
+        , runTestEq "pure 42" (Just (42 :: Int, "hello")) (runParser (pure 42) "hello")`,
+    hints: [
+      'For <code>pure</code>: return the value without consuming any input: <code>Parser $ \\s -> Just (a, s)</code>.',
+      'For <code>&lt;*&gt;</code>: run <code>pf</code> first to get a function <code>f</code> and remaining <code>s\'</code>, then run <code>pa</code> on <code>s\'</code> to get <code>a</code> and <code>s\'\'</code>, then return <code>Just (f a, s\'\')</code>.',
+      'For <code>many</code>: try to parse one item with <code>p</code>, then recursively parse <code>many p</code>. If any step fails, <code>orElse</code> returns <code>pure []</code> (empty list, no input consumed).',
+      'For <code>natP</code>: use <code>some digitP</code> to get a <code>String</code> of digit characters, then <code>read</code> to convert it to an <code>Int</code>.',
+    ],
+    concepts: ['applicative', 'monad', 'parser-combinators', 'choice', 'repetition'],
+    successPatterns: [
+      'pure\\s+a\\s*=\\s*Parser',
+      'Parser\\s+pf\\s*<\\*>\\s*Parser\\s+pa',
+      'Nothing\\s*->\\s*p2\\s+s',
+      'many.*orElse.*pure\\s*\\[',
+    ],
+    testNames: [
+      'orElse picks first success (letter)',
+      'orElse picks first success (digit)',
+      'orElse fails if both fail',
+      'many collects zero or more digits',
+      'many succeeds with zero matches',
+      'some collects one or more digits',
+      'some fails on zero matches',
+      'natP parses multi-digit number',
+      'natP parses zero',
+      'natP fails on non-digits',
+      'pure injects value without consuming',
+    ],
+  },
+
+  'expression-parser': {
+    id: 'expression-parser',
+    title: 'Expression Parser with Precedence',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<p>Now we put our parser combinators to work on a real problem: parsing <strong>arithmetic expressions</strong> with correct operator precedence. This is a core problem in compiler design.</p>
+
+<h3>The Expression AST</h3>
+<p>We represent parsed expressions as an <strong>Abstract Syntax Tree</strong> (AST):</p>
+<pre><code>data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+  deriving (Show, Eq)</code></pre>
+<p>For example, <code>3 + 4 * 2</code> is represented as:</p>
+<pre><code>Add (Lit 3) (Mul (Lit 4) (Lit 2))</code></pre>
+<p>Note that <code>*</code> binds tighter than <code>+</code> — this is <strong>operator precedence</strong>.</p>
+
+<h3>Precedence via Grammar Layers</h3>
+<p>The standard technique is to define one parser per precedence level:</p>
+<ol>
+  <li><strong>parseFactor</strong> — highest precedence: numbers and parenthesized expressions</li>
+  <li><strong>parseTerm</strong> — multiplication chains: <code>factor (* factor)*</code></li>
+  <li><strong>parseExpr</strong> — addition chains: <code>term (+ term)*</code></li>
+</ol>
+<p>Each level calls the one above it for its operands, naturally encoding precedence.</p>
+
+<h3>Left-Associative Chaining: chainl1</h3>
+<p>The key combinator is <code>chainl1</code>, which parses <code>p (op p)*</code> and folds left:</p>
+<pre><code>chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = p >>= rest
+  where rest a = (do f &lt;- op; b &lt;- p; rest (f a b)) \`orElse\` pure a</code></pre>
+<p>This parses one <code>p</code>, then repeatedly parses <code>op</code> followed by <code>p</code>, applying the operator left-to-right. So <code>1+2+3</code> becomes <code>Add (Add (Lit 1) (Lit 2)) (Lit 3)</code>.</p>
+
+<h3>Handling Whitespace</h3>
+<p>We skip optional spaces around operators using:</p>
+<pre><code>skipSpaces :: Parser String
+skipSpaces = many (charP isSpace)</code></pre>
+
+<h3>Example Parse</h3>
+<pre><code>"3+4*2" -> parseExpr
+  -> parseTerm: parseFactor -> Lit 3, no more *
+  -> sees +, so Add (Lit 3) ...
+  -> parseTerm: parseFactor -> Lit 4, sees *
+     -> Mul (Lit 4) (parseFactor -> Lit 2)
+  -> Add (Lit 3) (Mul (Lit 4) (Lit 2))</code></pre>
+
+<h3>Your Task</h3>
+<p>Build a complete expression parser with correct precedence for <code>+</code> and <code>*</code>, supporting parentheses.</p>
+`,
+    starterCode: `module ExpressionParser where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+-- PROVIDED: Full parser infrastructure
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+instance Applicative Parser where
+  pure a = Parser $ \\s -> Just (a, s)
+  Parser pf <*> Parser pa = Parser $ \\s -> case pf s of
+    Nothing      -> Nothing
+    Just (f, s') -> case pa s' of
+      Nothing       -> Nothing
+      Just (a, s'') -> Just (f a, s'')
+
+instance Monad Parser where
+  Parser pa >>= f = Parser $ \\s -> case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s -> case p1 s of
+  Nothing -> p2 s
+  result  -> result
+
+many :: Parser a -> Parser [a]
+many p = (do x <- p; xs <- many p; return (x:xs)) \`orElse\` pure []
+
+some :: Parser a -> Parser [a]
+some p = do x <- p; xs <- many p; return (x:xs)
+
+natP :: Parser Int
+natP = do digits <- some digitP; return (read digits)
+
+skipSpaces :: Parser String
+skipSpaces = many (charP isSpace)
+
+-- EXERCISE: Implement the expression parser
+
+-- The AST
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr deriving (Show, Eq)
+
+-- 1. chainl1: parse p, then repeatedly parse (op, p) folding left.
+--    chainl1 p op = p >>= rest
+--      where rest a = (do f <- op; b <- p; rest (f a b)) \`orElse\` pure a
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = error "implement chainl1"
+
+-- 2. parseFactor: a number literal, or a parenthesized expression.
+--    Number: parse natP, wrap in Lit
+--    Parens: parse '(', skipSpaces, parseExpr, skipSpaces, ')', return the expr
+parseFactor :: Parser Expr
+parseFactor = error "implement parseFactor"
+
+-- 3. parseTerm: chain factors with * (higher precedence)
+--    Use chainl1 with parseFactor and a parser that matches '*' and returns Mul
+parseTerm :: Parser Expr
+parseTerm = error "implement parseTerm"
+
+-- 4. parseExpr: chain terms with + (lower precedence)
+--    Use chainl1 with parseTerm and a parser that matches '+' and returns Add
+parseExpr :: Parser Expr
+parseExpr = error "implement parseExpr"
+
+-- 5. parseString: run parseExpr and extract just the result
+parseString :: String -> Maybe Expr
+parseString input = error "run parseExpr on input, return just the Expr"
+`,
+    solutionCode: `module ExpressionParser where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+instance Applicative Parser where
+  pure a = Parser $ \\s -> Just (a, s)
+  Parser pf <*> Parser pa = Parser $ \\s -> case pf s of
+    Nothing      -> Nothing
+    Just (f, s') -> case pa s' of
+      Nothing       -> Nothing
+      Just (a, s'') -> Just (f a, s'')
+
+instance Monad Parser where
+  Parser pa >>= f = Parser $ \\s -> case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s -> case p1 s of
+  Nothing -> p2 s
+  result  -> result
+
+many :: Parser a -> Parser [a]
+many p = (do x <- p; xs <- many p; return (x:xs)) \`orElse\` pure []
+
+some :: Parser a -> Parser [a]
+some p = do x <- p; xs <- many p; return (x:xs)
+
+natP :: Parser Int
+natP = do digits <- some digitP; return (read digits)
+
+skipSpaces :: Parser String
+skipSpaces = many (charP isSpace)
+
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr deriving (Show, Eq)
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = p >>= rest
+  where rest a = (do f <- op; b <- p; rest (f a b)) \`orElse\` pure a
+
+parseFactor :: Parser Expr
+parseFactor = litP \`orElse\` parenP
+  where
+    litP = do
+      _ <- skipSpaces
+      n <- natP
+      _ <- skipSpaces
+      return (Lit n)
+    parenP = do
+      _ <- skipSpaces
+      _ <- charP (== '(')
+      _ <- skipSpaces
+      e <- parseExpr
+      _ <- skipSpaces
+      _ <- charP (== ')')
+      _ <- skipSpaces
+      return e
+
+parseTerm :: Parser Expr
+parseTerm = chainl1 parseFactor mulOp
+  where mulOp = do _ <- skipSpaces; _ <- charP (== '*'); _ <- skipSpaces; return Mul
+
+parseExpr :: Parser Expr
+parseExpr = chainl1 parseTerm addOp
+  where addOp = do _ <- skipSpaces; _ <- charP (== '+'); _ <- skipSpaces; return Add
+
+parseString :: String -> Maybe Expr
+parseString input = case runParser parseExpr input of
+  Just (expr, _) -> Just expr
+  Nothing        -> Nothing
+`,
+    testCode: `runTestEq "parse 42" (Just (Lit 42)) (parseString "42")
+        , runTestEq "parse 3+4" (Just (Add (Lit 3) (Lit 4))) (parseString "3+4")
+        , runTestEq "parse 3+4*2 precedence" (Just (Add (Lit 3) (Mul (Lit 4) (Lit 2)))) (parseString "3+4*2")
+        , runTestEq "parse (3+4)*2 parens" (Just (Mul (Add (Lit 3) (Lit 4)) (Lit 2))) (parseString "(3+4)*2")
+        , runTestEq "parse 1+2+3 left-assoc" (Just (Add (Add (Lit 1) (Lit 2)) (Lit 3))) (parseString "1+2+3")
+        , runTestEq "parse 2*3*4 left-assoc" (Just (Mul (Mul (Lit 2) (Lit 3)) (Lit 4))) (parseString "2*3*4")
+        , runTestEq "parse with spaces" (Just (Add (Lit 3) (Lit 4))) (parseString " 3 + 4 ")
+        , runTestEq "parse nested parens" (Just (Mul (Lit 2) (Add (Lit 3) (Lit 4)))) (parseString "2*(3+4)")
+        , runTestEq "parse single paren" (Just (Lit 5)) (parseString "(5)")
+        , runTestEq "parse empty fails" Nothing (parseString "")`,
+    hints: [
+      'For <code>chainl1</code>: parse one <code>p</code>, then in <code>rest</code>, try to parse <code>op</code> then <code>p</code>, apply the operator, and recurse. If the <code>op</code> parse fails, <code>orElse</code> returns <code>pure a</code> (stop chaining).',
+      'For <code>parseFactor</code>: try a number literal first (parse <code>natP</code>, wrap in <code>Lit</code>). If that fails (<code>orElse</code>), try parsing <code>(</code>, then <code>parseExpr</code>, then <code>)</code>.',
+      'For <code>parseTerm</code>: use <code>chainl1 parseFactor mulOp</code> where <code>mulOp</code> parses <code>*</code> and returns the <code>Mul</code> constructor.',
+      'For <code>parseString</code>: run <code>runParser parseExpr input</code> and extract just the first element of the tuple with pattern matching on <code>Just (expr, _)</code>.',
+    ],
+    concepts: ['expression-parsing', 'operator-precedence', 'left-recursion', 'chainl1', 'AST'],
+    successPatterns: [
+      'chainl1\\s+p\\s+op\\s*=\\s*p\\s*>>=',
+      'parseFactor.*orElse',
+      'chainl1\\s+parseFactor',
+      'chainl1\\s+parseTerm',
+    ],
+    testNames: [
+      'parse single number',
+      'parse addition',
+      'parse precedence: + vs *',
+      'parse parentheses override precedence',
+      'parse left-associative addition',
+      'parse left-associative multiplication',
+      'parse with whitespace',
+      'parse nested parenthesized expression',
+      'parse single parenthesized number',
+      'parse empty string fails',
+    ],
+  },
+
+  'ast-evaluator': {
+    id: 'ast-evaluator',
+    title: 'AST Evaluator',
+    difficulty: 'intermediate',
+    order: 4,
+    description: `
+<p>We have a parser that turns strings into ASTs. Now we need an <strong>evaluator</strong> that turns ASTs into results. This is the second half of an interpreter pipeline: <code>String -> AST -> Value</code>.</p>
+
+<h3>Evaluating a Simple AST</h3>
+<p>Given our expression type:</p>
+<pre><code>data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+  deriving (Show, Eq)</code></pre>
+<p>Evaluation is straightforward pattern matching:</p>
+<pre><code>eval :: Expr -> Int
+eval (Lit n)   = n
+eval (Add a b) = eval a + eval b
+eval (Mul a b) = eval a * eval b</code></pre>
+<p>Each constructor maps to a simple operation. The recursion follows the tree structure — this is called a <strong>tree-walking evaluator</strong>.</p>
+
+<h3>Adding Variables</h3>
+<p>Real languages have variables. We extend the AST:</p>
+<pre><code>data Expr2 = Lit2 Int | Add2 Expr2 Expr2 | Mul2 Expr2 Expr2 | Var String
+  deriving (Show, Eq)</code></pre>
+<p>Now evaluation can <strong>fail</strong> — a variable might not be defined. We use <code>Maybe</code> to handle this:</p>
+<pre><code>evalWithVars :: [(String, Int)] -> Expr2 -> Maybe Int</code></pre>
+<p>The first argument is an <strong>environment</strong> — a list of variable bindings like <code>[("x", 5), ("y", 10)]</code>.</p>
+
+<h3>Using the Maybe Monad</h3>
+<p>The <code>Maybe</code> monad propagates failure automatically:</p>
+<pre><code>evalWithVars env (Add2 a b) = do
+  va &lt;- evalWithVars env a   -- if this returns Nothing, the whole thing is Nothing
+  vb &lt;- evalWithVars env b   -- same here
+  return (va + vb)            -- only reached if both succeed</code></pre>
+<p>For variables, use <code>lookup</code> from the Prelude:</p>
+<pre><code>lookup :: Eq a => a -> [(a, b)] -> Maybe b
+lookup "x" [("x", 5), ("y", 10)]  -- Just 5
+lookup "z" [("x", 5), ("y", 10)]  -- Nothing</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>eval</code> for the simple AST, then implement <code>evalWithVars</code> for the extended AST with variables, using the <code>Maybe</code> monad for error handling.</p>
+`,
+    starterCode: `module AstEvaluator where
+
+-- PROVIDED: Expression types
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr deriving (Show, Eq)
+
+data Expr2 = Lit2 Int | Add2 Expr2 Expr2 | Mul2 Expr2 Expr2 | Var String
+  deriving (Show, Eq)
+
+-- 1. eval: evaluate a simple expression AST.
+--    Pattern match on each constructor:
+--      Lit n   -> n
+--      Add a b -> evaluate both sides and add
+--      Mul a b -> evaluate both sides and multiply
+eval :: Expr -> Int
+eval expr = error "implement eval"
+
+-- 2. evalWithVars: evaluate an expression with variables.
+--    Takes an environment [(String, Int)] mapping variable names to values.
+--    Returns Maybe Int because variable lookup can fail.
+--    Use the Maybe monad (do-notation) to propagate failures.
+--    For Var: use  lookup name env  which returns Maybe Int.
+evalWithVars :: [(String, Int)] -> Expr2 -> Maybe Int
+evalWithVars env expr = error "implement evalWithVars"
+`,
+    solutionCode: `module AstEvaluator where
+
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr deriving (Show, Eq)
+
+data Expr2 = Lit2 Int | Add2 Expr2 Expr2 | Mul2 Expr2 Expr2 | Var String
+  deriving (Show, Eq)
+
+eval :: Expr -> Int
+eval (Lit n)   = n
+eval (Add a b) = eval a + eval b
+eval (Mul a b) = eval a * eval b
+
+evalWithVars :: [(String, Int)] -> Expr2 -> Maybe Int
+evalWithVars env (Lit2 n)    = Just n
+evalWithVars env (Add2 a b)  = do
+  va <- evalWithVars env a
+  vb <- evalWithVars env b
+  return (va + vb)
+evalWithVars env (Mul2 a b)  = do
+  va <- evalWithVars env a
+  vb <- evalWithVars env b
+  return (va * vb)
+evalWithVars env (Var name)  = lookup name env
+`,
+    testCode: `runTestEq "eval Lit 42" (42 :: Int) (eval (Lit 42))
+        , runTestEq "eval Add 3 4" (7 :: Int) (eval (Add (Lit 3) (Lit 4)))
+        , runTestEq "eval Mul 3 4" (12 :: Int) (eval (Mul (Lit 3) (Lit 4)))
+        , runTestEq "eval Add 3 (Mul 4 2)" (11 :: Int) (eval (Add (Lit 3) (Mul (Lit 4) (Lit 2))))
+        , runTestEq "eval nested" (14 :: Int) (eval (Mul (Add (Lit 3) (Lit 4)) (Lit 2)))
+        , runTestEq "evalWithVars Lit2" (Just 42) (evalWithVars [] (Lit2 42))
+        , runTestEq "evalWithVars Var found" (Just 5) (evalWithVars [("x", 5)] (Var "x"))
+        , runTestEq "evalWithVars Var missing" Nothing (evalWithVars [("x", 5)] (Var "y"))
+        , runTestEq "evalWithVars Add2 with vars" (Just 8) (evalWithVars [("x", 5), ("y", 3)] (Add2 (Var "x") (Var "y")))
+        , runTestEq "evalWithVars Mul2 with var" (Just 15) (evalWithVars [("x", 5)] (Mul2 (Var "x") (Lit2 3)))
+        , runTestEq "evalWithVars missing propagates" Nothing (evalWithVars [("x", 5)] (Add2 (Var "x") (Var "z")))`,
+    hints: [
+      'For <code>eval</code>: pattern match each constructor. <code>Lit n</code> returns <code>n</code>, <code>Add a b</code> returns <code>eval a + eval b</code>, <code>Mul a b</code> returns <code>eval a * eval b</code>.',
+      'For <code>evalWithVars (Lit2 n)</code>: wrap in <code>Just</code> since a literal always succeeds.',
+      'For <code>evalWithVars (Add2 a b)</code>: use <code>do</code>-notation — bind <code>evalWithVars env a</code> and <code>evalWithVars env b</code>, then <code>return</code> their sum. If either is <code>Nothing</code>, the whole thing becomes <code>Nothing</code>.',
+      'For <code>evalWithVars (Var name)</code>: use <code>lookup name env</code> which already returns <code>Maybe Int</code>.',
+    ],
+    concepts: ['tree-walking-evaluator', 'pattern-matching', 'maybe-monad', 'environment', 'variable-lookup'],
+    successPatterns: [
+      'eval\\s*\\(Lit\\s+n\\)\\s*=\\s*n',
+      'eval\\s*\\(Add',
+      'evalWithVars.*Var.*lookup',
+      'evalWithVars.*do',
+    ],
+    testNames: [
+      'eval literal',
+      'eval addition',
+      'eval multiplication',
+      'eval precedence (add then mul)',
+      'eval nested expression',
+      'evalWithVars literal',
+      'evalWithVars variable found',
+      'evalWithVars variable missing',
+      'evalWithVars add two variables',
+      'evalWithVars mul variable and literal',
+      'evalWithVars missing variable propagates Nothing',
+    ],
+  },
+
+  'interpreter': {
+    id: 'interpreter',
+    title: 'Build a Mini Interpreter',
+    difficulty: 'advanced',
+    order: 5,
+    description: `
+<p>We now have all the pieces: a parser that turns strings into ASTs, and an evaluator that computes results. In this final exercise, we combine them into a complete <strong>interpreter</strong> and extend the language with <code>let</code> expressions and variables.</p>
+
+<h3>Extending the Language</h3>
+<p>We extend our expression type with <code>Let</code> bindings and <code>Var</code> references:</p>
+<pre><code>data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+          | Var String | Let String Expr Expr
+  deriving (Show, Eq)</code></pre>
+<p><code>Let "x" valueExpr bodyExpr</code> means "bind the name <code>x</code> to the result of <code>valueExpr</code>, then evaluate <code>bodyExpr</code> with that binding."</p>
+<p>For example, <code>let x = 5 in x + 3</code> becomes <code>Let "x" (Lit 5) (Add (Var "x") (Lit 3))</code> and evaluates to <code>8</code>.</p>
+
+<h3>Parsing let Expressions</h3>
+<p>The syntax is: <code>let &lt;name&gt; = &lt;expr&gt; in &lt;expr&gt;</code></p>
+<pre><code>parseLet :: Parser Expr
+parseLet = do
+  _ &lt;- stringP "let"
+  _ &lt;- skipSpaces
+  name &lt;- some letterP    -- variable name (one or more letters)
+  _ &lt;- skipSpaces
+  _ &lt;- charP (== '=')
+  _ &lt;- skipSpaces
+  val &lt;- parseExpr         -- the value expression
+  _ &lt;- skipSpaces
+  _ &lt;- stringP "in"
+  _ &lt;- skipSpaces
+  body &lt;- parseExpr        -- the body expression
+  return (Let name val body)</code></pre>
+<p>And <code>parseFactor</code> must try <code>parseLet</code> and <code>parseVar</code> as alternatives.</p>
+
+<h3>Evaluating with an Environment</h3>
+<p>The evaluator carries a list of variable bindings:</p>
+<pre><code>evalLet :: [(String, Int)] -> Expr -> Maybe Int
+evalLet env (Lit n)        = Just n
+evalLet env (Var name)     = lookup name env
+evalLet env (Let x val body) = do
+  v &lt;- evalLet env val
+  evalLet ((x, v) : env) body   -- extend the environment</code></pre>
+<p>The key insight: <code>Let</code> evaluates the value, then adds the binding <code>(x, v)</code> to the front of the environment before evaluating the body.</p>
+
+<h3>The Interpreter Pipeline</h3>
+<pre><code>interpret :: String -> Maybe Int
+interpret input = do
+  (expr, _) &lt;- runParser parseExpr input
+  evalLet [] expr</code></pre>
+<p>Parse the string into an AST, then evaluate it with an empty initial environment.</p>
+
+<h3>Your Task</h3>
+<p>Extend the parser and evaluator with <code>let</code> expressions and variables, then wire them together into <code>interpret</code>.</p>
+`,
+    starterCode: `module Interpreter where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+-- PROVIDED: Full parser infrastructure
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+instance Applicative Parser where
+  pure a = Parser $ \\s -> Just (a, s)
+  Parser pf <*> Parser pa = Parser $ \\s -> case pf s of
+    Nothing      -> Nothing
+    Just (f, s') -> case pa s' of
+      Nothing       -> Nothing
+      Just (a, s'') -> Just (f a, s'')
+
+instance Monad Parser where
+  Parser pa >>= f = Parser $ \\s -> case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+letterP :: Parser Char
+letterP = charP isAlpha
+
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s -> case p1 s of
+  Nothing -> p2 s
+  result  -> result
+
+many :: Parser a -> Parser [a]
+many p = (do x <- p; xs <- many p; return (x:xs)) \`orElse\` pure []
+
+some :: Parser a -> Parser [a]
+some p = do x <- p; xs <- many p; return (x:xs)
+
+natP :: Parser Int
+natP = do digits <- some digitP; return (read digits)
+
+skipSpaces :: Parser String
+skipSpaces = many (charP isSpace)
+
+stringP :: String -> Parser String
+stringP []     = Parser $ \\s -> Just ([], s)
+stringP (c:cs) = Parser $ \\s -> case runParser (charP (== c)) s of
+  Nothing       -> Nothing
+  Just (_, s')  -> case runParser (stringP cs) s' of
+    Nothing        -> Nothing
+    Just (cs', s'') -> Just (c:cs', s'')
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = p >>= rest
+  where rest a = (do f <- op; b <- p; rest (f a b)) \`orElse\` pure a
+
+-- Extended AST with Let and Var
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+          | Var String | Let String Expr Expr
+  deriving (Show, Eq)
+
+-- EXERCISE: Implement the following
+
+-- 1. parseVar: parse a variable name (one or more letters)
+parseVar :: Parser Expr
+parseVar = error "implement parseVar"
+
+-- 2. parseLet: parse "let <name> = <expr> in <expr>"
+parseLet :: Parser Expr
+parseLet = error "implement parseLet"
+
+-- 3. parseFactor: number, let-expr, variable, or parenthesized expr
+--    Try in order: parseLet, litP, parseVar, parenP
+parseFactor :: Parser Expr
+parseFactor = error "implement parseFactor"
+
+-- 4. parseTerm: chain factors with *
+parseTerm :: Parser Expr
+parseTerm = error "implement parseTerm"
+
+-- 5. parseExpr: chain terms with +
+parseExpr :: Parser Expr
+parseExpr = error "implement parseExpr"
+
+-- 6. evalLet: evaluate with an environment of variable bindings
+--    Lit n        -> Just n
+--    Var name     -> lookup name env
+--    Add a b      -> evaluate both, add results
+--    Mul a b      -> evaluate both, multiply results
+--    Let x val body -> evaluate val, extend env with (x, result), evaluate body
+evalLet :: [(String, Int)] -> Expr -> Maybe Int
+evalLet env expr = error "implement evalLet"
+
+-- 7. interpret: parse then evaluate
+interpret :: String -> Maybe Int
+interpret input = error "implement interpret"
+`,
+    solutionCode: `module Interpreter where
+
+import Data.Char (isDigit, isAlpha, isSpace)
+
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+
+instance Functor Parser where
+  fmap f (Parser p) = Parser $ \\s -> case p s of
+    Nothing      -> Nothing
+    Just (a, s') -> Just (f a, s')
+
+instance Applicative Parser where
+  pure a = Parser $ \\s -> Just (a, s)
+  Parser pf <*> Parser pa = Parser $ \\s -> case pf s of
+    Nothing      -> Nothing
+    Just (f, s') -> case pa s' of
+      Nothing       -> Nothing
+      Just (a, s'') -> Just (f a, s'')
+
+instance Monad Parser where
+  Parser pa >>= f = Parser $ \\s -> case pa s of
+    Nothing      -> Nothing
+    Just (a, s') -> runParser (f a) s'
+
+charP :: (Char -> Bool) -> Parser Char
+charP predicate = Parser $ \\s -> case s of
+  (c:cs) | predicate c -> Just (c, cs)
+  _                    -> Nothing
+
+digitP :: Parser Char
+digitP = charP isDigit
+
+letterP :: Parser Char
+letterP = charP isAlpha
+
+orElse :: Parser a -> Parser a -> Parser a
+orElse (Parser p1) (Parser p2) = Parser $ \\s -> case p1 s of
+  Nothing -> p2 s
+  result  -> result
+
+many :: Parser a -> Parser [a]
+many p = (do x <- p; xs <- many p; return (x:xs)) \`orElse\` pure []
+
+some :: Parser a -> Parser [a]
+some p = do x <- p; xs <- many p; return (x:xs)
+
+natP :: Parser Int
+natP = do digits <- some digitP; return (read digits)
+
+skipSpaces :: Parser String
+skipSpaces = many (charP isSpace)
+
+stringP :: String -> Parser String
+stringP []     = Parser $ \\s -> Just ([], s)
+stringP (c:cs) = Parser $ \\s -> case runParser (charP (== c)) s of
+  Nothing       -> Nothing
+  Just (_, s')  -> case runParser (stringP cs) s' of
+    Nothing        -> Nothing
+    Just (cs', s'') -> Just (c:cs', s'')
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = p >>= rest
+  where rest a = (do f <- op; b <- p; rest (f a b)) \`orElse\` pure a
+
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr
+          | Var String | Let String Expr Expr
+  deriving (Show, Eq)
+
+parseVar :: Parser Expr
+parseVar = do
+  _ <- skipSpaces
+  name <- some letterP
+  _ <- skipSpaces
+  return (Var name)
+
+parseLet :: Parser Expr
+parseLet = do
+  _ <- skipSpaces
+  _ <- stringP "let"
+  _ <- skipSpaces
+  name <- some letterP
+  _ <- skipSpaces
+  _ <- charP (== '=')
+  _ <- skipSpaces
+  val <- parseExpr
+  _ <- skipSpaces
+  _ <- stringP "in"
+  _ <- skipSpaces
+  body <- parseExpr
+  return (Let name val body)
+
+parseFactor :: Parser Expr
+parseFactor = parseLet \`orElse\` litP \`orElse\` parseVar \`orElse\` parenP
+  where
+    litP = do
+      _ <- skipSpaces
+      n <- natP
+      _ <- skipSpaces
+      return (Lit n)
+    parenP = do
+      _ <- skipSpaces
+      _ <- charP (== '(')
+      _ <- skipSpaces
+      e <- parseExpr
+      _ <- skipSpaces
+      _ <- charP (== ')')
+      _ <- skipSpaces
+      return e
+
+parseTerm :: Parser Expr
+parseTerm = chainl1 parseFactor mulOp
+  where mulOp = do _ <- skipSpaces; _ <- charP (== '*'); _ <- skipSpaces; return Mul
+
+parseExpr :: Parser Expr
+parseExpr = chainl1 parseTerm addOp
+  where addOp = do _ <- skipSpaces; _ <- charP (== '+'); _ <- skipSpaces; return Add
+
+evalLet :: [(String, Int)] -> Expr -> Maybe Int
+evalLet env (Lit n)          = Just n
+evalLet env (Var name)       = lookup name env
+evalLet env (Add a b)        = do
+  va <- evalLet env a
+  vb <- evalLet env b
+  return (va + vb)
+evalLet env (Mul a b)        = do
+  va <- evalLet env a
+  vb <- evalLet env b
+  return (va * vb)
+evalLet env (Let x val body) = do
+  v <- evalLet env val
+  evalLet ((x, v) : env) body
+
+interpret :: String -> Maybe Int
+interpret input = do
+  (expr, _) <- runParser parseExpr input
+  evalLet [] expr
+`,
+    testCode: `runTestEq "interpret 42" (Just 42) (interpret "42")
+        , runTestEq "interpret 3+4" (Just 7) (interpret "3+4")
+        , runTestEq "interpret 3+4*2" (Just 11) (interpret "3+4*2")
+        , runTestEq "interpret (3+4)*2" (Just 14) (interpret "(3+4)*2")
+        , runTestEq "interpret let x=5 in x+3" (Just 8) (interpret "let x = 5 in x + 3")
+        , runTestEq "interpret let x=2 in x*x" (Just 4) (interpret "let x = 2 in x * x")
+        , runTestEq "interpret nested let" (Just 11) (interpret "let x = 5 in let y = 6 in x + y")
+        , runTestEq "interpret let in arithmetic" (Just 13) (interpret "let x = 3 in x + x * x + 1")
+        , runTestEq "interpret empty fails" Nothing (interpret "")
+        , runTestEq "evalLet Var missing" Nothing (evalLet [] (Var "z"))
+        , runTestEq "evalLet Let extends env" (Just 10) (evalLet [] (Let "a" (Lit 10) (Var "a")))`,
+    hints: [
+      'For <code>parseVar</code>: use <code>some letterP</code> to parse the variable name (one or more letters), then wrap it in <code>Var</code>.',
+      'For <code>parseLet</code>: sequence the keywords with <code>stringP "let"</code> and <code>stringP "in"</code>, use <code>some letterP</code> for the name, <code>charP (== \'=\')</code> for the equals sign, and call <code>parseExpr</code> for both the value and body.',
+      'For <code>evalLet (Let x val body)</code>: evaluate <code>val</code> with the current env, then evaluate <code>body</code> with <code>(x, v) : env</code> — this adds the new binding to the front so it shadows any previous binding of the same name.',
+      'For <code>interpret</code>: use <code>do</code>-notation with <code>Maybe</code> — bind <code>runParser parseExpr input</code> to get <code>(expr, _)</code>, then call <code>evalLet [] expr</code>.',
+    ],
+    concepts: ['interpreter', 'let-binding', 'environment', 'variable-scoping', 'parse-then-evaluate'],
+    successPatterns: [
+      'stringP\\s*"let"',
+      'stringP\\s*"in"',
+      'evalLet\\s*\\(\\(x.*:\\s*env\\)\\s*body',
+      'evalLet\\s*\\[\\]\\s*expr',
+    ],
+    testNames: [
+      'interpret simple number',
+      'interpret addition',
+      'interpret precedence',
+      'interpret parentheses',
+      'interpret let binding',
+      'interpret let with multiplication',
+      'interpret nested let',
+      'interpret let in complex arithmetic',
+      'interpret empty string fails',
+      'evalLet undefined variable',
+      'evalLet let extends environment',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // VERIFIED CRYPTOGRAPHIC PROTOCOLS MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'polynomial-arithmetic': {
+    id: 'polynomial-arithmetic',
+    title: 'Polynomial Arithmetic over Finite Fields',
+    difficulty: 'intermediate',
+    order: 1,
+    description: `
+<p><strong>Polynomials over finite fields</strong> are the backbone of nearly every modern cryptographic protocol — from secret sharing to zero-knowledge proofs to error-correcting codes. Before we can build Shamir's scheme or Lagrange interpolation, we need reliable polynomial arithmetic mod a prime.</p>
+
+<h3>Representation</h3>
+<p>We store a polynomial as a list of coefficients, <strong>low-degree first</strong>:</p>
+<pre><code>newtype Poly = Poly [Integer] deriving (Show, Eq)
+
+-- Poly [3, 0, 2] represents 3 + 0x + 2x²</code></pre>
+
+<h3>Horner's Method for Evaluation</h3>
+<p>Evaluating a polynomial naively requires computing powers of x. <strong>Horner's method</strong> restructures the computation to avoid this:</p>
+<pre><code>-- 3 + 0x + 2x²  =  3 + x(0 + x(2))
+-- Evaluate right-to-left with foldr:
+polyEval p (Poly cs) x = foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs</code></pre>
+<p>This is both faster and numerically stable in modular arithmetic.</p>
+
+<h3>Polynomial Addition</h3>
+<p>Add corresponding coefficients, padding the shorter polynomial with zeros:</p>
+<pre><code>polyAdd p (Poly a) (Poly b) = ...  -- zipWith, pad shorter, mod p</code></pre>
+
+<h3>Polynomial Multiplication (Convolution)</h3>
+<p>Multiplying polynomials is <strong>convolution</strong>: the coefficient of x^k in the product is the sum of a_i * b_j for all i+j=k.</p>
+<pre><code>-- (1 + x) * (1 + x) = 1 + 2x + x²
+-- Poly [1,1] * Poly [1,1] = Poly [1,2,1]</code></pre>
+
+<h3>Degree</h3>
+<p>The degree is the index of the highest non-zero coefficient. The zero polynomial (all zeros or empty) has degree -1 by convention.</p>
+
+<h3>Example: p = 23</h3>
+<table>
+  <thead><tr><th>Operation</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td><code>polyEval 23 (Poly [3,0,2]) 5</code></td><td><code>7</code> &nbsp; (3 + 0*5 + 2*25 = 53, 53 mod 23 = 7)</td></tr>
+    <tr><td><code>polyMul 23 (Poly [1,1]) (Poly [1,1])</code></td><td><code>Poly [1,2,1]</code></td></tr>
+    <tr><td><code>polyDeg (Poly [3,0,2])</code></td><td><code>2</code></td></tr>
+    <tr><td><code>polyDeg (Poly [0,0])</code></td><td><code>-1</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Your Task</h3>
+<p>Implement polynomial evaluation (Horner's method), addition, multiplication (convolution), and degree computation &mdash; all over Z/pZ.</p>
+`,
+    starterCode: `module PolynomialArithmetic where
+
+-- Polynomial: coefficients stored low-degree first.
+-- Poly [3, 0, 2] represents 3 + 0x + 2x^2
+newtype Poly = Poly [Integer] deriving (Show, Eq)
+
+-- 1. Evaluate a polynomial at a point x, mod p.
+--    Use Horner's method: foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs
+--    Example: polyEval 23 (Poly [3,0,2]) 5 = 7
+polyEval :: Integer -> Poly -> Integer -> Integer
+polyEval p (Poly cs) x = error "implement Horner's method"
+
+-- 2. Add two polynomials mod p.
+--    Pad the shorter list with zeros, then add corresponding coefficients mod p.
+--    Example: polyAdd 23 (Poly [1,2]) (Poly [3,0,4]) = Poly [4,2,4]
+polyAdd :: Integer -> Poly -> Poly -> Poly
+polyAdd p (Poly a) (Poly b) = error "implement polynomial addition"
+
+-- 3. Multiply two polynomials mod p (convolution).
+--    The coefficient of x^k in the product is:
+--      sum of a_i * b_j for all i + j = k, all mod p.
+--    Example: polyMul 23 (Poly [1,1]) (Poly [1,1]) = Poly [1,2,1]
+polyMul :: Integer -> Poly -> Poly -> Poly
+polyMul p (Poly a) (Poly b) = error "implement convolution"
+
+-- 4. Degree of a polynomial: index of the highest non-zero coefficient.
+--    Return -1 for the zero polynomial.
+--    Example: polyDeg (Poly [3,0,2]) = 2
+--    Example: polyDeg (Poly [0,0]) = -1
+polyDeg :: Poly -> Int
+polyDeg (Poly cs) = error "implement degree"
+`,
+    solutionCode: `module PolynomialArithmetic where
+
+newtype Poly = Poly [Integer] deriving (Show, Eq)
+
+polyEval :: Integer -> Poly -> Integer -> Integer
+polyEval p (Poly cs) x = foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs
+
+polyAdd :: Integer -> Poly -> Poly -> Poly
+polyAdd p (Poly a) (Poly b) = Poly (go a b)
+  where
+    go [] []         = []
+    go [] (y:ys)     = (y \`mod\` p) : go [] ys
+    go (x:xs) []     = (x \`mod\` p) : go xs []
+    go (x:xs) (y:ys) = ((x + y) \`mod\` p) : go xs ys
+
+polyMul :: Integer -> Poly -> Poly -> Poly
+polyMul p (Poly a) (Poly b) = Poly [coeff k | k <- [0 .. length a + length b - 2]]
+  where
+    coeff k = sum [ (a !! i * b !! (k - i)) \`mod\` p
+                  | i <- [0 .. k]
+                  , i < length a
+                  , (k - i) < length b
+                  ] \`mod\` p
+
+polyDeg :: Poly -> Int
+polyDeg (Poly cs) = go (length cs - 1) cs
+  where
+    go _ [] = -1
+    go n xs
+      | last xs /= 0 = n
+      | otherwise     = go (n - 1) (init xs)
+`,
+    testCode: `runTestEq "polyEval 23 [3,0,2] at x=5 = 7" (7 :: Integer) (polyEval 23 (Poly [3,0,2]) 5)
+        , runTestEq "polyEval 23 [1,1] at x=10 = 11" (11 :: Integer) (polyEval 23 (Poly [1,1]) 10)
+        , runTestEq "polyEval 23 [0] at x=5 = 0" (0 :: Integer) (polyEval 23 (Poly [0]) 5)
+        , runTestEq "polyAdd [1,2] + [3,0,4] mod 23" (Poly [4,2,4]) (polyAdd 23 (Poly [1,2]) (Poly [3,0,4]))
+        , runTestEq "polyAdd [20,20] + [5,5] mod 23" (Poly [2,2]) (polyAdd 23 (Poly [20,20]) (Poly [5,5]))
+        , runTestEq "polyMul [1,1]*[1,1] mod 23" (Poly [1,2,1]) (polyMul 23 (Poly [1,1]) (Poly [1,1]))
+        , runTestEq "polyMul [2]*[3,1] mod 23" (Poly [6,2]) (polyMul 23 (Poly [2]) (Poly [3,1]))
+        , runTestEq "polyMul [1,1]*[1,0,1] mod 23" (Poly [1,1,1,1]) (polyMul 23 (Poly [1,1]) (Poly [1,0,1]))
+        , runTestEq "polyDeg [3,0,2] = 2" (2 :: Int) (polyDeg (Poly [3,0,2]))
+        , runTestEq "polyDeg [0,0] = -1" ((-1) :: Int) (polyDeg (Poly [0,0]))
+        , runTestEq "polyDeg [5] = 0" (0 :: Int) (polyDeg (Poly [5]))`,
+    hints: [
+      'For <code>polyEval</code>: use <code>foldr (\\c acc -> (c + x * acc) \\`mod\\` p) 0 cs</code>. This evaluates the polynomial right-to-left without computing powers.',
+      'For <code>polyAdd</code>: handle three cases recursively &mdash; one list empty, other empty, or both non-empty. Add corresponding coefficients <code>mod p</code>.',
+      'For <code>polyMul</code>: the coefficient of x^k is <code>sum [a!!i * b!!(k-i) | i <- [0..k], i < length a, (k-i) < length b] \\`mod\\` p</code>. The result has degree <code>length a + length b - 2</code>.',
+      'For <code>polyDeg</code>: scan from the highest index down. If the last element is non-zero, that index is the degree. Otherwise, drop it and continue. Empty or all-zeros gives -1.',
+    ],
+    concepts: ['polynomial', 'finite-field', 'horner-method', 'convolution', 'modular-arithmetic'],
+    successPatterns: [
+      'foldr.*`mod`\\s+p',
+      'polyAdd.*go|zipWith',
+      'coeff\\s+k|sum.*!!',
+      'last\\s+xs\\s*/=\\s*0|init\\s+xs',
+    ],
+    testNames: [
+      'polyEval Horner at x=5',
+      'polyEval linear at x=10',
+      'polyEval zero polynomial',
+      'polyAdd pads shorter polynomial',
+      'polyAdd wraps mod p',
+      'polyMul (1+x)*(1+x) = 1+2x+x^2',
+      'polyMul scalar times polynomial',
+      'polyMul (1+x)*(1+x^2)',
+      'polyDeg of degree-2 polynomial',
+      'polyDeg of zero polynomial',
+      'polyDeg of constant polynomial',
+    ],
+  },
+
+  'lagrange-interpolation': {
+    id: 'lagrange-interpolation',
+    title: 'Lagrange Interpolation',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<p><strong>Lagrange interpolation</strong> is a foundational tool in cryptography: given a set of points, it reconstructs the unique polynomial passing through them. This is the mathematical engine behind Shamir's secret sharing, Reed-Solomon codes, and many zero-knowledge proof systems.</p>
+
+<h3>The Problem</h3>
+<p>Given <em>n</em> points <code>(x_0, y_0), (x_1, y_1), ..., (x_{n-1}, y_{n-1})</code> with distinct x-values, there is a unique polynomial of degree at most <em>n-1</em> passing through all of them. Lagrange interpolation lets us evaluate this polynomial at any point without explicitly computing its coefficients.</p>
+
+<h3>The Formula</h3>
+<p>To evaluate the interpolating polynomial at a point <code>x</code>:</p>
+<pre><code>P(x) = sum_i ( y_i * L_i(x) )   mod p
+
+where L_i(x) = product_{j /= i} ( (x - x_j) * modInverse((x_i - x_j) mod p, p) )   mod p</code></pre>
+
+<p>Each <code>L_i</code> is called a <strong>Lagrange basis polynomial</strong>. It equals 1 at <code>x_i</code> and 0 at every other <code>x_j</code>.</p>
+
+<h3>Modular Inverse</h3>
+<p>Division in modular arithmetic means multiplying by the <strong>modular inverse</strong>. We compute it using the extended GCD:</p>
+<pre><code>extGcd a 0 = (a, 1, 0)
+extGcd a b = let (g, x, y) = extGcd b (a \`mod\` b)
+             in  (g, y, x - (a \`div\` b) * y)
+
+modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
+                 in  x \`mod\` p</code></pre>
+
+<h3>Example: p = 23</h3>
+<table>
+  <thead><tr><th>Points</th><th>Evaluate at</th><th>Result</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><code>[(1,2), (2,4)]</code></td><td><code>x = 3</code></td><td><code>6</code></td><td>Linear: y = 2x, so P(3) = 6</td></tr>
+    <tr><td><code>[(1,1), (2,4), (3,9)]</code></td><td><code>x = 4</code></td><td><code>16</code></td><td>Quadratic: y = x&sup2;, so P(4) = 16</td></tr>
+  </tbody>
+</table>
+
+<h3>Your Task</h3>
+<p>Implement <code>lagrangeEval</code>: given a prime <code>p</code>, a list of <code>(x, y)</code> points, and a target <code>x</code>, compute the value of the interpolating polynomial at that point, mod <code>p</code>.</p>
+`,
+    starterCode: `module LagrangeInterpolation where
+
+-- Helper: modular exponentiation (for potential use)
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+-- Helper: extended GCD
+--   extGcd a b = (gcd, x, y) such that a*x + b*y = gcd
+extGcd :: Integer -> Integer -> (Integer, Integer, Integer)
+extGcd a 0 = (a, 1, 0)
+extGcd a b = let (g, x, y) = extGcd b (a \`mod\` b)
+             in  (g, y, x - (a \`div\` b) * y)
+
+-- Helper: modular inverse
+--   modInverse a p = a^(-1) mod p
+modInverse :: Integer -> Integer -> Integer
+modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
+                 in  x \`mod\` p
+
+-- Lagrange interpolation: evaluate the interpolating polynomial at x, mod p.
+--
+-- Given points [(x_0, y_0), (x_1, y_1), ...] and a target x:
+--   P(x) = sum_i ( y_i * L_i(x) )  mod p
+-- where
+--   L_i(x) = product_{j /= i} ( (x - x_j) * modInverse((x_i - x_j) mod p, p) )  mod p
+--
+-- Example: lagrangeEval 23 [(1,2),(2,4)] 3 = 6
+lagrangeEval :: Integer -> [(Integer, Integer)] -> Integer -> Integer
+lagrangeEval p points x = error "implement Lagrange interpolation"
+`,
+    solutionCode: `module LagrangeInterpolation where
+
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+extGcd :: Integer -> Integer -> (Integer, Integer, Integer)
+extGcd a 0 = (a, 1, 0)
+extGcd a b = let (g, x, y) = extGcd b (a \`mod\` b)
+             in  (g, y, x - (a \`div\` b) * y)
+
+modInverse :: Integer -> Integer -> Integer
+modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
+                 in  x \`mod\` p
+
+lagrangeEval :: Integer -> [(Integer, Integer)] -> Integer -> Integer
+lagrangeEval p points x = sum terms \`mod\` p
+  where
+    terms = [ (yi * basis i xi) \`mod\` p | (i, (xi, yi)) <- zip [0..] points ]
+    basis i xi = foldl (\\acc (j, (xj, _)) ->
+        if i == j then acc
+        else (acc * ((x - xj) \`mod\` p + p) \`mod\` p * modInverse (((xi - xj) \`mod\` p + p) \`mod\` p) p) \`mod\` p
+      ) 1 (zip [0..] points)
+`,
+    testCode: `runTestEq "lagrange [(1,2),(2,4)] at x=3 mod 23 = 6" (6 :: Integer) (lagrangeEval 23 [(1,2),(2,4)] 3)
+        , runTestEq "lagrange [(1,2),(2,4)] at x=1 mod 23 = 2" (2 :: Integer) (lagrangeEval 23 [(1,2),(2,4)] 1)
+        , runTestEq "lagrange [(1,2),(2,4)] at x=2 mod 23 = 4" (4 :: Integer) (lagrangeEval 23 [(1,2),(2,4)] 2)
+        , runTestEq "lagrange [(1,1),(2,4),(3,9)] at x=4 mod 23 = 16" (16 :: Integer) (lagrangeEval 23 [(1,1),(2,4),(3,9)] 4)
+        , runTestEq "lagrange [(1,1),(2,4),(3,9)] at x=1 mod 23 = 1" (1 :: Integer) (lagrangeEval 23 [(1,1),(2,4),(3,9)] 1)
+        , runTestEq "lagrange [(1,1),(2,4),(3,9)] at x=5 mod 23 = 2" (2 :: Integer) (lagrangeEval 23 [(1,1),(2,4),(3,9)] 5)
+        , runTestEq "lagrange single point [(3,7)] at x=10 mod 23 = 7" (7 :: Integer) (lagrangeEval 23 [(3,7)] 10)`,
+    hints: [
+      'Compute each Lagrange basis polynomial L_i(x) separately, then combine: <code>sum_i (y_i * L_i(x)) \\`mod\\` p</code>.',
+      'For L_i(x), iterate over all j where j /= i. For each j, multiply by <code>(x - x_j) * modInverse((x_i - x_j) \\`mod\\` p + p) \\`mod\\` p, p)</code>.',
+      'Be careful with negative numbers in modular arithmetic! Always add <code>p</code> before taking <code>mod p</code> to avoid negative remainders: <code>((a - b) \\`mod\\` p + p) \\`mod\\` p</code>.',
+      'Full pattern: <code>sum [ (yi * foldl (\\acc ... -> if same index then acc else acc * ((x-xj) * modInverse((xi-xj) mod p, p)) mod p) 1 indexed_points) \\`mod\\` p | ... ] \\`mod\\` p</code>.',
+    ],
+    concepts: ['lagrange-interpolation', 'modular-inverse', 'finite-field', 'polynomial-evaluation', 'secret-sharing-foundation'],
+    successPatterns: [
+      'lagrangeEval.*sum|lagrangeEval.*foldl',
+      'modInverse.*xi.*xj|modInverse.*x_i.*x_j',
+      'x\\s*-\\s*xj|x\\s*-\\s*x_j',
+      '`mod`\\s+p',
+    ],
+    testNames: [
+      'lagrange linear y=2x at x=3',
+      'lagrange linear at known point x=1',
+      'lagrange linear at known point x=2',
+      'lagrange quadratic y=x^2 at x=4',
+      'lagrange quadratic at known point x=1',
+      'lagrange quadratic y=x^2 at x=5 (25 mod 23 = 2)',
+      'lagrange single point is constant',
+    ],
+  },
+
+  'shamir-secret-sharing': {
+    id: 'shamir-secret-sharing',
+    title: "Shamir's Secret Sharing",
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<p><strong>Shamir's Secret Sharing</strong> is one of the most elegant applications of polynomial interpolation to cryptography. It lets you split a secret into <em>n</em> shares such that any <em>t</em> shares can reconstruct the secret, but fewer than <em>t</em> shares reveal <strong>nothing</strong> at all.</p>
+
+<h3>The Idea</h3>
+<p>A polynomial of degree <em>t-1</em> is uniquely determined by <em>t</em> points. So:</p>
+<ol>
+  <li>Pick a random polynomial of degree <em>t-1</em> whose constant term is the secret</li>
+  <li>Evaluate it at <em>n</em> different points to create <em>n</em> shares</li>
+  <li>Any <em>t</em> shares determine the polynomial (via Lagrange interpolation), and the secret is the value at x=0</li>
+</ol>
+
+<h3>Creating Shares</h3>
+<p>Given a secret <code>s</code>, random coefficients <code>[a_1, ..., a_{t-1}]</code>, and a prime <code>p</code>:</p>
+<pre><code>-- The polynomial: f(x) = s + a_1*x + a_2*x^2 + ... + a_{t-1}*x^{t-1}
+-- Shares: (1, f(1)), (2, f(2)), ..., (n, f(n))   all mod p</code></pre>
+
+<h3>Reconstructing the Secret</h3>
+<p>Given <em>t</em> or more shares, use Lagrange interpolation at <code>x = 0</code> to recover <code>f(0) = s</code>.</p>
+
+<h3>Example: (2,3)-threshold, p = 97</h3>
+<pre><code>-- Secret: 42, random coefficient: [7]
+-- Polynomial: f(x) = 42 + 7x
+-- Shares: (1, 49), (2, 56), (3, 63)
+-- Any 2 shares reconstruct 42 via lagrangeEval at x=0</code></pre>
+
+<h3>Security</h3>
+<p>With fewer than <em>t</em> shares, the secret is <strong>information-theoretically secure</strong> &mdash; not just computationally hard to find, but literally impossible. Every possible secret value is equally consistent with the shares you have. This is the gold standard of secrecy.</p>
+
+<h3>Your Task</h3>
+<p>Implement <code>createShares</code> to generate shares from a secret, and <code>reconstructSecret</code> to recover the secret from a sufficient number of shares.</p>
+`,
+    starterCode: `module ShamirSecretSharing where
+
+-- Helper: modular exponentiation
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+-- Helper: extended GCD
+extGcd :: Integer -> Integer -> (Integer, Integer, Integer)
+extGcd a 0 = (a, 1, 0)
+extGcd a b = let (g, x, y) = extGcd b (a \`mod\` b)
+             in  (g, y, x - (a \`div\` b) * y)
+
+-- Helper: modular inverse
+modInverse :: Integer -> Integer -> Integer
+modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
+                 in  x \`mod\` p
+
+-- Helper: evaluate polynomial (Horner's method)
+--   Poly is represented as [Integer], low-degree first
+polyEval :: Integer -> [Integer] -> Integer -> Integer
+polyEval p cs x = foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs
+
+-- Helper: Lagrange interpolation at a point
+lagrangeEval :: Integer -> [(Integer, Integer)] -> Integer -> Integer
+lagrangeEval p points x = sum terms \`mod\` p
+  where
+    terms = [ (yi * basis i xi) \`mod\` p | (i, (xi, yi)) <- zip [0..] points ]
+    basis i xi = foldl (\\acc (j, (xj, _)) ->
+        if i == j then acc
+        else (acc * ((x - xj) \`mod\` p + p) \`mod\` p * modInverse (((xi - xj) \`mod\` p + p) \`mod\` p) p) \`mod\` p
+      ) 1 (zip [0..] points)
+
+-- 1. Create n shares for a (t,n)-threshold scheme.
+--    The polynomial is: secret + coeffs[0]*x + coeffs[1]*x^2 + ...
+--    Evaluate at x = 1, 2, ..., n
+--    The length of coeffs determines the threshold: t = length coeffs + 1
+--
+--    Example: createShares 97 42 [7] 3 = [(1,49),(2,56),(3,63)]
+createShares :: Integer -> Integer -> [Integer] -> Int -> [(Integer, Integer)]
+createShares p secret coeffs n = error "create shares by evaluating the polynomial"
+
+-- 2. Reconstruct the secret from shares.
+--    Use Lagrange interpolation at x = 0.
+--
+--    Example: reconstructSecret 97 [(1,49),(2,56)] = 42
+reconstructSecret :: Integer -> [(Integer, Integer)] -> Integer
+reconstructSecret p shares = error "use lagrangeEval at x=0"
+`,
+    solutionCode: `module ShamirSecretSharing where
+
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+extGcd :: Integer -> Integer -> (Integer, Integer, Integer)
+extGcd a 0 = (a, 1, 0)
+extGcd a b = let (g, x, y) = extGcd b (a \`mod\` b)
+             in  (g, y, x - (a \`div\` b) * y)
+
+modInverse :: Integer -> Integer -> Integer
+modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
+                 in  x \`mod\` p
+
+polyEval :: Integer -> [Integer] -> Integer -> Integer
+polyEval p cs x = foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs
+
+lagrangeEval :: Integer -> [(Integer, Integer)] -> Integer -> Integer
+lagrangeEval p points x = sum terms \`mod\` p
+  where
+    terms = [ (yi * basis i xi) \`mod\` p | (i, (xi, yi)) <- zip [0..] points ]
+    basis i xi = foldl (\\acc (j, (xj, _)) ->
+        if i == j then acc
+        else (acc * ((x - xj) \`mod\` p + p) \`mod\` p * modInverse (((xi - xj) \`mod\` p + p) \`mod\` p) p) \`mod\` p
+      ) 1 (zip [0..] points)
+
+createShares :: Integer -> Integer -> [Integer] -> Int -> [(Integer, Integer)]
+createShares p secret coeffs n =
+  [ (fromIntegral i, polyEval p (secret : coeffs) (fromIntegral i)) | i <- [1..n] ]
+
+reconstructSecret :: Integer -> [(Integer, Integer)] -> Integer
+reconstructSecret p shares = lagrangeEval p shares 0
+`,
+    testCode: `runTestEq "createShares (2,3) secret=42 coeff=[7] p=97 share1" (1 :: Integer, 49 :: Integer) (head (createShares 97 42 [7] 3))
+        , runTestEq "createShares (2,3) share2" (2 :: Integer, 56 :: Integer) ((createShares 97 42 [7] 3) !! 1)
+        , runTestEq "createShares (2,3) share3" (3 :: Integer, 63 :: Integer) ((createShares 97 42 [7] 3) !! 2)
+        , runTestEq "reconstruct from shares 1,2" (42 :: Integer) (reconstructSecret 97 [(1,49),(2,56)])
+        , runTestEq "reconstruct from shares 1,3" (42 :: Integer) (reconstructSecret 97 [(1,49),(3,63)])
+        , runTestEq "reconstruct from shares 2,3" (42 :: Integer) (reconstructSecret 97 [(2,56),(3,63)])
+        , runTestEq "createShares (3,5) p=257 share1" (1 :: Integer, 117 :: Integer) (head (createShares 257 100 [14,3] 5))
+        , runTestEq "createShares (3,5) p=257 share2" (2 :: Integer, 140 :: Integer) ((createShares 257 100 [14,3] 5) !! 1)
+        , runTestEq "reconstruct (3,5) from 3 shares" (100 :: Integer) (reconstructSecret 257 [(1,117),(2,140),(3,169)])
+        , runTestEq "reconstruct (3,5) from different 3" (100 :: Integer) (reconstructSecret 257 [(2,140),(4,204),(5,245)])`,
+    hints: [
+      'For <code>createShares</code>: the polynomial is <code>secret : coeffs</code> (a list with secret as the constant term). Evaluate it at <code>x = 1, 2, ..., n</code> using <code>polyEval</code>.',
+      'For <code>reconstructSecret</code>: this is just <code>lagrangeEval p shares 0</code> &mdash; interpolate at x=0 to recover the constant term.',
+      'Use a list comprehension: <code>[(fromIntegral i, polyEval p (secret : coeffs) (fromIntegral i)) | i <- [1..n]]</code>.',
+      'The <code>(2,3)</code> scheme uses a degree-1 polynomial (line), the <code>(3,5)</code> scheme uses degree-2 (parabola). The threshold <code>t = length coeffs + 1</code>.',
+    ],
+    concepts: ['secret-sharing', 'threshold-scheme', 'lagrange-interpolation', 'information-theoretic-security', 'polynomial-evaluation'],
+    successPatterns: [
+      'polyEval.*secret\\s*:\\s*coeffs',
+      'lagrangeEval.*0|lagrangeEval.*shares.*0',
+      'fromIntegral.*\\[1\\.\\.n\\]',
+      'reconstructSecret.*lagrangeEval.*shares',
+    ],
+    testNames: [
+      'createShares (2,3) share 1 = (1,49)',
+      'createShares (2,3) share 2 = (2,56)',
+      'createShares (2,3) share 3 = (3,63)',
+      'reconstruct secret from shares 1,2',
+      'reconstruct secret from shares 1,3',
+      'reconstruct secret from shares 2,3',
+      'createShares (3,5) share 1 = (1,117)',
+      'createShares (3,5) share 2 = (2,140)',
+      'reconstruct (3,5) from 3 shares',
+      'reconstruct (3,5) from different 3 shares',
+    ],
+  },
+
+  'schnorr-protocol': {
+    id: 'schnorr-protocol',
+    title: 'Schnorr Identification Protocol',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<p>The <strong>Schnorr identification protocol</strong> is a foundational <strong>sigma protocol</strong> &mdash; an interactive proof that lets a prover convince a verifier they know a secret, without revealing the secret itself. It is the basis of Schnorr signatures (used in Bitcoin's Taproot) and a stepping stone to general zero-knowledge proofs.</p>
+
+<h3>Sigma Protocols</h3>
+<p>A sigma protocol has three moves (forming the Greek letter &Sigma;):</p>
+<ol>
+  <li><strong>Commitment:</strong> The prover picks a random <code>k</code> and sends <code>r = g^k mod p</code></li>
+  <li><strong>Challenge:</strong> The verifier sends a random challenge <code>c</code></li>
+  <li><strong>Response:</strong> The prover computes <code>s = (k - c * x) mod q</code> and sends <code>s</code></li>
+</ol>
+<p>The verifier accepts if <code>g^s * y^c mod p == r</code>.</p>
+
+<h3>Why It Works (Algebraically)</h3>
+<p>The prover's public key is <code>y = g^x mod p</code>. The verification equation:</p>
+<pre><code>g^s * y^c  =  g^(k - c*x) * g^(x*c)    (substituting s and y)
+            =  g^(k - c*x + x*c)
+            =  g^k
+            =  r</code></pre>
+<p>The exponents cancel perfectly &mdash; this is the algebraic structure that makes the protocol sound.</p>
+
+<h3>Honest-Verifier Zero-Knowledge</h3>
+<p>If the verifier is honest (picks <code>c</code> randomly), the transcript <code>(r, c, s)</code> reveals nothing about <code>x</code>. Why? Because for any challenge <code>c</code>, a simulator can produce a valid-looking transcript without knowing <code>x</code> &mdash; just pick a random <code>s</code>, compute <code>r = g^s * y^c mod p</code>, and the transcript is indistinguishable from a real one.</p>
+
+<h3>Parameters</h3>
+<p>We need a prime <code>p</code> and a prime <code>q</code> that divides <code>p-1</code>, with a generator <code>g</code> of order <code>q</code> in Z/pZ:</p>
+<pre><code>-- p=23, q=11: since 23-1 = 22 = 2*11, and 2^11 mod 23 = 1
+-- So g=2 has order 11 mod 23</code></pre>
+
+<h3>Example: p=23, q=11, g=2</h3>
+<table>
+  <thead><tr><th>Step</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Secret key x</td><td>7</td></tr>
+    <tr><td>Public key y = g^x mod p</td><td>2^7 mod 23 = 13</td></tr>
+    <tr><td>Random k</td><td>3</td></tr>
+    <tr><td>Commitment r = g^k mod p</td><td>2^3 mod 23 = 8</td></tr>
+    <tr><td>Challenge c</td><td>5</td></tr>
+    <tr><td>Response s = (k - c*x) mod q</td><td>(3 - 35) mod 11 = 1</td></tr>
+    <tr><td>Verify: g^s * y^c mod p</td><td>2^1 * 13^5 mod 23 = 2 * 4 mod 23 = 8 = r</td></tr>
+  </tbody>
+</table>
+
+<h3>Your Task</h3>
+<p>Implement the three phases of the Schnorr protocol (commit, respond, verify) and a function that simulates a full protocol run, returning whether verification succeeds.</p>
+`,
+    starterCode: `module SchnorrProtocol where
+
+-- Helper: modular exponentiation
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+-- Schnorr parameters: prime p, subgroup order q, generator g
+data SchnorrParams = SP { spP :: Integer, spQ :: Integer, spG :: Integer }
+  deriving (Show)
+
+-- 1. Commitment phase: compute r = g^k mod p
+--    The prover picks a random k and sends r to the verifier.
+schnorrCommit :: SchnorrParams -> Integer -> Integer
+schnorrCommit params k = error "compute g^k mod p"
+
+-- 2. Response phase: compute s = (k - c * x) mod q
+--    The prover uses their secret x, the random k, and the challenge c.
+schnorrRespond :: SchnorrParams -> Integer -> Integer -> Integer -> Integer
+schnorrRespond params x k c = error "compute (k - c * x) mod q"
+
+-- 3. Verification: check that g^s * y^c mod p == r
+--    y is the public key (g^x mod p), r is the commitment, c is the challenge, s is the response.
+schnorrVerify :: SchnorrParams -> Integer -> Integer -> Integer -> Integer -> Bool
+schnorrVerify params y r c s = error "check g^s * y^c mod p == r"
+
+-- 4. Simulate a full protocol run.
+--    Given params, secret x, random k, and challenge c:
+--      - Compute public key y = g^x mod p
+--      - Compute commitment r = g^k mod p
+--      - Compute response s
+--      - Return whether verification succeeds
+simulateProtocol :: SchnorrParams -> Integer -> Integer -> Integer -> Bool
+simulateProtocol params x k c = error "run full protocol and return verification result"
+`,
+    solutionCode: `module SchnorrProtocol where
+
+modExp :: Integer -> Integer -> Integer -> Integer
+modExp _ 0 _ = 1
+modExp base expo m
+  | even expo = modExp (base * base \`mod\` m) (expo \`div\` 2) m
+  | otherwise = base * modExp base (expo - 1) m \`mod\` m
+
+data SchnorrParams = SP { spP :: Integer, spQ :: Integer, spG :: Integer }
+  deriving (Show)
+
+schnorrCommit :: SchnorrParams -> Integer -> Integer
+schnorrCommit params k = modExp (spG params) k (spP params)
+
+schnorrRespond :: SchnorrParams -> Integer -> Integer -> Integer -> Integer
+schnorrRespond params x k c = (k - c * x) \`mod\` (spQ params)
+
+schnorrVerify :: SchnorrParams -> Integer -> Integer -> Integer -> Integer -> Bool
+schnorrVerify params y r c s =
+  (modExp (spG params) s (spP params) * modExp y c (spP params)) \`mod\` (spP params) == r
+
+simulateProtocol :: SchnorrParams -> Integer -> Integer -> Integer -> Bool
+simulateProtocol params x k c =
+  let y = modExp (spG params) x (spP params)
+      r = schnorrCommit params k
+      s = schnorrRespond params x k c
+  in  schnorrVerify params y r c s
+`,
+    testCode: `runTestEq "commit: g^3 mod 23 = 8" (8 :: Integer) (schnorrCommit (SP 23 11 2) 3)
+        , runTestEq "commit: g^0 mod 23 = 1" (1 :: Integer) (schnorrCommit (SP 23 11 2) 0)
+        , runTestEq "respond: (3 - 5*7) mod 11 = 1" (1 :: Integer) (schnorrRespond (SP 23 11 2) 7 3 5)
+        , runTestEq "verify: g^1 * 13^5 mod 23 = 8" True (schnorrVerify (SP 23 11 2) 13 8 5 1)
+        , runTestEq "verify: wrong r fails" False (schnorrVerify (SP 23 11 2) 13 9 5 1)
+        , runTestEq "verify: wrong s fails" False (schnorrVerify (SP 23 11 2) 13 8 5 2)
+        , runTestEq "protocol succeeds with correct secret" True (simulateProtocol (SP 23 11 2) 7 3 5)
+        , runTestEq "protocol succeeds with different k,c" True (simulateProtocol (SP 23 11 2) 7 9 3)
+        , runTestEq "protocol fails with wrong secret" False (let params = SP 23 11 2 in schnorrVerify params (modExp 2 8 23) (schnorrCommit params 3) 5 (schnorrRespond params 7 3 5))
+        , runTestEq "protocol succeeds with x=1" True (simulateProtocol (SP 23 11 2) 1 5 7)`,
+    hints: [
+      'For <code>schnorrCommit</code>: just <code>modExp (spG params) k (spP params)</code>.',
+      'For <code>schnorrRespond</code>: <code>(k - c * x) \\`mod\\` (spQ params)</code>. Haskell\'s <code>mod</code> always returns a non-negative result for a positive modulus.',
+      'For <code>schnorrVerify</code>: compute <code>(modExp g s p * modExp y c p) \\`mod\\` p</code> and check equality with <code>r</code>.',
+      'For <code>simulateProtocol</code>: compute <code>y = modExp g x p</code>, then call <code>schnorrCommit</code>, <code>schnorrRespond</code>, and <code>schnorrVerify</code> in sequence.',
+    ],
+    concepts: ['sigma-protocol', 'zero-knowledge-proof', 'schnorr-identification', 'discrete-logarithm', 'honest-verifier-ZK'],
+    successPatterns: [
+      'modExp.*spG.*spP',
+      'k\\s*-\\s*c\\s*\\*\\s*x.*mod.*spQ',
+      'modExp.*spG.*\\*.*modExp.*y.*c',
+      'schnorrVerify\\s+params\\s+y\\s+r\\s+c\\s+s',
+    ],
+    testNames: [
+      'commit g^3 mod 23 = 8',
+      'commit g^0 mod 23 = 1',
+      'respond (3 - 5*7) mod 11 = 1',
+      'verify correct transcript',
+      'verify rejects wrong commitment',
+      'verify rejects wrong response',
+      'full protocol with correct secret',
+      'full protocol with different randomness',
+      'protocol fails with wrong secret',
+      'full protocol with x=1',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // APPLIED CATEGORY THEORY MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'state-monad': {
+    id: 'state-monad',
+    title: 'State Monad from Scratch',
+    difficulty: 'intermediate',
+    order: 1,
+    description: `
+<h3>Stateful Computation Without Mutation</h3>
+<p>In imperative languages, you modify variables in place. In Haskell, we model state by <strong>threading</strong> a value through a chain of functions. The <code>State</code> monad wraps this pattern into a clean abstraction.</p>
+
+<h3>The State Type</h3>
+<pre><code>newtype State s a = State { runState :: s -> (a, s) }</code></pre>
+<p>A <code>State s a</code> is a function that takes a current state of type <code>s</code> and returns:</p>
+<ul>
+  <li>A result of type <code>a</code></li>
+  <li>A new state of type <code>s</code></li>
+</ul>
+<p>Think of it like a slot machine: you put in a state, and out comes a value plus the updated state.</p>
+
+<h3>Why Build It Ourselves?</h3>
+<p>Libraries provide <code>State</code>, but implementing it from scratch teaches the core idea: <strong>monads are just functions in disguise</strong>. The Functor/Applicative/Monad hierarchy threads the state automatically.</p>
+
+<h3>The Typeclass Hierarchy</h3>
+<p>GHC 9.6 requires the <strong>Applicative-Monad Proposal (AMP)</strong>: every Monad must also be a Functor and Applicative. You must define all three instances, in order:</p>
+<table>
+  <thead><tr><th>Instance</th><th>Key Idea</th></tr></thead>
+  <tbody>
+    <tr><td>Functor</td><td>Apply a function to the result, pass state through</td></tr>
+    <tr><td>Applicative</td><td><code>pure</code> wraps a value without changing state; <code>&lt;*&gt;</code> threads state through two computations</td></tr>
+    <tr><td>Monad</td><td><code>&gt;&gt;=</code> chains stateful computations, passing updated state forward</td></tr>
+  </tbody>
+</table>
+
+<h3>Helpers</h3>
+<ul>
+  <li><code>get</code> — returns the current state as the result (and leaves state unchanged)</li>
+  <li><code>put s</code> — replaces the state with <code>s</code>, returning <code>()</code></li>
+  <li><code>modify f</code> — applies <code>f</code> to the current state</li>
+</ul>
+
+<h3>Worked Example</h3>
+<pre><code>-- A "tick" increments the counter state by 1
+tick :: State Int ()
+tick = modify (+1)
+
+-- Count three operations
+countOps :: (Int, Int)
+countOps = runState (tick >> tick >> tick >> get) 0
+-- Result: (3, 3)   -- get returns the state (3), final state is also 3</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>Functor</code>, <code>Applicative</code>, and <code>Monad</code> instances for <code>State</code>, plus the three helpers <code>get</code>, <code>put</code>, and <code>modify</code>, and a <code>tick</code> function that increments the state.</p>
+`,
+    starterCode: `module StateMonad where
+
+newtype State s a = State { runState :: s -> (a, s) }
+
+-- EXERCISE: Implement all instances and helpers.
+
+-- 1. Functor instance
+--    fmap applies f to the result, leaving the state alone.
+--    Unwrap with runState or pattern match: State g
+--    Then: \\s -> let (a, s') = g s in (f a, s')
+instance Functor (State s) where
+  fmap f (State g) = error "implement fmap"
+
+-- 2. Applicative instance
+--    pure: wrap a value, don't touch the state
+--    (<*>): run sf to get (f, s'), run sa with s' to get (a, s''), return (f a, s'')
+instance Applicative (State s) where
+  pure a = error "implement pure"
+  State sf <*> State sa = error "implement (<*>)"
+
+-- 3. Monad instance
+--    (>>=): run sa to get (a, s'), then run (f a) with s'
+instance Monad (State s) where
+  State sa >>= f = error "implement (>>=)"
+
+-- 4. get: return the current state as the result
+get :: State s s
+get = error "implement get"
+
+-- 5. put: replace the state, return ()
+put :: s -> State s ()
+put s = error "implement put"
+
+-- 6. modify: apply a function to the state
+modify :: (s -> s) -> State s ()
+modify f = error "implement modify"
+
+-- 7. tick: increment an Int state by 1
+tick :: State Int ()
+tick = error "implement using modify"
+
+-- 8. countOps: run three ticks then get the count
+--    Should satisfy: countOps == (3, 3)
+countOps :: (Int, Int)
+countOps = runState (tick >> tick >> tick >> get) 0
+`,
+    solutionCode: `module StateMonad where
+
+newtype State s a = State { runState :: s -> (a, s) }
+
+instance Functor (State s) where
+  fmap f (State g) = State $ \\s -> let (a, s') = g s in (f a, s')
+
+instance Applicative (State s) where
+  pure a = State $ \\s -> (a, s)
+  State sf <*> State sa = State $ \\s ->
+    let (f, s')  = sf s
+        (a, s'') = sa s'
+    in (f a, s'')
+
+instance Monad (State s) where
+  State sa >>= f = State $ \\s ->
+    let (a, s') = sa s
+    in runState (f a) s'
+
+get :: State s s
+get = State $ \\s -> (s, s)
+
+put :: s -> State s ()
+put s = State $ \\_ -> ((), s)
+
+modify :: (s -> s) -> State s ()
+modify f = State $ \\s -> ((), f s)
+
+tick :: State Int ()
+tick = modify (+1)
+
+countOps :: (Int, Int)
+countOps = runState (tick >> tick >> tick >> get) 0
+`,
+    testCode: `runTestEq "pure 42 with state 0" (42 :: Int, 0 :: Int) (runState (pure 42) 0)
+        , runTestEq "fmap (+1) (pure 5) with state 0" (6 :: Int, 0 :: Int) (runState (fmap (+1) (pure 5)) (0 :: Int))
+        , runTestEq "get with state 7" (7 :: Int, 7 :: Int) (runState get 7)
+        , runTestEq "put 5 with state 0" ((), 5 :: Int) (runState (put 5) (0 :: Int))
+        , runTestEq "modify (+10) with state 5" ((), 15 :: Int) (runState (modify (+10)) (5 :: Int))
+        , runTestEq "tick from 0" ((), 1 :: Int) (runState tick 0)
+        , runTestEq "tick >> tick from 0" ((), 2 :: Int) (runState (tick >> tick) 0)
+        , runTestEq "countOps == (3,3)" (3 :: Int, 3 :: Int) countOps
+        , runTestEq "get >>= put from 10" ((), 10 :: Int) (runState (get >>= put) (10 :: Int))
+        , runTestEq "put 99 >> get" (99 :: Int, 99 :: Int) (runState (put 99 >> get) (0 :: Int))`,
+    hints: [
+      'For <code>fmap</code>: pattern match <code>State g</code>, then <code>State $ \\s -> let (a, s1) = g s in (f a, s1)</code>. Apply <code>f</code> only to the result, not the state.',
+      'For <code>pure</code>: <code>State $ \\s -> (a, s)</code> — wrap the value, pass state through unchanged.',
+      'For <code>&gt;&gt;=</code>: run the first computation to get <code>(a, s1)</code>, then <code>runState (f a) s1</code> — the key is threading the updated state.',
+      'For <code>get</code>: <code>State $ \\s -> (s, s)</code>. For <code>put</code>: <code>State $ \\_ -> ((), s)</code>. For <code>modify</code>: <code>State $ \\s -> ((), f s)</code>.',
+    ],
+    concepts: ['state-monad', 'functor', 'applicative', 'monad', 'AMP', 'stateful-computation'],
+    successPatterns: [
+      'fmap\\s+f\\s+\\(State',
+      'pure\\s+a\\s*=\\s*State',
+      'runState\\s*\\(f\\s+a\\)\\s*s',
+      'get\\s*=\\s*State',
+    ],
+    testNames: [
+      'pure wraps value without changing state',
+      'fmap applies function to result only',
+      'get returns current state',
+      'put replaces the state',
+      'modify applies function to state',
+      'single tick increments',
+      'two ticks increment twice',
+      'countOps returns (3,3)',
+      'get >>= put is identity on state',
+      'put then get returns new state',
+    ],
+  },
+
+  'reader-monad': {
+    id: 'reader-monad',
+    title: 'Reader Monad from Scratch',
+    difficulty: 'intermediate',
+    order: 2,
+    description: `
+<h3>Implicit Configuration</h3>
+<p>Many programs need to read configuration or environment values. Instead of passing a config argument through every function, the <code>Reader</code> monad threads it automatically — like a read-only environment available everywhere.</p>
+
+<h3>The Reader Type</h3>
+<pre><code>newtype Reader r a = Reader { runReader :: r -> a }</code></pre>
+<p>A <code>Reader r a</code> is a function from an environment <code>r</code> to a result <code>a</code>. The environment is available everywhere but cannot be modified (unlike State).</p>
+
+<h3>Typeclass Instances</h3>
+<table>
+  <thead><tr><th>Instance</th><th>Key Idea</th></tr></thead>
+  <tbody>
+    <tr><td>Functor</td><td><code>fmap f (Reader g) = Reader (f . g)</code> — compose <code>f</code> after the reader function</td></tr>
+    <tr><td>Applicative</td><td><code>pure</code> ignores the environment; <code>&lt;*&gt;</code> passes the same environment to both sides</td></tr>
+    <tr><td>Monad</td><td><code>&gt;&gt;=</code> runs the first reader, passes its result to <code>f</code>, and gives both the same environment</td></tr>
+  </tbody>
+</table>
+
+<h3>Helpers</h3>
+<ul>
+  <li><code>ask</code> — returns the entire environment as the result</li>
+  <li><code>local f m</code> — runs <code>m</code> with a modified environment (<code>f</code> is applied before reading)</li>
+</ul>
+
+<h3>Worked Example</h3>
+<pre><code>data Config = Config { appName :: String, maxRetries :: Int }
+  deriving (Show, Eq)
+
+greetUser :: String -> Reader Config String
+greetUser user = do
+  config <- ask
+  return (user ++ " logged into " ++ appName config)
+
+-- runReader (greetUser "Alice") (Config "MyApp" 3)
+-- => "Alice logged into MyApp"</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement the Functor, Applicative, and Monad instances for <code>Reader</code>, plus <code>ask</code>, <code>local</code>, and a <code>greetUser</code> function that reads from a <code>Config</code>.</p>
+`,
+    starterCode: `module ReaderMonad where
+
+newtype Reader r a = Reader { runReader :: r -> a }
+
+-- EXERCISE: Implement all instances and helpers.
+
+-- 1. Functor: compose f after the reader function
+instance Functor (Reader r) where
+  fmap f (Reader g) = error "implement fmap"
+
+-- 2. Applicative: pure ignores env; (<*>) passes same env to both
+instance Applicative (Reader r) where
+  pure a = error "implement pure"
+  Reader rf <*> Reader ra = error "implement (<*>)"
+
+-- 3. Monad: run first reader, pass result to f, same environment
+instance Monad (Reader r) where
+  Reader ra >>= f = error "implement (>>=)"
+
+-- 4. ask: return the environment itself
+ask :: Reader r r
+ask = error "implement ask"
+
+-- 5. local: run a reader with a modified environment
+local :: (r -> r) -> Reader r a -> Reader r a
+local f (Reader g) = error "implement local"
+
+-- Config type for the use-case
+data Config = Config { appName :: String, maxRetries :: Int }
+  deriving (Show, Eq)
+
+-- 6. greetUser: read the config and produce a greeting
+--    greetUser "Alice" with Config "MyApp" 3 => "Alice logged into MyApp"
+greetUser :: String -> Reader Config String
+greetUser user = error "use ask to read config, return greeting"
+
+-- 7. retryMsg: read config and return "Will retry N times"
+retryMsg :: Reader Config String
+retryMsg = error "use ask to read maxRetries from config"
+`,
+    solutionCode: `module ReaderMonad where
+
+newtype Reader r a = Reader { runReader :: r -> a }
+
+instance Functor (Reader r) where
+  fmap f (Reader g) = Reader (f . g)
+
+instance Applicative (Reader r) where
+  pure a = Reader $ \\_ -> a
+  Reader rf <*> Reader ra = Reader $ \\r -> rf r (ra r)
+
+instance Monad (Reader r) where
+  Reader ra >>= f = Reader $ \\r -> runReader (f (ra r)) r
+
+ask :: Reader r r
+ask = Reader id
+
+local :: (r -> r) -> Reader r a -> Reader r a
+local f (Reader g) = Reader (g . f)
+
+data Config = Config { appName :: String, maxRetries :: Int }
+  deriving (Show, Eq)
+
+greetUser :: String -> Reader Config String
+greetUser user = do
+  config <- ask
+  return (user ++ " logged into " ++ appName config)
+
+retryMsg :: Reader Config String
+retryMsg = do
+  config <- ask
+  return ("Will retry " ++ show (maxRetries config) ++ " times")
+`,
+    testCode: `runTestEq "runReader ask 5" (5 :: Int) (runReader ask 5)
+        , runTestEq "runReader (pure 42) 0" (42 :: Int) (runReader (pure 42) (0 :: Int))
+        , runTestEq "fmap (+1) ask with 5" (6 :: Int) (runReader (fmap (+1) ask) (5 :: Int))
+        , runTestEq "local (+1) ask with 5" (6 :: Int) (runReader (local (+1) ask) (5 :: Int))
+        , runTestEq "local (*2) ask with 3" (6 :: Int) (runReader (local (*2) ask) (3 :: Int))
+        , runTestEq "ask unchanged after local" (5 :: Int) (runReader (local (+1) ask >> ask) (5 :: Int))
+        , runTestEq "greetUser Alice" "Alice logged into MyApp" (runReader (greetUser "Alice") (Config "MyApp" 3))
+        , runTestEq "greetUser Bob" "Bob logged into TestApp" (runReader (greetUser "Bob") (Config "TestApp" 5))
+        , runTestEq "retryMsg" "Will retry 3 times" (runReader retryMsg (Config "MyApp" 3))
+        , runTestEq "retryMsg with 10" "Will retry 10 times" (runReader retryMsg (Config "X" 10))`,
+    hints: [
+      'For <code>fmap</code>: <code>Reader (f . g)</code> — compose <code>f</code> after the reader function <code>g</code>.',
+      'For <code>pure</code>: <code>Reader $ \\_ -> a</code>. For <code>&lt;*&gt;</code>: <code>Reader $ \\r -> rf r (ra r)</code> — both functions receive the same environment.',
+      'For <code>&gt;&gt;=</code>: <code>Reader $ \\r -> runReader (f (ra r)) r</code>. Run <code>ra</code> to get the value, apply <code>f</code>, then run the resulting reader with the same <code>r</code>.',
+      'For <code>greetUser</code>: use <code>do { config &lt;- ask; return (user ++ " logged into " ++ appName config) }</code>.',
+    ],
+    concepts: ['reader-monad', 'functor', 'applicative', 'monad', 'AMP', 'environment', 'configuration'],
+    successPatterns: [
+      'fmap\\s+f\\s+\\(Reader\\s+g\\)\\s*=\\s*Reader\\s*\\(f\\s*\\.\\s*g\\)',
+      'ask\\s*=\\s*Reader\\s+id',
+      'local.*Reader.*\\.\\s*f',
+      'config\\s*<-\\s*ask',
+    ],
+    testNames: [
+      'ask returns the environment',
+      'pure ignores the environment',
+      'fmap composes over result',
+      'local modifies environment for inner reader',
+      'local multiplies environment',
+      'ask after local sees original environment',
+      'greetUser Alice with MyApp config',
+      'greetUser Bob with TestApp config',
+      'retryMsg reads maxRetries',
+      'retryMsg with different config',
+    ],
+  },
+
+  'monad-transformers': {
+    id: 'monad-transformers',
+    title: 'Monad Transformers: StateT',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>Combining Effects</h3>
+<p>What if you need <strong>both</strong> state and the ability to fail? The <code>State</code> monad handles state, <code>Maybe</code> handles failure, but you can't use both at once — unless you <strong>stack</strong> them with a <em>monad transformer</em>.</p>
+
+<h3>The StateT Transformer</h3>
+<pre><code>newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }</code></pre>
+<p>Compare with plain <code>State</code>:</p>
+<table>
+  <thead><tr><th>Type</th><th>Wrapped function</th></tr></thead>
+  <tbody>
+    <tr><td><code>State s a</code></td><td><code>s -> (a, s)</code></td></tr>
+    <tr><td><code>StateT s m a</code></td><td><code>s -> m (a, s)</code></td></tr>
+  </tbody>
+</table>
+<p>The only difference: the result pair <code>(a, s)</code> is now wrapped in an inner monad <code>m</code>. When <code>m = Maybe</code>, any step can fail, aborting the entire chain.</p>
+
+<h3>Instances</h3>
+<p>The Functor, Applicative, and Monad instances all delegate to the inner monad <code>m</code>:</p>
+<ul>
+  <li><strong>Functor:</strong> <code>fmap f (StateT g) = StateT $ \\s -> fmap (\\(a,s') -> (f a, s')) (g s)</code></li>
+  <li><strong>Monad:</strong> Run the first computation, use <code>&gt;&gt;=</code> on the inner monad to thread the state</li>
+</ul>
+
+<h3>The lift Function</h3>
+<p><code>lift</code> injects a plain <code>m a</code> action into the transformer:</p>
+<pre><code>lift :: Monad m => m a -> StateT s m a
+lift ma = StateT $ \\s -> fmap (\\a -> (a, s)) ma</code></pre>
+
+<h3>Use Case: Safe Stack</h3>
+<pre><code>type SafeStack a = StateT [Int] Maybe a
+
+safePush :: Int -> SafeStack ()
+safePush x = StateT $ \\xs -> Just ((), x:xs)
+
+safePop :: SafeStack Int
+safePop = StateT $ \\xs -> case xs of
+  []     -> Nothing      -- fail! stack is empty
+  (h:t)  -> Just (h, t)  -- succeed with top element</code></pre>
+<p>Popping from an empty stack gives <code>Nothing</code>, and the failure propagates through the entire chain.</p>
+
+<h3>Example</h3>
+<pre><code>runStateT (safePush 5) []         -- Just ((), [5])
+runStateT safePop []              -- Nothing
+runStateT safePop [1,2,3]         -- Just (1, [2,3])
+runStateT (safePop >> safePop) [1]  -- Nothing (second pop fails)</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement <code>StateT</code> with its Functor, Applicative, Monad instances, <code>lift</code>, and the safe stack operations.</p>
+`,
+    starterCode: `module MonadTransformers where
+
+newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
+
+-- EXERCISE: Implement all instances and the safe stack.
+
+-- 1. Functor (requires Functor m)
+instance Functor m => Functor (StateT s m) where
+  fmap f (StateT g) = error "implement fmap"
+
+-- 2. Applicative (requires Monad m — we use monadic bind in the implementation)
+instance Monad m => Applicative (StateT s m) where
+  pure a = error "implement pure"
+  StateT sf <*> StateT sa = error "implement (<*>)"
+
+-- 3. Monad (requires Monad m)
+instance Monad m => Monad (StateT s m) where
+  StateT sa >>= f = error "implement (>>=)"
+
+-- 4. lift: inject an inner monad action into StateT
+lift :: Monad m => m a -> StateT s m a
+lift ma = error "implement lift"
+
+-- 5. Safe stack using StateT [Int] Maybe
+
+safePush :: Int -> StateT [Int] Maybe ()
+safePush x = error "push x onto the stack, always succeeds"
+
+safePop :: StateT [Int] Maybe Int
+safePop = error "pop from stack, Nothing if empty"
+
+-- 6. safeAdd: pop two values, push their sum
+--    Fails if fewer than 2 elements on the stack
+safeAdd :: StateT [Int] Maybe ()
+safeAdd = error "pop twice, push the sum"
+`,
+    solutionCode: `module MonadTransformers where
+
+newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
+
+instance Functor m => Functor (StateT s m) where
+  fmap f (StateT g) = StateT $ \\s -> fmap (\\(a, s') -> (f a, s')) (g s)
+
+instance Monad m => Applicative (StateT s m) where
+  pure a = StateT $ \\s -> return (a, s)
+  StateT sf <*> StateT sa = StateT $ \\s -> do
+    (f, s')  <- sf s
+    (a, s'') <- sa s'
+    return (f a, s'')
+
+instance Monad m => Monad (StateT s m) where
+  StateT sa >>= f = StateT $ \\s -> do
+    (a, s') <- sa s
+    runStateT (f a) s'
+
+lift :: Monad m => m a -> StateT s m a
+lift ma = StateT $ \\s -> fmap (\\a -> (a, s)) ma
+
+safePush :: Int -> StateT [Int] Maybe ()
+safePush x = StateT $ \\xs -> Just ((), x:xs)
+
+safePop :: StateT [Int] Maybe Int
+safePop = StateT $ \\xs -> case xs of
+  []    -> Nothing
+  (h:t) -> Just (h, t)
+
+safeAdd :: StateT [Int] Maybe ()
+safeAdd = do
+  a <- safePop
+  b <- safePop
+  safePush (a + b)
+`,
+    testCode: `runTestEq "safePush 5 onto []" (Just ((), [5])) (runStateT (safePush 5) [])
+        , runTestEq "safePush 3 onto [1,2]" (Just ((), [3,1,2])) (runStateT (safePush 3) [1,2])
+        , runTestEq "safePop from []" (Nothing :: Maybe (Int, [Int])) (runStateT safePop [])
+        , runTestEq "safePop from [1,2,3]" (Just (1, [2,3])) (runStateT safePop [1,2,3])
+        , runTestEq "safePop >> safePop from [1]" (Nothing :: Maybe (Int, [Int])) (runStateT (safePop >> safePop) [1])
+        , runTestEq "safePop >> safePop from [1,2]" (Just (2, [])) (runStateT (safePop >> safePop) [1,2])
+        , runTestEq "safeAdd on [3,4,5]" (Just ((), [7,5])) (runStateT safeAdd [3,4,5])
+        , runTestEq "safeAdd on [3]" (Nothing :: Maybe ((), [Int])) (runStateT safeAdd [3])
+        , runTestEq "safeAdd on []" (Nothing :: Maybe ((), [Int])) (runStateT safeAdd [])
+        , runTestEq "pure 42 with state [1]" (Just (42 :: Int, [1 :: Int])) (runStateT (pure 42) [1 :: Int])`,
+    hints: [
+      'For <code>fmap</code>: <code>StateT $ \\s -> fmap (\\(a, s1) -> (f a, s1)) (g s)</code>. Use the inner Functor to map over the pair inside <code>m</code>.',
+      'For <code>pure</code>: <code>StateT $ \\s -> return (a, s)</code>. Use the inner monad\'s <code>return</code>.',
+      'For <code>&gt;&gt;=</code>: <code>StateT $ \\s -> sa s >>= \\(a, s1) -> runStateT (f a) s1</code>. Chain via the inner monad\'s bind.',
+      'For <code>safePop</code>: pattern match the list — <code>[] -> Nothing</code>, <code>(h:t) -> Just (h, t)</code>. For <code>safeAdd</code>: use do-notation to pop twice and push the sum.',
+    ],
+    concepts: ['monad-transformer', 'StateT', 'effect-stacking', 'Maybe', 'safe-stack'],
+    successPatterns: [
+      'fmap.*\\\\\\(a.*s.*->',
+      'pure.*return.*a.*s',
+      'runStateT\\s*\\(f\\s+a\\)\\s*s',
+      '\\[\\]\\s*->\\s*Nothing',
+    ],
+    testNames: [
+      'safePush onto empty stack',
+      'safePush onto non-empty stack',
+      'safePop from empty stack fails',
+      'safePop from non-empty stack',
+      'double pop from singleton fails',
+      'double pop from pair succeeds',
+      'safeAdd pops two and pushes sum',
+      'safeAdd with one element fails',
+      'safeAdd with empty stack fails',
+      'pure wraps value in inner monad',
+    ],
+  },
+
+  'free-monads': {
+    id: 'free-monads',
+    title: 'Free Monads: Build a DSL',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>Programs as Data</h3>
+<p>A <strong>free monad</strong> turns any functor into a monad, giving you a way to build a <em>description</em> of a program as a data structure, then interpret it later. This is the foundation of domain-specific languages (DSLs) in Haskell.</p>
+
+<h3>The Free Type</h3>
+<pre><code>data Free f a = Pure a | Free (f (Free f a))</code></pre>
+<p>This is a recursive type:</p>
+<ul>
+  <li><code>Pure a</code> — a completed computation with result <code>a</code></li>
+  <li><code>Free (f (Free f a))</code> — one layer of the functor <code>f</code>, containing the rest of the program</li>
+</ul>
+
+<h3>Why "Free"?</h3>
+<p>It's called "free" because it gives you a monad for <strong>free</strong> — you only need to define a Functor. The Monad instance is derived automatically from the structure of <code>Free</code>.</p>
+
+<h3>Typeclass Instances</h3>
+<p>Given <code>Functor f</code>:</p>
+<pre><code>instance Functor f => Functor (Free f) where
+  fmap f (Pure a)  = Pure (f a)
+  fmap f (Free op) = Free (fmap (fmap f) op)
+
+instance Functor f => Applicative (Free f) where
+  pure = Pure
+  Pure f  <*> x = fmap f x
+  Free op <*> x = Free (fmap (<*> x) op)
+
+instance Functor f => Monad (Free f) where
+  Pure a  >>= f = f a
+  Free op >>= f = Free (fmap (>>= f) op)</code></pre>
+
+<h3>Building a Key-Value Store DSL</h3>
+<p>Define the operations as a functor:</p>
+<pre><code>data KVF next
+  = Get String (String -> next)     -- read a key, continue with value
+  | Put String String next          -- write key=value, then continue
+  | Delete String next              -- delete a key, then continue
+
+instance Functor KVF where
+  fmap f (Get k cont)    = Get k (f . cont)
+  fmap f (Put k v next)  = Put k v (f next)
+  fmap f (Delete k next) = Delete k (f next)</code></pre>
+
+<h3>Smart Constructors</h3>
+<pre><code>getKV :: String -> Free KVF String
+getKV k = Free (Get k Pure)
+
+putKV :: String -> String -> Free KVF ()
+putKV k v = Free (Put k v (Pure ()))
+
+deleteKV :: String -> Free KVF ()
+deleteKV k = Free (Delete k (Pure ()))</code></pre>
+
+<h3>Interpreter</h3>
+<p>An interpreter walks the free structure and executes each operation. You can write different interpreters for testing, logging, or real databases — all from the same DSL program.</p>
+
+<h3>Your Task</h3>
+<p>Implement the Free monad instances, the KVF functor, smart constructors, and an interpreter that runs against an association list <code>[(String, String)]</code>.</p>
+`,
+    starterCode: `module FreeMonads where
+
+data Free f a = Pure a | Free (f (Free f a))
+
+-- EXERCISE: Implement everything below.
+
+-- 1. Functor instance for Free
+instance Functor f => Functor (Free f) where
+  fmap f x = error "implement fmap"
+
+-- 2. Applicative instance for Free
+instance Functor f => Applicative (Free f) where
+  pure = Pure
+  pf <*> px = error "implement (<*>)"
+
+-- 3. Monad instance for Free
+instance Functor f => Monad (Free f) where
+  x >>= f = error "implement (>>=)"
+
+-- Key-Value store functor
+data KVF next
+  = Get String (String -> next)
+  | Put String String next
+  | Delete String next
+
+-- 4. Functor instance for KVF
+instance Functor KVF where
+  fmap f op = error "implement fmap for KVF"
+
+-- 5. Smart constructors
+getKV :: String -> Free KVF String
+getKV k = error "wrap Get in Free"
+
+putKV :: String -> String -> Free KVF ()
+putKV k v = error "wrap Put in Free"
+
+deleteKV :: String -> Free KVF ()
+deleteKV k = error "wrap Delete in Free"
+
+-- 6. Interpreter: run a Free KVF program against an association list
+--    Returns the final result and the final store
+interpret :: [(String, String)] -> Free KVF a -> (a, [(String, String)])
+interpret store program = error "implement interpreter"
+`,
+    solutionCode: `module FreeMonads where
+
+data Free f a = Pure a | Free (f (Free f a))
+
+instance Functor f => Functor (Free f) where
+  fmap f (Pure a)  = Pure (f a)
+  fmap f (Free op) = Free (fmap (fmap f) op)
+
+instance Functor f => Applicative (Free f) where
+  pure = Pure
+  Pure f  <*> x = fmap f x
+  Free op <*> x = Free (fmap (<*> x) op)
+
+instance Functor f => Monad (Free f) where
+  Pure a  >>= f = f a
+  Free op >>= f = Free (fmap (>>= f) op)
+
+data KVF next
+  = Get String (String -> next)
+  | Put String String next
+  | Delete String next
+
+instance Functor KVF where
+  fmap f (Get k cont)    = Get k (f . cont)
+  fmap f (Put k v next)  = Put k v (f next)
+  fmap f (Delete k next) = Delete k (f next)
+
+getKV :: String -> Free KVF String
+getKV k = Free (Get k Pure)
+
+putKV :: String -> String -> Free KVF ()
+putKV k v = Free (Put k v (Pure ()))
+
+deleteKV :: String -> Free KVF ()
+deleteKV k = Free (Delete k (Pure ()))
+
+interpret :: [(String, String)] -> Free KVF a -> (a, [(String, String)])
+interpret store (Pure a) = (a, store)
+interpret store (Free (Get k cont)) =
+  let val = case lookup k store of
+              Just v  -> v
+              Nothing -> ""
+  in interpret store (cont val)
+interpret store (Free (Put k v next)) =
+  let store' = (k, v) : filter (\\(k', _) -> k' /= k) store
+  in interpret store' next
+interpret store (Free (Delete k next)) =
+  let store' = filter (\\(k', _) -> k' /= k) store
+  in interpret store' next
+`,
+    testCode: `runTestEq "put then get" ("1", [("a","1")]) (interpret [] (putKV "a" "1" >> getKV "a"))
+        , runTestEq "get missing key" ("", []) (interpret [] (getKV "x"))
+        , runTestEq "put overwrites" ("2", [("a","2")]) (interpret [("a","1")] (putKV "a" "2" >> getKV "a"))
+        , runTestEq "delete removes key" ("", []) (interpret [("a","1")] (deleteKV "a" >> getKV "a"))
+        , runTestEq "put two keys" ("world", [("b","world"),("a","hello")]) (interpret [] (do { putKV "a" "hello"; putKV "b" "world"; getKV "b" }))
+        , runTestEq "pure value" (42 :: Int, []) (interpret [] (pure 42 :: Free KVF Int))
+        , runTestEq "sequence of operations" ("bar", [("y","bar"),("x","foo")]) (interpret [] (do { putKV "x" "foo"; putKV "y" "bar"; getKV "y" }))
+        , runTestEq "delete non-existent key" ((), [("a","1")]) (interpret [("a","1")] (deleteKV "z"))
+        , runTestEq "put delete get" ("", []) (interpret [] (do { putKV "k" "v"; deleteKV "k"; getKV "k" }))
+        , runTestEq "fmap over pure" (43 :: Int, []) (interpret [] (fmap (+1) (pure 42 :: Free KVF Int)))`,
+    hints: [
+      'For <code>fmap</code> on Free: <code>Pure a -> Pure (f a)</code>. <code>Free op -> Free (fmap (fmap f) op)</code> — use the outer functor to fmap the inner fmap.',
+      'For <code>>>=</code> on Free: <code>Pure a >>= f = f a</code>. <code>Free op >>= f = Free (fmap (>>= f) op)</code> — push the bind into the functor layer.',
+      'For KVF Functor: <code>Get k cont -> Get k (f . cont)</code>. <code>Put k v next -> Put k v (f next)</code>. <code>Delete k next -> Delete k (f next)</code>. Apply <code>f</code> to the continuation.',
+      'For <code>interpret</code>: pattern match on Pure and each Free constructor. For Get, use <code>lookup</code> (default to <code>""</code>). For Put, prepend and filter old. For Delete, filter.',
+    ],
+    concepts: ['free-monad', 'DSL', 'interpreter-pattern', 'functor', 'algebraic-effects'],
+    successPatterns: [
+      'fmap f \\(Pure a\\)',
+      'Free op >>= f = Free \\(fmap',
+      'fmap f \\(Get k cont\\)',
+      'interpret.*Pure.*=',
+    ],
+    testNames: [
+      'put then get retrieves the value',
+      'get missing key returns empty string',
+      'put overwrites existing key',
+      'delete removes a key',
+      'put two keys and read second',
+      'pure returns value unchanged',
+      'sequence of three operations',
+      'delete non-existent key is harmless',
+      'put then delete then get returns empty',
+      'fmap works over pure values',
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TYPED LINEAR ALGEBRA MODULE
+  // ═══════════════════════════════════════════════════════════════════
+
+  'vector-operations': {
+    id: 'vector-operations',
+    title: 'Vector Operations',
+    difficulty: 'intermediate',
+    order: 1,
+    description: `
+<h3>Vectors in Haskell</h3>
+<p>A <strong>vector</strong> is an ordered list of numbers. We wrap it in a <code>newtype</code> so we can define our own operations without conflicting with list functions:</p>
+<pre><code>newtype Vec = Vec [Double] deriving (Show, Eq)</code></pre>
+
+<h3>Core Operations</h3>
+<table>
+  <thead><tr><th>Operation</th><th>Formula</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Addition</td><td>[a&#x2081;+b&#x2081;, a&#x2082;+b&#x2082;, ...]</td><td>[1,2] + [3,4] = [4,6]</td></tr>
+    <tr><td>Scalar multiply</td><td>[c*a&#x2081;, c*a&#x2082;, ...]</td><td>3 * [1,2] = [3,6]</td></tr>
+    <tr><td>Dot product</td><td>a&#x2081;*b&#x2081; + a&#x2082;*b&#x2082; + ...</td><td>[1,2,3] . [4,5,6] = 32</td></tr>
+    <tr><td>Norm (length)</td><td>sqrt(v . v)</td><td>||[3,4]|| = 5.0</td></tr>
+  </tbody>
+</table>
+
+<h3>Implementation Hints</h3>
+<ul>
+  <li><code>vecAdd</code>: use <code>zipWith (+)</code> to add corresponding elements</li>
+  <li><code>vecScale</code>: use <code>map (c*)</code> to multiply each element by a scalar</li>
+  <li><code>dot</code>: use <code>sum (zipWith (*) xs ys)</code></li>
+  <li><code>vecNorm</code>: <code>sqrt (dot v v)</code></li>
+  <li><code>zeroVec n</code>: use <code>replicate n 0</code></li>
+</ul>
+
+<h3>Worked Example</h3>
+<pre><code>vecAdd (Vec [1,2,3]) (Vec [4,5,6])
+  = Vec (zipWith (+) [1,2,3] [4,5,6])
+  = Vec [5,7,9]
+
+dot (Vec [1,2,3]) (Vec [4,5,6])
+  = sum (zipWith (*) [1,2,3] [4,5,6])
+  = sum [4,10,18]
+  = 32.0</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement five vector operations: addition, scalar multiplication, dot product, norm, and zero vector.</p>
+`,
+    starterCode: `module VectorOps where
+
+newtype Vec = Vec [Double] deriving (Show, Eq)
+
+-- EXERCISE: Implement each operation.
+
+-- 1. Add two vectors element-wise
+--    vecAdd (Vec [1,2]) (Vec [3,4]) = Vec [4,6]
+vecAdd :: Vec -> Vec -> Vec
+vecAdd (Vec xs) (Vec ys) = error "implement vecAdd"
+
+-- 2. Multiply a vector by a scalar
+--    vecScale 3 (Vec [1,2]) = Vec [3,6]
+vecScale :: Double -> Vec -> Vec
+vecScale c (Vec xs) = error "implement vecScale"
+
+-- 3. Dot product of two vectors
+--    dot (Vec [1,2,3]) (Vec [4,5,6]) = 32.0
+dot :: Vec -> Vec -> Double
+dot (Vec xs) (Vec ys) = error "implement dot"
+
+-- 4. Euclidean norm (length) of a vector
+--    vecNorm (Vec [3,4]) = 5.0
+vecNorm :: Vec -> Double
+vecNorm v = error "implement vecNorm using dot"
+
+-- 5. Zero vector of dimension n
+--    zeroVec 3 = Vec [0,0,0]
+zeroVec :: Int -> Vec
+zeroVec n = error "implement zeroVec"
+`,
+    solutionCode: `module VectorOps where
+
+newtype Vec = Vec [Double] deriving (Show, Eq)
+
+vecAdd :: Vec -> Vec -> Vec
+vecAdd (Vec xs) (Vec ys) = Vec (zipWith (+) xs ys)
+
+vecScale :: Double -> Vec -> Vec
+vecScale c (Vec xs) = Vec (map (c *) xs)
+
+dot :: Vec -> Vec -> Double
+dot (Vec xs) (Vec ys) = sum (zipWith (*) xs ys)
+
+vecNorm :: Vec -> Double
+vecNorm v = sqrt (dot v v)
+
+zeroVec :: Int -> Vec
+zeroVec n = Vec (replicate n 0)
+`,
+    testCode: `runTestEq "vecAdd [1,2] [3,4]" (Vec [4,6]) (vecAdd (Vec [1,2]) (Vec [3,4]))
+        , runTestEq "vecAdd [0,0] [5,5]" (Vec [5,5]) (vecAdd (Vec [0,0]) (Vec [5,5]))
+        , runTestEq "vecScale 3 [1,2]" (Vec [3,6]) (vecScale 3 (Vec [1,2]))
+        , runTestEq "vecScale 0 [1,2,3]" (Vec [0,0,0]) (vecScale 0 (Vec [1,2,3]))
+        , runTestEq "dot [1,2,3] [4,5,6]" (32.0 :: Double) (dot (Vec [1,2,3]) (Vec [4,5,6]))
+        , runTestEq "dot [1,0] [0,1]" (0.0 :: Double) (dot (Vec [1,0]) (Vec [0,1]))
+        , runTestApprox "vecNorm [3,4]" 5.0 (vecNorm (Vec [3,4])) 0.001
+        , runTestApprox "vecNorm [1,0]" 1.0 (vecNorm (Vec [1,0])) 0.001
+        , runTestEq "zeroVec 3" (Vec [0,0,0]) (zeroVec 3)
+        , runTestEq "vecAdd with zeroVec" (Vec [1,2,3]) (vecAdd (Vec [1,2,3]) (zeroVec 3))`,
+    hints: [
+      'For <code>vecAdd</code>: unwrap both vectors, use <code>zipWith (+) xs ys</code>, wrap the result back in <code>Vec</code>.',
+      'For <code>vecScale</code>: <code>Vec (map (c *) xs)</code>. Multiply each element by the scalar <code>c</code>.',
+      'For <code>dot</code>: <code>sum (zipWith (*) xs ys)</code>. Multiply corresponding elements, then sum.',
+      'For <code>vecNorm</code>: <code>sqrt (dot v v)</code>. For <code>zeroVec</code>: <code>Vec (replicate n 0)</code>.',
+    ],
+    concepts: ['vector', 'dot-product', 'norm', 'linear-algebra', 'newtype'],
+    successPatterns: [
+      'zipWith\\s*\\(\\+\\)',
+      'map.*\\*',
+      'sum.*zipWith\\s*\\(\\*\\)',
+      'sqrt.*dot',
+    ],
+    testNames: [
+      'vecAdd adds element-wise',
+      'vecAdd with zero vector',
+      'vecScale multiplies by scalar',
+      'vecScale by zero gives zero vector',
+      'dot product [1,2,3].[4,5,6]=32',
+      'dot product of orthogonal vectors is 0',
+      'vecNorm [3,4]=5',
+      'vecNorm [1,0]=1',
+      'zeroVec creates zero vector',
+      'vecAdd with zeroVec is identity',
+    ],
+  },
+
+  'matrix-operations': {
+    id: 'matrix-operations',
+    title: 'Matrix Operations',
+    difficulty: 'intermediate',
+    order: 2,
+    description: `
+<h3>Matrices as Lists of Lists</h3>
+<p>A <strong>matrix</strong> is a 2D grid of numbers. We represent it as a list of rows:</p>
+<pre><code>newtype Mat = Mat [[Double]] deriving (Show, Eq)
+
+-- The matrix [[1,2],[3,4]] is:
+--   1  2
+--   3  4</code></pre>
+
+<h3>Transpose</h3>
+<p>Transposing swaps rows and columns. The key insight: the first column of the transpose is the first element of each row.</p>
+<pre><code>transpose [[1,2,3],     [[1,4],
+           [4,5,6]]  =>  [2,5],
+                          [3,6]]</code></pre>
+<p>Implement recursively:</p>
+<ul>
+  <li>Base case: if any row is empty, return <code>[]</code></li>
+  <li>Recursive case: <code>map head rows : transpose (map tail rows)</code></li>
+</ul>
+
+<h3>Matrix-Vector Multiplication</h3>
+<p>Each row of the matrix is dotted with the vector:</p>
+<pre><code>[1,2] * [5] = [1*5 + 2*6] = [17]
+[3,4]   [6]   [3*5 + 4*6]   [39]</code></pre>
+
+<h3>Matrix Multiplication</h3>
+<p>To multiply A * B: for each row of A and each column of B, compute the dot product.</p>
+<pre><code>A = [[1,2],[3,4]]    B = [[5,6],[7,8]]
+A * B = [[1*5+2*7, 1*6+2*8],   = [[19,22],
+         [3*5+4*7, 3*6+4*8]]      [43,50]]</code></pre>
+<p>Strategy: transpose B to turn columns into rows, then dot each row of A with each row of B<sup>T</sup>.</p>
+
+<h3>Identity Matrix</h3>
+<p>The n x n identity matrix has 1s on the diagonal, 0s elsewhere. Multiplying by the identity gives back the original.</p>
+
+<h3>Your Task</h3>
+<p>Implement transpose, matrix-vector multiply, matrix multiply, and identity matrix.</p>
+`,
+    starterCode: `module MatrixOps where
+
+newtype Mat = Mat [[Double]] deriving (Show, Eq)
+newtype Vec = Vec [Double] deriving (Show, Eq)
+
+-- Helper: dot product of two lists
+dotList :: [Double] -> [Double] -> Double
+dotList xs ys = sum (zipWith (*) xs ys)
+
+-- EXERCISE: Implement each operation.
+
+-- 1. Transpose a matrix (swap rows and columns)
+--    matTranspose [[1,2],[3,4]] = [[1,3],[2,4]]
+--    Hint: base case when rows have empty lists, recursive with map head/tail
+matTranspose :: [[Double]] -> [[Double]]
+matTranspose rows = error "implement matTranspose"
+
+-- 2. Multiply a matrix by a vector
+--    matVecMul [[1,2],[3,4]] (Vec [5,6]) = Vec [17,39]
+matVecMul :: Mat -> Vec -> Vec
+matVecMul (Mat rows) (Vec v) = error "implement matVecMul"
+
+-- 3. Multiply two matrices
+--    matMul [[1,2],[3,4]] [[5,6],[7,8]] = [[19,22],[43,50]]
+matMul :: Mat -> Mat -> Mat
+matMul (Mat a) (Mat b) = error "implement matMul"
+
+-- 4. Identity matrix of size n
+--    identity 2 = Mat [[1,0],[0,1]]
+identity :: Int -> Mat
+identity n = error "implement identity"
+`,
+    solutionCode: `module MatrixOps where
+
+newtype Mat = Mat [[Double]] deriving (Show, Eq)
+newtype Vec = Vec [Double] deriving (Show, Eq)
+
+dotList :: [Double] -> [Double] -> Double
+dotList xs ys = sum (zipWith (*) xs ys)
+
+matTranspose :: [[Double]] -> [[Double]]
+matTranspose [] = []
+matTranspose ([] : _) = []
+matTranspose rows = map head rows : matTranspose (map tail rows)
+
+matVecMul :: Mat -> Vec -> Vec
+matVecMul (Mat rows) (Vec v) = Vec (map (\\row -> dotList row v) rows)
+
+matMul :: Mat -> Mat -> Mat
+matMul (Mat a) (Mat b) =
+  let bt = matTranspose b
+  in Mat [ [ dotList rowA colB | colB <- bt ] | rowA <- a ]
+
+identity :: Int -> Mat
+identity n = Mat [ [ if i == j then 1 else 0 | j <- [0..n-1] ] | i <- [0..n-1] ]
+`,
+    testCode: `runTestEq "transpose [[1,2],[3,4]]" [[1,3],[2,4]] (matTranspose [[1,2],[3,4]])
+        , runTestEq "transpose [[1,2,3],[4,5,6]]" [[1,4],[2,5],[3,6]] (matTranspose [[1,2,3],[4,5,6]])
+        , runTestEq "matVecMul [[1,2],[3,4]] [5,6]" (Vec [17,39]) (matVecMul (Mat [[1,2],[3,4]]) (Vec [5,6]))
+        , runTestEq "matVecMul identity [1,2]" (Vec [1,2]) (matVecMul (identity 2) (Vec [1,2]))
+        , runTestEq "matMul [[1,2],[3,4]] [[5,6],[7,8]]" (Mat [[19,22],[43,50]]) (matMul (Mat [[1,2],[3,4]]) (Mat [[5,6],[7,8]]))
+        , runTestEq "matMul identity A = A" (Mat [[1,2],[3,4]]) (matMul (identity 2) (Mat [[1,2],[3,4]]))
+        , runTestEq "matMul A identity = A" (Mat [[1,2],[3,4]]) (matMul (Mat [[1,2],[3,4]]) (identity 2))
+        , runTestEq "identity 3" (Mat [[1,0,0],[0,1,0],[0,0,1]]) (identity 3)
+        , runTestEq "transpose single row" [[1],[2],[3]] (matTranspose [[1,2,3]])
+        , runTestEq "matVecMul [[2,0],[0,3]] [4,5]" (Vec [8,15]) (matVecMul (Mat [[2,0],[0,3]]) (Vec [4,5]))`,
+    hints: [
+      'For <code>matTranspose</code>: base case — if any row is empty (match <code>([] : _)</code> or <code>[]</code>), return <code>[]</code>. Recursive: <code>map head rows : matTranspose (map tail rows)</code>.',
+      'For <code>matVecMul</code>: <code>Vec (map (\\row -> dotList row v) rows)</code>. Dot each row of the matrix with the vector.',
+      'For <code>matMul</code>: transpose B, then for each row of A and each column (row of B<sup>T</sup>), compute <code>dotList</code>.',
+      'For <code>identity</code>: <code>Mat [ [ if i == j then 1 else 0 | j <- [0..n-1] ] | i <- [0..n-1] ]</code>.',
+    ],
+    concepts: ['matrix', 'transpose', 'matrix-multiplication', 'identity-matrix', 'linear-algebra'],
+    successPatterns: [
+      'map head rows.*matTranspose.*map tail',
+      'dotList\\s+row\\s+v',
+      'matTranspose\\s+b',
+      'if\\s+i\\s*==\\s*j\\s+then\\s+1',
+    ],
+    testNames: [
+      'transpose 2x2 matrix',
+      'transpose 2x3 matrix',
+      'matVecMul standard case',
+      'matVecMul with identity',
+      'matMul [[1,2],[3,4]]*[[5,6],[7,8]]',
+      'matMul identity*A = A',
+      'matMul A*identity = A',
+      'identity 3 is correct',
+      'transpose single row to column',
+      'matVecMul diagonal matrix',
+    ],
+  },
+
+  'linear-transformations': {
+    id: 'linear-transformations',
+    title: 'Linear Transformations',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>Transformations as Matrices</h3>
+<p>A <strong>linear transformation</strong> is a function between vector spaces that preserves addition and scalar multiplication. In 2D, every linear transformation can be represented as a matrix. Applying the transformation is just matrix-vector multiplication.</p>
+
+<h3>Common 2D Transformations</h3>
+<table>
+  <thead><tr><th>Transform</th><th>Matrix</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td>Scale</td><td><code>[[sx,0],[0,sy]]</code></td><td>Stretch x by sx, y by sy</td></tr>
+    <tr><td>Rotate &#x3B8;</td><td><code>[[cos&#x3B8;,-sin&#x3B8;],[sin&#x3B8;,cos&#x3B8;]]</code></td><td>Rotate by &#x3B8; radians</td></tr>
+    <tr><td>Reflect x-axis</td><td><code>[[1,0],[0,-1]]</code></td><td>Flip over x-axis</td></tr>
+  </tbody>
+</table>
+
+<h3>Composition = Matrix Multiplication</h3>
+<p>Applying transformation A then B is the same as applying the single matrix <code>B * A</code>. This is the <strong>composition law</strong>:</p>
+<pre><code>applyTransform (compose B A) v == applyTransform B (applyTransform A v)</code></pre>
+<p>This is why linear algebra is so powerful: composing any number of transformations is a single matrix multiply.</p>
+
+<h3>Worked Example</h3>
+<pre><code>scaleMat 2 3 = Mat [[2,0],[0,3]]
+applyTransform (scaleMat 2 3) (Vec [1,1]) = Vec [2,3]
+
+-- Compose scale(2,2) then scale(3,3) = scale(6,6)
+compose (scaleMat 3 3) (scaleMat 2 2) = Mat [[6,0],[0,6]]</code></pre>
+
+<h3>Your Task</h3>
+<p>Implement scaling, rotation, and reflection matrices, plus <code>applyTransform</code> and <code>compose</code>. Then verify the composition law holds.</p>
+`,
+    starterCode: `module LinearTransformations where
+
+newtype Vec = Vec [Double] deriving (Show, Eq)
+newtype Mat = Mat [[Double]] deriving (Show, Eq)
+
+-- Helpers (provided)
+dotList :: [Double] -> [Double] -> Double
+dotList xs ys = sum (zipWith (*) xs ys)
+
+matTranspose :: [[Double]] -> [[Double]]
+matTranspose [] = []
+matTranspose ([] : _) = []
+matTranspose rows = map head rows : matTranspose (map tail rows)
+
+-- EXERCISE: Implement each function.
+
+-- 1. Apply a transformation (matrix-vector multiply)
+applyTransform :: Mat -> Vec -> Vec
+applyTransform (Mat rows) (Vec v) = error "implement applyTransform"
+
+-- 2. Compose two transformations (matrix multiply)
+--    compose A B means "apply B first, then A"
+compose :: Mat -> Mat -> Mat
+compose (Mat a) (Mat b) = error "implement compose"
+
+-- 3. Scaling matrix
+--    scaleMat 2 3 = Mat [[2,0],[0,3]]
+scaleMat :: Double -> Double -> Mat
+scaleMat sx sy = error "implement scaleMat"
+
+-- 4. Rotation matrix (angle in radians)
+--    rotateMat (pi/2) rotates 90 degrees counter-clockwise
+rotateMat :: Double -> Mat
+rotateMat theta = error "implement rotateMat"
+
+-- 5. Reflection across the x-axis
+--    reflectX = Mat [[1,0],[0,-1]]
+reflectX :: Mat
+reflectX = error "implement reflectX"
+
+-- 6. Verify composition law:
+--    applyTransform (compose a b) v == applyTransform a (applyTransform b v)
+--    Returns True if both sides match (within floating-point tolerance)
+compositionLaw :: Mat -> Mat -> Vec -> Bool
+compositionLaw a b v = error "implement compositionLaw"
+`,
+    solutionCode: `module LinearTransformations where
+
+newtype Vec = Vec [Double] deriving (Show, Eq)
+newtype Mat = Mat [[Double]] deriving (Show, Eq)
+
+dotList :: [Double] -> [Double] -> Double
+dotList xs ys = sum (zipWith (*) xs ys)
+
+matTranspose :: [[Double]] -> [[Double]]
+matTranspose [] = []
+matTranspose ([] : _) = []
+matTranspose rows = map head rows : matTranspose (map tail rows)
+
+applyTransform :: Mat -> Vec -> Vec
+applyTransform (Mat rows) (Vec v) = Vec (map (\\row -> dotList row v) rows)
+
+compose :: Mat -> Mat -> Mat
+compose (Mat a) (Mat b) =
+  let bt = matTranspose b
+  in Mat [ [ dotList rowA colB | colB <- bt ] | rowA <- a ]
+
+scaleMat :: Double -> Double -> Mat
+scaleMat sx sy = Mat [[sx, 0], [0, sy]]
+
+rotateMat :: Double -> Mat
+rotateMat theta = Mat [[cos theta, -(sin theta)], [sin theta, cos theta]]
+
+reflectX :: Mat
+reflectX = Mat [[1, 0], [0, -1]]
+
+compositionLaw :: Mat -> Mat -> Vec -> Bool
+compositionLaw a b v =
+  let Vec lhs = applyTransform (compose a b) v
+      Vec rhs = applyTransform a (applyTransform b v)
+      approxEq x y = abs (x - y) < 1e-9
+  in and (zipWith approxEq lhs rhs)
+`,
+    testCode: `runTestEq "scale (2,3) * [1,1]" (Vec [2,3]) (applyTransform (scaleMat 2 3) (Vec [1,1]))
+        , runTestEq "scale (1,1) is identity" (Vec [5,7]) (applyTransform (scaleMat 1 1) (Vec [5,7]))
+        , runTestEq "reflectX [3,4]" (Vec [3,-4]) (applyTransform reflectX (Vec [3,4]))
+        , runTestEq "reflectX [0,0]" (Vec [0,0]) (applyTransform reflectX (Vec [0,0]))
+        , runTestApprox "rotate pi/2 [1,0] x-component" 0.0 (let Vec [x,_] = applyTransform (rotateMat (pi/2)) (Vec [1,0]) in x) 0.001
+        , runTestApprox "rotate pi/2 [1,0] y-component" 1.0 (let Vec [_,y] = applyTransform (rotateMat (pi/2)) (Vec [1,0]) in y) 0.001
+        , runTestEq "compose scale(2,2) scale(3,3)" (Mat [[6,0],[0,6]]) (compose (scaleMat 2 2) (scaleMat 3 3))
+        , runTest "compositionLaw scale+reflect" (compositionLaw (scaleMat 2 3) reflectX (Vec [1,1]))
+        , runTest "compositionLaw two scales" (compositionLaw (scaleMat 2 2) (scaleMat 3 3) (Vec [4,5]))
+        , runTest "compositionLaw rotate+scale" (compositionLaw (rotateMat (pi/4)) (scaleMat 2 2) (Vec [1,0]))`,
+    hints: [
+      'For <code>applyTransform</code>: <code>Vec (map (\\row -> dotList row v) rows)</code>. Each row of the matrix is dotted with the vector.',
+      'For <code>compose</code>: transpose B, then for each row of A and each column of B, compute <code>dotList</code>. This is standard matrix multiplication.',
+      'For <code>scaleMat</code>: <code>Mat [[sx, 0], [0, sy]]</code>. For <code>rotateMat</code>: <code>Mat [[cos theta, -(sin theta)], [sin theta, cos theta]]</code>.',
+      'For <code>compositionLaw</code>: compute both sides and compare element-wise with a tolerance like <code>abs (x - y) < 1e-9</code>.',
+    ],
+    concepts: ['linear-transformation', 'matrix-representation', 'composition', 'rotation', 'scaling', 'reflection'],
+    successPatterns: [
+      'applyTransform.*dotList',
+      'bt\\s*=\\s*matTranspose',
+      'scaleMat.*\\[\\[sx',
+      'approxEq\\s+x\\s+y\\s*=\\s*abs',
+    ],
+    testNames: [
+      'scale (2,3) applied to [1,1]',
+      'scale (1,1) is identity transform',
+      'reflectX flips y component',
+      'reflectX on origin',
+      'rotate pi/2 x-component',
+      'rotate pi/2 y-component',
+      'compose two scalings',
+      'composition law: scale + reflect',
+      'composition law: two scales',
+      'composition law: rotate + scale',
+    ],
+  },
+
+  'gaussian-elimination': {
+    id: 'gaussian-elimination',
+    title: 'Gaussian Elimination',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>Solving Linear Systems</h3>
+<p>Given a system of equations <code>Ax = b</code>, <strong>Gaussian elimination</strong> transforms it into row echelon form, then solves by <strong>back substitution</strong>.</p>
+
+<h3>The Algorithm</h3>
+<ol>
+  <li><strong>Augment:</strong> combine A and b into a single matrix <code>[A|b]</code></li>
+  <li><strong>Forward elimination:</strong> for each column, find the pivot row (first non-zero entry), swap it to the diagonal position, then subtract multiples of the pivot row from all rows below to create zeros</li>
+  <li><strong>Back substitution:</strong> starting from the last row, solve for each variable</li>
+</ol>
+
+<h3>Worked Example</h3>
+<pre><code>System: 2x + y = 4
+        5x + 3y = 7
+
+Augmented: [[2, 1, 4],
+            [5, 3, 7]]
+
+Step 1: Pivot on column 0 (row 0 has 2, no swap needed)
+  Eliminate row 1: R1 = R1 - (5/2)*R0
+  [[2,   1,   4  ],
+   [0, 0.5, -3  ]]
+
+Step 2: Back substitution
+  y = -3 / 0.5 = -6
+  x = (4 - 1*(-6)) / 2 = 5
+
+Solution: x=5, y=-6</code></pre>
+
+<p>Check: <code>2*5 + (-6) = 4</code> and <code>5*5 + 3*(-6) = 25 - 18 = 7</code>. Correct!</p>
+
+<h3>Handling Singular Systems</h3>
+<p>If during forward elimination a column has no non-zero pivot, the system is <strong>singular</strong> (no unique solution). Return <code>Nothing</code>.</p>
+
+<h3>Implementation Strategy</h3>
+<p>Since Haskell lists are immutable, you process the matrix functionally:</p>
+<ul>
+  <li>Forward elimination processes columns left to right, updating the matrix at each step</li>
+  <li>For each column: find the pivot row, swap it into place, eliminate all rows below</li>
+  <li>Back substitution processes rows bottom to top, accumulating the solution</li>
+</ul>
+
+<h3>Your Task</h3>
+<p>Implement <code>solve :: [[Double]] -> [Double] -> Maybe [Double]</code> that solves the linear system <code>Ax = b</code>, returning <code>Nothing</code> for singular systems.</p>
+`,
+    starterCode: `module GaussianElimination where
+
+-- EXERCISE: Solve Ax = b by Gaussian elimination.
+
+-- solve takes a matrix A and vector b, returns Maybe the solution vector x.
+-- Returns Nothing if the system is singular (no unique solution).
+--
+-- Strategy:
+--   1. Augment A with b: append b_i to each row_i
+--   2. Forward elimination: for each column k from 0 to n-1:
+--      a. Find pivot: first row at index >= k with non-zero entry in column k
+--      b. If no pivot, return Nothing
+--      c. Swap pivot row to position k
+--      d. For each row below k, subtract a multiple of row k to zero out column k
+--   3. Back substitution: from row n-1 to 0, solve for x_k
+--
+-- Helper ideas:
+--   swapRows i j mat = swap rows at indices i and j
+--   eliminate pivot below mat = subtract multiples of pivot from rows below
+
+solve :: [[Double]] -> [Double] -> Maybe [Double]
+solve a b = error "implement solve"
+`,
+    solutionCode: `module GaussianElimination where
+
+solve :: [[Double]] -> [Double] -> Maybe [Double]
+solve a b =
+  let n = length a
+      augmented = zipWith (\\row bi -> row ++ [bi]) a b
+  in case forwardElim 0 n augmented of
+       Nothing  -> Nothing
+       Just aug -> Just (backSubst n aug)
+
+forwardElim :: Int -> Int -> [[Double]] -> Maybe [[Double]]
+forwardElim k n mat
+  | k >= n    = Just mat
+  | otherwise =
+      case findPivot k n mat of
+        Nothing -> Nothing
+        Just pivotIdx ->
+          let mat1 = swapRows k pivotIdx mat
+              pivotRow = mat1 !! k
+              pivotVal = pivotRow !! k
+              mat2 = [ if i <= k
+                       then mat1 !! i
+                       else let row = mat1 !! i
+                                factor = (row !! k) / pivotVal
+                            in zipWith (\\a' p -> a' - factor * p) row pivotRow
+                     | i <- [0..n-1] ]
+          in forwardElim (k + 1) n mat2
+
+findPivot :: Int -> Int -> [[Double]] -> Maybe Int
+findPivot k n mat =
+  let candidates = [ i | i <- [k..n-1], abs ((mat !! i) !! k) > 1e-10 ]
+  in case candidates of
+       []    -> Nothing
+       (i:_) -> Just i
+
+swapRows :: Int -> Int -> [[Double]] -> [[Double]]
+swapRows i j mat =
+  [ if idx == i then mat !! j
+    else if idx == j then mat !! i
+    else mat !! idx
+  | idx <- [0 .. length mat - 1] ]
+
+backSubst :: Int -> [[Double]] -> [Double]
+backSubst n mat = go (n - 1) []
+  where
+    go k acc
+      | k < 0    = acc
+      | otherwise =
+          let row = mat !! k
+              rhs = row !! n
+              s   = sum [ (row !! j) * (acc !! (j - k - 1))
+                        | j <- [k+1..n-1] ]
+              xk  = (rhs - s) / (row !! k)
+          in go (k - 1) (xk : acc)
+`,
+    testCode: `runTestApprox "solve 2x+y=4, 5x+3y=7 (x)" 5.0 (case solve [[2,1],[5,3]] [4,7] of Just [x,_] -> x; _ -> 999) 0.01
+        , runTestApprox "solve 2x+y=4, 5x+3y=7 (y)" (-6.0) (case solve [[2,1],[5,3]] [4,7] of Just [_,y] -> y; _ -> 999) 0.01
+        , runTestApprox "solve x+y=3, x-y=1 (x)" 2.0 (case solve [[1,1],[1,-1]] [3,1] of Just [x,_] -> x; _ -> 999) 0.01
+        , runTestApprox "solve x+y=3, x-y=1 (y)" 1.0 (case solve [[1,1],[1,-1]] [3,1] of Just [_,y] -> y; _ -> 999) 0.01
+        , runTest "singular system returns Nothing" (case solve [[1,2],[2,4]] [3,6] of Nothing -> True; _ -> False)
+        , runTest "singular zero row returns Nothing" (case solve [[0,0],[1,2]] [1,3] of Nothing -> True; _ -> False)
+        , runTestApprox "solve 3x3 identity (x)" 1.0 (case solve [[1,0,0],[0,1,0],[0,0,1]] [1,2,3] of Just [x,_,_] -> x; _ -> 999) 0.01
+        , runTestApprox "solve 3x3 identity (y)" 2.0 (case solve [[1,0,0],[0,1,0],[0,0,1]] [1,2,3] of Just [_,y,_] -> y; _ -> 999) 0.01
+        , runTestApprox "solve non-trivial 2x2" 1.0 (case solve [[3,2],[1,1]] [5,2] of Just [x,_] -> x; _ -> 999) 0.01`,
+    hints: [
+      'Start by augmenting: <code>zipWith (\\row bi -> row ++ [bi]) a b</code>. This gives you an n x (n+1) matrix.',
+      'For forward elimination: process each column k. Find the first row at index >= k with a non-zero entry in column k. If none, return Nothing. Otherwise swap that row to position k.',
+      'To eliminate below: for each row i > k, compute <code>factor = row_i[k] / pivot[k]</code>, then <code>row_i = zipWith (\\a p -> a - factor * p) row_i pivotRow</code>.',
+      'For back substitution: start from the last row. <code>x_k = (augmented[k][n] - sum of known terms) / augmented[k][k]</code>. Build the solution vector from bottom to top.',
+    ],
+    concepts: ['gaussian-elimination', 'forward-elimination', 'back-substitution', 'linear-system', 'singular-matrix'],
+    successPatterns: [
+      'augmented.*zipWith.*\\+\\+',
+      'findPivot|pivot',
+      'swapRows|swap',
+      'backSubst|backSub',
+    ],
+    testNames: [
+      'solve 2x+y=4, 5x+3y=7 for x',
+      'solve 2x+y=4, 5x+3y=7 for y',
+      'solve x+y=3, x-y=1 for x',
+      'solve x+y=3, x-y=1 for y',
+      'singular system returns Nothing',
+      'singular zero row returns Nothing',
+      'solve identity 3x3 for x',
+      'solve identity 3x3 for y',
+      'solve identity 3x3 for z',
+      'solve non-trivial 2x2 system',
     ],
   },
 };

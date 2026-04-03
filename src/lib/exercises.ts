@@ -631,14 +631,18 @@ answer6 :: String
 answer6 = error "what type is add 3?"
 
 -- Given: filter :: (a -> Bool) -> [a] -> [a]
+--                   ^^^^^^^^^
+--                   first argument (a function!)
 -- 7. How many arguments does \`filter\` take?
+--    Hint: count the top-level -> arrows (not the one inside the parens).
 answer7 :: Int
 answer7 = error "count top-level arrows"
 
--- 8. The first argument of \`filter\` is a function.
---    What does that function return? Write the type.
+-- 8. Look at filter's FIRST argument: (a -> Bool).
+--    This is a function that takes an \`a\` and returns a... what?
+--    Write just the return type of that inner function.
 answer8 :: String
-answer8 = error "what does the predicate return?"
+answer8 = error "look at what's after -> inside the parens"
 `,
     solutionCode: `module ReadingTypes where
 

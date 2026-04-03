@@ -92,6 +92,25 @@ export const tracks: Track[] = [
 
 export const modules: CurriculumModule[] = [
   {
+    slug: 'reading-haskell',
+    title: 'Reading Haskell',
+    description: 'Learn to read Haskell before writing it — values, expressions, functions, types, and application.',
+    icon: '\uD83D\uDC41',
+    order: 0,
+    track: 'foundation',
+    status: 'available',
+    prerequisites: [],
+    lessons: [{
+      slug: 'reading',
+      title: 'Reading Haskell',
+      path: '/reading-haskell/reading',
+      exerciseIds: [
+        'reading-values', 'reading-expressions', 'reading-functions',
+        'reading-types', 'function-application',
+      ],
+    }],
+  },
+  {
     slug: 'type-systems',
     title: 'Haskell Foundations',
     description: 'Functions, types, pattern matching, ADTs, polymorphism, and typeclasses.',
@@ -99,7 +118,7 @@ export const modules: CurriculumModule[] = [
     order: 1,
     track: 'foundation',
     status: 'available',
-    prerequisites: [],
+    prerequisites: ['reading-haskell'],
     lessons: [{
       slug: 'basic-types',
       title: 'Haskell Foundations',

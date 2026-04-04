@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { href } from '../lib/paths';
-import { modules } from '../lib/curriculum';
+import { tracks, modules } from '../lib/curriculum';
 ---
 
 <BaseLayout title="Home">
@@ -10,73 +10,112 @@ import { modules } from '../lib/curriculum';
     <header class="border-b border-border px-6 py-4">
       <nav class="max-w-6xl mx-auto flex items-center justify-between" aria-label="Main navigation">
         <a href={href('/')} class="flex items-center gap-2 text-xl font-semibold" aria-label="Categorical home">
-          <span class="text-accent">C</span>ategorical
+          <span class="text-accent font-mono">C</span>ategorical
         </a>
         <div class="flex items-center gap-6 text-sm text-text-secondary">
           <a href={href('/syllabus')} class="hover:text-text-primary transition-colors duration-150 py-1">Syllabus</a>
-          <a href={href('/type-systems/basic-types')} class="hover:text-text-primary transition-colors duration-150 py-1">Lessons</a>
           <a href={href('/dashboard')} class="hover:text-text-primary transition-colors duration-150 py-1">Dashboard</a>
         </div>
       </nav>
     </header>
 
-    <!-- Hero -->
-    <main class="flex-1 flex items-center justify-center px-6">
-      <div class="max-w-3xl text-center">
-        <div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-border text-sm text-text-secondary">
-          Interactive Haskell learning platform
+    <main class="flex-1">
+      <!-- Hero -->
+      <section class="px-6 pt-20 pb-16 text-center">
+        <div class="max-w-3xl mx-auto">
+          <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-6">
+            Type systems, category theory, and<br/>
+            <span class="text-accent">algebraic foundations</span> — through code
+          </h1>
+          <p class="text-lg text-text-secondary mb-10 max-w-2xl mx-auto leading-relaxed">
+            A structured curriculum of {modules.filter(m => m.status === 'available').reduce((sum, m) => sum + m.lessons.flatMap(l => l.exerciseIds).length, 0)} hands-on exercises
+            with real GHC compilation, progressing from reading Haskell to implementing
+            cryptographic protocols and lambda calculus interpreters.
+          </p>
+          <div class="flex items-center justify-center gap-4">
+            <a
+              href={href('/syllabus')}
+              class="px-6 py-3 bg-accent hover:bg-accent-bright active:bg-accent-dim text-white font-medium rounded-lg transition-colors duration-150"
+            >
+              View Curriculum
+            </a>
+            <a
+              href={href('/reading-haskell/reading')}
+              class="px-6 py-3 border border-border hover:border-border-bright hover:bg-bg-hover active:bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors duration-150"
+            >
+              Start from the Beginning
+            </a>
+          </div>
         </div>
-        <h1 class="text-5xl md:text-6xl font-bold leading-tight mb-6">
-          Master <span class="text-accent">type systems</span> and
-          <span class="text-accent">category theory</span>
-          through Haskell
-        </h1>
-        <p class="text-lg md:text-xl text-text-secondary mb-10 max-w-2xl mx-auto leading-relaxed">
-          Hands-on exercises with an embedded code editor, real GHC compilation,
-          and a structured curriculum from basic types to algebraic cryptography.
-        </p>
-        <div class="flex items-center justify-center gap-4">
-          <a
-            href={href('/type-systems/basic-types')}
-            class="px-6 py-3 bg-accent hover:bg-accent-bright active:bg-accent-dim text-white font-medium rounded-lg transition-colors duration-150"
-          >
-            Start Learning
-          </a>
-          <a
-            href={href('/syllabus')}
-            class="px-6 py-3 border border-border hover:border-border-bright hover:bg-bg-hover active:bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors duration-150"
-          >
-            View Syllabus
-          </a>
-        </div>
+      </section>
 
-        <!-- Module Cards -->
-        <div class="mt-20 grid md:grid-cols-3 gap-4 text-left">
-          {modules.filter(m => m.status === 'available').slice(0, 6).map((mod) => {
-            const firstPath = mod.lessons[0]?.path;
-            return firstPath ? (
-              <a href={href(firstPath)} class="group p-6 rounded-xl bg-bg-card border border-border hover:border-border-bright hover:bg-bg-hover transition-colors duration-150">
-                <div class="text-2xl mb-3" aria-hidden="true">{mod.icon}</div>
-                <h3 class="font-semibold mb-2 group-hover:text-accent transition-colors duration-150">{mod.title}</h3>
-                <p class="text-sm text-text-secondary leading-relaxed">{mod.description}</p>
-              </a>
-            ) : (
-              <div class="p-6 rounded-xl bg-bg-card border border-border opacity-50">
-                <div class="text-2xl mb-3" aria-hidden="true">{mod.icon}</div>
-                <h3 class="font-semibold mb-2">{mod.title}</h3>
-                <p class="text-sm text-text-secondary leading-relaxed">{mod.description}</p>
-                <span class="inline-block mt-3 text-[10px] text-text-muted uppercase tracking-wider font-medium">Coming soon</span>
-              </div>
-            );
-          })}
+      <!-- Tracks -->
+      <section class="px-6 pb-20">
+        <div class="max-w-5xl mx-auto">
+          <div class="grid md:grid-cols-3 gap-6">
+            {tracks.sort((a, b) => a.order - b.order).map((track) => {
+              const trackModules = modules
+                .filter(m => m.track === track.slug && m.status === 'available')
+                .sort((a, b) => a.order - b.order);
+              const totalExercises = trackModules.reduce((sum, m) => sum + m.lessons.flatMap(l => l.exerciseIds).length, 0);
+              const firstPath = trackModules[0]?.lessons[0]?.path;
+
+              return (
+                <div class="flex flex-col">
+                  <div class="mb-4">
+                    <h2 class="text-sm font-medium text-text-muted uppercase tracking-wider mb-1">{track.title}</h2>
+                    <p class="text-xs text-text-muted">{totalExercises} exercises</p>
+                  </div>
+                  <div class="flex-1 space-y-2">
+                    {trackModules.map((mod) => {
+                      const modPath = mod.lessons[0]?.path;
+                      const exerciseCount = mod.lessons.flatMap(l => l.exerciseIds).length;
+                      return modPath ? (
+                        <a
+                          href={href(modPath)}
+                          class="group block p-4 rounded-lg bg-bg-card border border-border hover:border-border-bright hover:bg-bg-hover transition-colors duration-150"
+                        >
+                          <div class="flex items-start gap-3">
+                            <span class="text-lg text-text-muted group-hover:text-accent transition-colors duration-150 font-mono flex-shrink-0 w-6 text-center" aria-hidden="true">{mod.icon}</span>
+                            <div class="min-w-0">
+                              <h3 class="text-sm font-medium text-text-primary group-hover:text-accent transition-colors duration-150">{mod.title}</h3>
+                              <p class="text-xs text-text-muted mt-0.5">{exerciseCount} exercises</p>
+                            </div>
+                          </div>
+                        </a>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- Stats -->
+      <section class="border-t border-border px-6 py-12">
+        <div class="max-w-4xl mx-auto grid grid-cols-3 gap-8 text-center">
+          <div>
+            <div class="text-2xl font-bold text-text-primary">{modules.filter(m => m.status === 'available').reduce((sum, m) => sum + m.lessons.flatMap(l => l.exerciseIds).length, 0)}</div>
+            <div class="text-xs text-text-muted mt-1">Exercises</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-text-primary">{modules.filter(m => m.status === 'available').length}</div>
+            <div class="text-xs text-text-muted mt-1">Modules</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-text-primary">{tracks.length}</div>
+            <div class="text-xs text-text-muted mt-1">Tracks</div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Footer -->
     <footer class="border-t border-border px-6 py-6">
       <div class="max-w-6xl mx-auto text-center text-sm text-text-muted">
-        Categorical — Learn Haskell through types, categories, and code.
+        Categorical
       </div>
     </footer>
   </div>

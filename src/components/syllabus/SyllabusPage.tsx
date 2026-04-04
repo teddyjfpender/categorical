@@ -1,7 +1,18 @@
+import { useState } from 'react';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule } from '../../lib/exercises';
 import { tracks, modules as curriculumModules, type CurriculumModule } from '../../lib/curriculum';
 import { href } from '../../lib/paths';
+import type { Language } from '../../lib/types/exercise';
+
+const LANGUAGES: { id: Language | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'haskell', label: 'Haskell' },
+  { id: 'typescript', label: 'TypeScript' },
+  { id: 'rust', label: 'Rust' },
+  { id: 'cuda', label: 'CUDA' },
+  { id: 'rocm', label: 'ROCm' },
+];
 
 function ModuleRow({ mod }: { mod: CurriculumModule }) {
   const { isCompleted } = useProgressStore();
@@ -21,19 +32,14 @@ function ModuleRow({ mod }: { mod: CurriculumModule }) {
           ? 'border-success/20 bg-success/5 hover:border-success/30'
           : 'border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover'
     }`}>
-      {/* Icon */}
       <span className="text-lg font-mono text-text-muted flex-shrink-0 w-6 text-center" aria-hidden="true">
         {mod.icon}
       </span>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-text-primary truncate">{mod.title}</h3>
           {isComingSoon && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted uppercase tracking-wider font-medium flex-shrink-0">
-              Soon
-            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted uppercase tracking-wider font-medium flex-shrink-0">Soon</span>
           )}
           {allDone && (
             <span className="text-success text-xs flex-shrink-0">{'\u2713'}</span>
@@ -41,8 +47,6 @@ function ModuleRow({ mod }: { mod: CurriculumModule }) {
         </div>
         <p className="text-xs text-text-muted truncate">{mod.description}</p>
       </div>
-
-      {/* Progress */}
       {!isComingSoon && (
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="w-20">
@@ -62,41 +66,73 @@ function ModuleRow({ mod }: { mod: CurriculumModule }) {
   );
 
   if (isComingSoon || !firstLessonPath) return content;
-
-  return (
-    <a href={href(firstLessonPath)} className="block">
-      {content}
-    </a>
-  );
+  return <a href={href(firstLessonPath)} className="block">{content}</a>;
 }
 
 export function SyllabusPage() {
   const { completedExercises } = useProgressStore();
-  const availableModules = curriculumModules.filter((m) => m.status === 'available');
-  const allExerciseCount = availableModules.reduce(
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | 'all'>('all');
+
+  const filteredModules = selectedLanguage === 'all'
+    ? curriculumModules
+    : curriculumModules.filter((m) => m.language === selectedLanguage);
+
+  const availableFiltered = filteredModules.filter((m) => m.status === 'available');
+  const exerciseCount = availableFiltered.reduce(
     (sum, m) => sum + m.lessons.flatMap((l) => l.exerciseIds).length, 0,
   );
-  const totalCompleted = completedExercises.length;
-  const overallPercent = allExerciseCount > 0 ? Math.round((totalCompleted / allExerciseCount) * 100) : 0;
+  const completedCount = completedExercises.filter((id) => {
+    const mod = availableFiltered.find((m) =>
+      m.lessons.some((l) => l.exerciseIds.includes(id)),
+    );
+    return !!mod;
+  }).length;
+  const overallPercent = exerciseCount > 0 ? Math.round((completedCount / exerciseCount) * 100) : 0;
 
   const trackGroups = tracks
     .sort((a, b) => a.order - b.order)
     .map((track) => ({
       track,
-      modules: curriculumModules
+      modules: filteredModules
         .filter((m) => m.track === track.slug)
         .sort((a, b) => a.order - b.order),
     }))
     .filter(({ modules }) => modules.length > 0);
 
+  // Count exercises per language for the filter pills
+  const langCounts: Record<string, number> = { all: 0 };
+  for (const mod of curriculumModules.filter((m) => m.status === 'available')) {
+    const count = mod.lessons.flatMap((l) => l.exerciseIds).length;
+    langCounts.all += count;
+    langCounts[mod.language] = (langCounts[mod.language] || 0) + count;
+  }
+
   return (
     <div>
-      {/* Overall progress — compact bar */}
-      <div className="flex items-center gap-4 mb-10 p-4 rounded-lg bg-bg-card border border-border">
+      {/* Language filter */}
+      <div className="flex items-center gap-2 mb-8 flex-wrap">
+        {LANGUAGES.filter((l) => l.id === 'all' || (langCounts[l.id] || 0) > 0).map((lang) => (
+          <button
+            key={lang.id}
+            onClick={() => setSelectedLanguage(lang.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+              selectedLanguage === lang.id
+                ? 'bg-accent text-white'
+                : 'bg-bg-card border border-border text-text-secondary hover:text-text-primary hover:border-border-bright'
+            }`}
+          >
+            {lang.label}
+            <span className="ml-1.5 text-xs opacity-60">{langCounts[lang.id] || 0}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Progress bar */}
+      <div className="flex items-center gap-4 mb-8 p-4 rounded-lg bg-bg-card border border-border">
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-sm text-text-secondary">
-              {totalCompleted} of {allExerciseCount} exercises
+              {completedCount} of {exerciseCount} exercises
             </span>
             <span className="text-sm font-medium text-accent tabular-nums">{overallPercent}%</span>
           </div>
@@ -118,14 +154,11 @@ export function SyllabusPage() {
 
           return (
             <div key={track.slug}>
-              {/* Track header */}
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider">{track.title}</h2>
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-text-muted tabular-nums">{trackExercises} exercises</span>
               </div>
-
-              {/* Module list */}
               <div className="space-y-1.5 mt-3">
                 {modules.map((mod) => (
                   <ModuleRow key={mod.slug} mod={mod} />

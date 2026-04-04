@@ -1277,7 +1277,7 @@ fn fib_sum(n: usize) -> u64 {
     concepts: ['iterators', 'lazy evaluation', 'iterator fusion', 'custom Iterator impl', 'zero-cost composition'],
     successPatterns: [
       'filter\\(\\|.*%\\s*2',
-      'map\\(\\|.*\\*.*\\*',
+      'x \\* x',
       'self\\.a\\s*\\+\\s*self\\.b',
     ],
     testNames: [

@@ -1,9 +1,9 @@
 import { useProgressStore } from '../../lib/stores/progressStore';
 import { getExercisesByModule } from '../../lib/exercises';
-import { tracks, modules as curriculumModules, type CurriculumModule, type TrackSlug } from '../../lib/curriculum';
+import { tracks, modules as curriculumModules, type CurriculumModule } from '../../lib/curriculum';
 import { href } from '../../lib/paths';
 
-function ModuleCard({ mod }: { mod: CurriculumModule }) {
+function ModuleRow({ mod }: { mod: CurriculumModule }) {
   const { isCompleted } = useProgressStore();
   const exercises = getExercisesByModule(mod.slug);
   const completedCount = exercises.filter((e) => isCompleted(e.id)).length;
@@ -11,55 +11,52 @@ function ModuleCard({ mod }: { mod: CurriculumModule }) {
   const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isComingSoon = mod.status === 'coming-soon';
   const firstLessonPath = mod.lessons[0]?.path;
+  const allDone = completedCount === totalCount && totalCount > 0;
 
   const content = (
-    <div className={`p-5 rounded-xl bg-bg-card border border-border transition-colors duration-150 ${
-      isComingSoon ? 'opacity-50' : 'hover:border-border-bright hover:bg-bg-hover'
+    <div className={`flex items-center gap-4 p-4 rounded-lg border transition-colors duration-150 ${
+      isComingSoon
+        ? 'border-border/50 opacity-40'
+        : allDone
+          ? 'border-success/20 bg-success/5 hover:border-success/30'
+          : 'border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover'
     }`}>
-      <div className="flex items-start gap-3 mb-3">
-        <span className="text-2xl flex-shrink-0" aria-hidden="true">{mod.icon}</span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-text-primary">{mod.title}</h3>
-            {isComingSoon && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-bg-tertiary text-text-muted uppercase tracking-wider font-medium">
-                Coming soon
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-text-secondary mt-1 leading-relaxed">{mod.description}</p>
-        </div>
-      </div>
+      {/* Icon */}
+      <span className="text-lg font-mono text-text-muted flex-shrink-0 w-6 text-center" aria-hidden="true">
+        {mod.icon}
+      </span>
 
-      {/* Prerequisites */}
-      {mod.prerequisites.length > 0 && (
-        <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-[10px] text-text-muted">Requires:</span>
-          {mod.prerequisites.map((prereq) => {
-            const prereqMod = curriculumModules.find((m) => m.slug === prereq);
-            return (
-              <span key={prereq} className="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted">
-                {prereqMod?.title || prereq}
-              </span>
-            );
-          })}
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-text-primary truncate">{mod.title}</h3>
+          {isComingSoon && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted uppercase tracking-wider font-medium flex-shrink-0">
+              Soon
+            </span>
+          )}
+          {allDone && (
+            <span className="text-success text-xs flex-shrink-0">{'\u2713'}</span>
+          )}
         </div>
-      )}
+        <p className="text-xs text-text-muted truncate">{mod.description}</p>
+      </div>
 
       {/* Progress */}
       {!isComingSoon && (
-        <>
-          <div className="flex items-center justify-between text-xs text-text-muted mb-1.5">
-            <span>{totalCount} exercises</span>
-            <span>{completedCount}/{totalCount} completed</span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="w-20">
+            <div className="h-1 bg-bg-tertiary rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${allDone ? 'bg-success' : 'bg-accent'}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent rounded-full transition-all duration-300"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        </>
+          <span className="text-xs text-text-muted tabular-nums w-12 text-right">
+            {completedCount}/{totalCount}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -75,66 +72,68 @@ function ModuleCard({ mod }: { mod: CurriculumModule }) {
 
 export function SyllabusPage() {
   const { completedExercises } = useProgressStore();
-  const allExerciseCount = curriculumModules
-    .filter((m) => m.status === 'available')
-    .reduce((sum, m) => sum + m.lessons.flatMap((l) => l.exerciseIds).length, 0);
+  const availableModules = curriculumModules.filter((m) => m.status === 'available');
+  const allExerciseCount = availableModules.reduce(
+    (sum, m) => sum + m.lessons.flatMap((l) => l.exerciseIds).length, 0,
+  );
   const totalCompleted = completedExercises.length;
+  const overallPercent = allExerciseCount > 0 ? Math.round((totalCompleted / allExerciseCount) * 100) : 0;
 
-  const trackGroups = tracks.map((track) => ({
-    track,
-    modules: curriculumModules
-      .filter((m) => m.track === track.slug)
-      .sort((a, b) => a.order - b.order),
-  }));
+  const trackGroups = tracks
+    .sort((a, b) => a.order - b.order)
+    .map((track) => ({
+      track,
+      modules: curriculumModules
+        .filter((m) => m.track === track.slug)
+        .sort((a, b) => a.order - b.order),
+    }))
+    .filter(({ modules }) => modules.length > 0);
 
   return (
     <div>
-      {/* Overall progress */}
-      <div className="mb-10 p-6 rounded-xl bg-bg-card border border-border">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary">Overall Progress</h2>
-            <p className="text-sm text-text-secondary mt-0.5">
-              {totalCompleted} of {allExerciseCount} exercises completed
-            </p>
+      {/* Overall progress — compact bar */}
+      <div className="flex items-center gap-4 mb-10 p-4 rounded-lg bg-bg-card border border-border">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm text-text-secondary">
+              {totalCompleted} of {allExerciseCount} exercises
+            </span>
+            <span className="text-sm font-medium text-accent tabular-nums">{overallPercent}%</span>
           </div>
-          <span className="text-2xl font-bold text-accent">
-            {allExerciseCount > 0 ? Math.round((totalCompleted / allExerciseCount) * 100) : 0}%
-          </span>
-        </div>
-        <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent rounded-full transition-all duration-500"
-            style={{ width: allExerciseCount > 0 ? `${(totalCompleted / allExerciseCount) * 100}%` : '0%' }}
-          />
+          <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full transition-all duration-500"
+              style={{ width: `${overallPercent}%` }}
+            />
+          </div>
         </div>
       </div>
 
       {/* Tracks */}
-      <div className="space-y-10">
-        {trackGroups.map(({ track, modules }) => (
-          <div key={track.slug}>
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-lg font-semibold text-text-primary">{track.title}</h2>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            <p className="text-sm text-text-secondary mb-5">{track.description}</p>
+      <div className="space-y-8">
+        {trackGroups.map(({ track, modules }) => {
+          const trackExercises = modules
+            .filter((m) => m.status === 'available')
+            .reduce((sum, m) => sum + m.lessons.flatMap((l) => l.exerciseIds).length, 0);
 
-            <div className="space-y-3">
-              {modules.map((mod, i) => (
-                <div key={mod.slug}>
-                  {/* Connector line */}
-                  {i > 0 && (
-                    <div className="flex justify-center -mt-1 mb-1">
-                      <div className="w-px h-4 bg-border" />
-                    </div>
-                  )}
-                  <ModuleCard mod={mod} />
-                </div>
-              ))}
+          return (
+            <div key={track.slug}>
+              {/* Track header */}
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider">{track.title}</h2>
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-text-muted tabular-nums">{trackExercises} exercises</span>
+              </div>
+
+              {/* Module list */}
+              <div className="space-y-1.5 mt-3">
+                {modules.map((mod) => (
+                  <ModuleRow key={mod.slug} mod={mod} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

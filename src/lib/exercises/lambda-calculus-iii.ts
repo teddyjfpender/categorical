@@ -38,6 +38,40 @@ export const exercises: Record<string, Exercise> = {
 <h3>Why This Matters</h3>
 <p>In dependently typed languages like Agda, Coq, and Lean, this correspondence is used to write <em>machine-checked proofs</em>. In Haskell, it gives us intuition: if you can write a total function with a given type, you've proved the corresponding logical statement.</p>
 
+<h3>The Technique: Let the Types Guide You</h3>
+<p>When the types are polymorphic (type variables like <code>a</code>, <code>b</code>), there's usually only <strong>one</strong> way to write the function. The types tell you exactly what to do:</p>
+
+<h3>Worked Derivation 1: proof2 :: (a, b) -> a</h3>
+<pre><code>-- I receive: a pair (a, b)
+-- I must return: an a
+--
+-- Step 1: What can I do with a pair? Pattern match!
+--   proof2 (x, y) = ...    where x :: a, y :: b
+--
+-- Step 2: I need to return an 'a'. I have x :: a and y :: b.
+--   The only value of type 'a' available is x.
+--
+-- Step 3: proof2 (x, y) = x   ✓</code></pre>
+
+<h3>Worked Derivation 2: proof5 :: (a -> c) -> (b -> c) -> Either a b -> c</h3>
+<pre><code>-- I receive: two functions and an Either
+-- I must return: a c
+--
+-- Step 1: Pattern match on the Either:
+--   proof5 f g (Left x)  = ...    where x :: a
+--   proof5 f g (Right y) = ...    where y :: b
+--
+-- Step 2 (Left case): I have x :: a and f :: a -> c.
+--   Apply f to x: f x :: c  ✓
+--
+-- Step 3 (Right case): I have y :: b and g :: b -> c.
+--   Apply g to y: g y :: c  ✓
+--
+-- proof5 f g (Left x)  = f x
+-- proof5 f g (Right y) = g y</code></pre>
+
+<p><strong>The pattern:</strong> look at what types you HAVE (from the inputs), look at what type you NEED (the return type), and find the unique path that connects them.</p>
+
 <h3>Your Task</h3>
 <p>Write eight functions that "prove" type-theoretic propositions. Each function's type signature <em>is</em> the proposition &mdash; your implementation is the proof. The types constrain your code so much that there is essentially only one way to write each function.</p>
 `,
@@ -351,6 +385,32 @@ freeVars (App f a)    = nub (freeVars f ++ freeVars a)</code></pre>
   <li>Everything else &rarr; <code>Nothing</code> (already a value or stuck)</li>
 </ul>
 
+<h3>Tracing Multi-Step Reduction</h3>
+<p>The <code>step</code> function reduces one redex at a time. Here's how multiple steps work:</p>
+<pre><code>-- Term: (\\y. \\x. x) a b
+-- AST:  App (App (Lam "y" (Lam "x" (Var "x"))) (Var "a")) (Var "b")
+
+-- step 1: reduce the inner App (Lam "y" ...) (Var "a")
+--   substitute "y" (Var "a") in (Lam "x" (Var "x"))
+--   = Lam "x" (Var "x")    (y doesn't appear in body, no change)
+--   Result: App (Lam "x" (Var "x")) (Var "b")
+
+-- step 2: reduce App (Lam "x" (Var "x")) (Var "b")
+--   substitute "x" (Var "b") in (Var "x")
+--   = Var "b"
+--   Result: Var "b"     ← normal form (no more redexes)</code></pre>
+
+<h3>Evaluation Strategy</h3>
+<p>Our <code>step</code> function reduces the <strong>leftmost-outermost</strong> redex first. When it sees <code>App f arg</code>:</p>
+<ol>
+  <li>If <code>f</code> is a lambda <code>Lam x body</code>: substitute (beta reduce)</li>
+  <li>If <code>f</code> can be stepped: step <code>f</code> first, leave <code>arg</code> alone</li>
+  <li>Otherwise: no reduction possible (return <code>Nothing</code>)</li>
+</ol>
+
+<h3>A Note on Capture</h3>
+<p>Our <code>substitute</code> function is simplified — it doesn't handle <strong>variable capture</strong> (where substituting into a lambda accidentally binds a free variable). A production interpreter would use alpha-renaming or De Bruijn indices to avoid this. For our exercises, the simplified version works correctly because our test terms are chosen to avoid capture.</p>
+
 <h3>Your Task</h3>
 <p>Define the <code>Term</code> type and implement <code>freeVars</code>, <code>substitute</code>, <code>isValue</code>, and <code>step</code>.</p>
 `,
@@ -503,6 +563,34 @@ normalize fuel t = case step t of
 <pre><code>omega = App (Lam "x" (App (Var "x") (Var "x")))
             (Lam "x" (App (Var "x") (Var "x")))</code></pre>
 <p>With fuel 100, <code>normalize</code> will stop after 100 steps, returning whatever term it has at that point.</p>
+
+<h3>Translating Lambda Notation to AST</h3>
+<p>The hardest part of this exercise is converting lambda expressions to <code>Term</code> constructors. Here's the systematic process:</p>
+
+<pre><code>-- Lambda notation:  \\n. \\f. \\x. f (n f x)
+--
+-- Work from outside in:
+-- \\n.                    → Lam "n" (...)
+--   \\f.                  → Lam "f" (...)
+--     \\x.                → Lam "x" (...)
+--       f (n f x)        → App (Var "f") (???)
+--
+-- For the inner part: n f x
+-- Function application is LEFT-ASSOCIATIVE:
+--   n f x  =  (n f) x  =  App (App (Var "n") (Var "f")) (Var "x")
+--
+-- So f (n f x) = App (Var "f") (App (App (Var "n") (Var "f")) (Var "x"))
+--
+-- Full translation:
+-- Lam "n" (Lam "f" (Lam "x"
+--   (App (Var "f") (App (App (Var "n") (Var "f")) (Var "x")))))</code></pre>
+
+<h3>The Omega Combinator</h3>
+<p><code>omega = (\\x. x x) (\\x. x x)</code> — a term that reduces to itself forever:</p>
+<pre><code>-- \\x. x x  →  Lam "x" (App (Var "x") (Var "x"))
+-- omega     →  App (Lam "x" (App (Var "x") (Var "x")))
+--                  (Lam "x" (App (Var "x") (Var "x")))</code></pre>
+<p>If you try to normalize omega, the <code>step</code> function produces the same term forever. That's why <code>normalize</code> needs a fuel parameter!</p>
 
 <h3>Your Task</h3>
 <p>Implement <code>normalize</code>, define the Church numeral terms (<code>churchZero</code>, <code>churchOne</code>, <code>churchSucc</code>), and define <code>omega</code>. The <code>Term</code>, <code>substitute</code>, and <code>step</code> functions from the previous exercise are provided as helpers.</p>

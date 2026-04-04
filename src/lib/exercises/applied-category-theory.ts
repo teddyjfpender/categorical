@@ -345,6 +345,37 @@ retryMsg = do
 </table>
 <p>The only difference: the result pair <code>(a, s)</code> is now wrapped in an inner monad <code>m</code>. When <code>m = Maybe</code>, any step can fail, aborting the entire chain.</p>
 
+<h3>Implementing >>= for StateT</h3>
+<p>The bind for <code>StateT s m</code> threads state through the inner monad <code>m</code>. Here's the thinking process:</p>
+<pre><code>-- We have:
+--   sa :: StateT s m a    (a stateful computation in m)
+--   f  :: a -> StateT s m b  (what to do next)
+--   s  :: s               (the current state)
+--
+-- Step 1: Run sa with state s to get m (a, s')
+--   sa s :: m (a, s')
+--
+-- Step 2: Use m's >>= to extract (a, s') from inside m
+--   sa s >>= \\(a, s') -> ...
+--
+-- Step 3: Run the next computation f a with the new state s'
+--   runStateT (f a) s'  :: m (b, s'')
+--
+-- Putting it together:
+(StateT sa) >>= f = StateT $ \\s ->
+  sa s >>= \\(a, s') -> runStateT (f a) s'</code></pre>
+<p>The key insight: inside the lambda <code>\\s -> ...</code> we use the <strong>inner monad's</strong> <code>>>=</code> to sequence computations.</p>
+
+<h3>Implementing Applicative</h3>
+<p>For <code>pure</code>: wrap the value with unchanged state, inside the inner monad:</p>
+<pre><code>pure a = StateT $ \\s -> pure (a, s)   -- uses m's pure</code></pre>
+<p>For <code>&lt;*&gt;</code>: you can implement it using the Monad instance (this is a common pattern):</p>
+<pre><code>sf &lt;*&gt; sa = StateT $ \\s -> do
+  (f, s')  <- runStateT sf s    -- run sf, get function and new state
+  (a, s'') <- runStateT sa s'   -- run sa with new state, get value
+  pure (f a, s'')               -- apply function, return final state</code></pre>
+<p>Or equivalently, just use <code>(&lt;*&gt;) = ap</code> where <code>ap mf ma = do { f <- mf; a <- ma; return (f a) }</code>.</p>
+
 <h3>Instances</h3>
 <p>The Functor, Applicative, and Monad instances all delegate to the inner monad <code>m</code>:</p>
 <ul>
@@ -533,6 +564,30 @@ instance Functor KVF where
   fmap f (Get k cont)    = Get k (f . cont)
   fmap f (Put k v next)  = Put k v (f next)
   fmap f (Delete k next) = Delete k (f next)</code></pre>
+
+<h3>Understanding the Continuation Parameter</h3>
+<p>Look at the <code>Get</code> constructor: <code>Get String (String -> next)</code>. The second field <code>(String -> next)</code> is a <strong>continuation</strong> — it represents "the rest of the program."</p>
+<pre><code>-- Get "x" (\\value -> ... rest of program using value ...)
+--          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--          "after you look up 'x' and get a value,
+--           feed it to this function to continue"</code></pre>
+<p>Compare with <code>Put</code>: <code>Put String String next</code>. Put doesn't give back a value, so the continuation is just <code>next</code> (not a function). The program continues unconditionally after a Put.</p>
+
+<h3>Writing the Interpreter</h3>
+<p>The interpreter pattern-matches on <code>Pure</code> (done) vs <code>Free</code> (more work):</p>
+<pre><code>interpret :: [(String,String)] -> Free KVF a -> (a, [(String,String)])
+interpret store (Pure a)   = (a, store)    -- computation done, return result
+interpret store (Free op)  = case op of
+  Get key cont    -> -- look up key in store, feed result to continuation
+                     let val = ... lookup key store ...
+                     in interpret store (cont val)
+  Put key val next -> -- insert/update in store, continue
+                     let store' = (key, val) : filter ((/= key) . fst) store
+                     in interpret store' next
+  Delete key next  -> -- remove from store, continue
+                     let store' = filter ((/= key) . fst) store
+                     in interpret store' next</code></pre>
+<p>Each case updates the store and then <strong>recurses into the continuation</strong>. This is what makes the Free monad powerful: the DSL defines <em>what</em> to do, and the interpreter decides <em>how</em>.</p>
 
 <h3>Smart Constructors</h3>
 <pre><code>getKV :: String -> Free KVF String

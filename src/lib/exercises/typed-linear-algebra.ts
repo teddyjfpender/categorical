@@ -298,6 +298,27 @@ applyTransform (scaleMat 2 3) (Vec [1,1]) = Vec [2,3]
 -- Compose scale(2,2) then scale(3,3) = scale(6,6)
 compose (scaleMat 3 3) (scaleMat 2 2) = Mat [[6,0],[0,6]]</code></pre>
 
+<h3>Where Does the Rotation Matrix Come From?</h3>
+<p>To rotate a point by angle θ counterclockwise:</p>
+<pre><code>-- Start with the two unit vectors:
+-- (1, 0) rotates to (cos θ,  sin θ)    ← first column
+-- (0, 1) rotates to (-sin θ, cos θ)    ← second column
+--
+-- So the rotation matrix is:
+-- ┌              ┐
+-- │ cos θ  -sin θ│
+-- │ sin θ   cos θ│
+-- └              ┘
+--
+-- Example: rotate (1, 0) by 90° (π/2 radians):
+-- cos(π/2) = 0,  sin(π/2) = 1
+-- Result: (0*1 + (-1)*0, 1*1 + 0*0) = (0, 1) ✓</code></pre>
+
+<h3>Floating-Point Comparison</h3>
+<p>Rotation involves <code>sin</code> and <code>cos</code>, which produce floating-point approximations. Instead of <code>==</code>, compare element-wise with a tolerance:</p>
+<pre><code>approxEq :: Double -> Double -> Bool
+approxEq x y = abs (x - y) < 1e-9</code></pre>
+
 <h3>Your Task</h3>
 <p>Implement scaling, rotation, and reflection matrices, plus <code>applyTransform</code> and <code>compose</code>. Then verify the composition law holds.</p>
 `,
@@ -467,6 +488,30 @@ Solution: x=5, y=-6</code></pre>
   <li>For each column: find the pivot row, swap it into place, eliminate all rows below</li>
   <li>Back substitution processes rows bottom to top, accumulating the solution</li>
 </ul>
+
+<h3>From Paper to Code: Functional Row Operations</h3>
+<p>The key insight: represent the augmented matrix [A|b] as <code>[[Double]]</code> where each row has <code>n + 1</code> elements (the last element is the corresponding b value).</p>
+<p>Break the algorithm into small helper functions:</p>
+<pre><code>-- Swap rows i and j in a matrix
+swapRows :: Int -> Int -> [[Double]] -> [[Double]]
+-- Use: zipWith to replace row i with row j and vice versa
+
+-- Scale row i so its k-th element becomes 1
+scaleRow :: Int -> Int -> [[Double]] -> [[Double]]
+-- Use: map (\\x -> x / pivot) on the target row
+
+-- Subtract a multiple of row i from row j to eliminate column k
+eliminateRow :: Int -> Int -> Int -> [[Double]] -> [[Double]]
+-- Use: zipWith (-) on the two rows after scaling
+
+-- Forward elimination: process columns 0..n-1
+forwardElim :: [[Double]] -> Maybe [[Double]]
+-- Use: foldl or recursion over column indices
+
+-- Back substitution: solve from bottom row up
+backSubst :: [[Double]] -> [Double]
+-- Use: foldr or reverse iteration</code></pre>
+<p>Each helper takes and returns an immutable <code>[[Double]]</code> — no mutation needed.</p>
 
 <h3>Your Task</h3>
 <p>Implement <code>solve :: [[Double]] -> [Double] -> Maybe [Double]</code> that solves the linear system <code>Ax = b</code>, returning <code>Nothing</code> for singular systems.</p>

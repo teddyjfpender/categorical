@@ -188,6 +188,24 @@ modInverse a p = let (_, x, _) = extGcd (a \`mod\` p + p) p
   </tbody>
 </table>
 
+<h3>Step-by-Step: Computing a Basis Term</h3>
+<p>Let's compute <code>L_0(3)</code> for points <code>[(1, 2), (2, 4)]</code> with <code>p = 23</code>:</p>
+<pre><code>-- L_0(x) = product of (x - x_j) / (x_0 - x_j) for j ≠ 0
+-- Here: x = 3, x_0 = 1, x_1 = 2
+
+-- One term (j = 1):
+--   numerator:   (3 - 2) = 1
+--   denominator: (1 - 2) = -1 ≡ 22 (mod 23)
+--   inverse:     modInverse 22 23 = 22 (since 22 * 22 = 484 = 21*23 + 1)
+--   term:        1 * 22 = 22 (mod 23)
+-- L_0(3) = 22
+
+-- Then: P(3) = y_0 * L_0(3) + y_1 * L_1(3)
+--            = 2 * 22 + 4 * L_1(3) (mod 23)
+-- L_1(3) = (3 - 1) / (2 - 1) = 2 / 1 = 2
+-- P(3) = 2 * 22 + 4 * 2 = 44 + 8 = 52 ≡ 6 (mod 23)
+-- Since y = 2x, P(3) = 6 ✓</code></pre>
+
 <h3>Your Task</h3>
 <p>Implement <code>lagrangeEval</code>: given a prime <code>p</code>, a list of <code>(x, y)</code> points, and a target <code>x</code>, compute the value of the interpolating polynomial at that point, mod <code>p</code>.</p>
 `,
@@ -487,6 +505,18 @@ reconstructSecret p shares = lagrangeEval p shares 0
     <tr><td>Verify: g^s * y^c mod p</td><td>2^1 * 13^5 mod 23 = 2 * 4 mod 23 = 8 = r</td></tr>
   </tbody>
 </table>
+
+<h3>What is Group Order?</h3>
+<p>The <strong>order</strong> of a generator <code>g</code> modulo <code>p</code> is the smallest positive integer <code>q</code> such that <code>g^q ≡ 1 (mod p)</code>. For our parameters:</p>
+<pre><code>-- g = 2, p = 23: what is the order?
+-- 2^1  mod 23 = 2
+-- 2^2  mod 23 = 4
+-- 2^11 mod 23 = 1    ← first time we hit 1!
+-- So q = 11 (the order of 2 mod 23)</code></pre>
+<p>We need <code>q</code> to be prime (it is: 11 is prime) and to divide <code>p - 1</code> (it does: 22 / 11 = 2). This ensures the math works securely.</p>
+
+<h3>A Note on Haskell's mod</h3>
+<p>The response <code>s = (k - c * x) mod q</code> can involve negative intermediate values. Haskell's <code>mod</code> always returns a non-negative result for positive modulus, so <code>(-5) \`mod\` 11 = 6</code>, not <code>-5</code>. This is exactly what we want — no special handling needed.</p>
 
 <h3>Your Task</h3>
 <p>Implement the three phases of the Schnorr protocol (commit, respond, verify) and a function that simulates a full protocol run, returning whether verification succeeds.</p>

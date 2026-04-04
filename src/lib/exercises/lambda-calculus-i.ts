@@ -339,6 +339,9 @@ answer6 = 11
   </tbody>
 </table>
 
+<h3>The Beauty of Minimalism</h3>
+<p>With only S and K, you can express <em>any computable function</em>. Two combinators. No integers, no booleans, no data structures. Now look at the type signatures: <code>iComb :: a -> a</code> has exactly one implementation. <code>kComb :: a -> b -> a</code> has exactly one. Each type is so constrained by parametricity that you could not write a <em>wrong</em> program even if you tried. This is Wadler's "theorems for free" in its purest form: the type IS the specification, and the specification admits only one proof.</p>
+
 <h3>Why Combinators Matter</h3>
 <ul>
   <li><strong>S and K alone</strong> can express any computable function (they are <em>Turing complete</em>).</li>

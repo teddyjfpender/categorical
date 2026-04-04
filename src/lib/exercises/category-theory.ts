@@ -142,6 +142,9 @@ lengths xs = fmap length xs
 </ul>
 <p>This is the same pattern as writing a recursive function on a list: handle the empty case, then the cons case.</p>
 
+<h3>Deriving the Implementation from the Types</h3>
+<p>Before you write code, look at what the types <em>require</em>. For <code>Leaf x</code> where <code>x :: a</code>, you have <code>f :: a -> b</code> and must produce a <code>Tree b</code>. There is only one <code>b</code> value available: <code>f x</code>. And only one way to wrap it: <code>Leaf (f x)</code>. For <code>Branch l r</code>, the only tool is <code>fmap f</code> applied recursively. You did not design this — the types designed it for you. This is "deriving programs by calculation": the implementation follows from the types by the only path that typechecks.</p>
+
 <h3>Your Task</h3>
 <p>Implement <code>fmap</code> for <code>Tree</code>. Two equations, one per constructor.</p>
 `,
@@ -220,6 +223,9 @@ instance Functor Tree where
 <pre><code>-- These give the same result:
 fmap (show . (+1)) (Leaf 5)       -- Leaf "6"
 (fmap show . fmap (+1)) (Leaf 5)  -- Leaf "6"</code></pre>
+
+<h3>Laws as Design Taste</h3>
+<p>The composition law <code>fmap (f . g) == fmap f . fmap g</code> means you can <strong>fuse two traversals into one</strong> without changing behavior. This isn't just optimization — it's a <em>design guarantee</em>. Any code that calls <code>fmap</code> twice can be refactored to call it once, and the laws guarantee correctness. In imperative code, merging two loops requires careful reasoning about mutation. Here, the law says it is <em>always safe</em>. By eliminating mutable state, we eliminate the incidental complexity that makes refactoring dangerous. Laws make equational reasoning possible, and equational reasoning is what lets programs be derived by calculation rather than discovered by debugging.</p>
 
 <h3>Haskell's Built-in Functions</h3>
 <p>You'll need two standard functions:</p>
@@ -315,6 +321,9 @@ fmap f (maybeToList mx)  ==  maybeToList (fmap f mx)
 -- Example: f = (+1), mx = Just 5
 fmap (+1) (maybeToList (Just 5))  = fmap (+1) [5]    = [6]
 maybeToList (fmap (+1) (Just 5))  = maybeToList (Just 6) = [6]</code></pre>
+
+<h3>Theorems for Free</h3>
+<p>Look at the type <code>maybeToList :: Maybe a -> [a]</code>. Because <code>a</code> is completely polymorphic, you cannot inspect, modify, or create values of type <code>a</code>. Your only options are to include the <code>a</code> you are given, or not. The type <em>tells you what the function must do</em>. This is Wadler's "theorems for free": parametricity constrains implementation so severely that there are only a handful of possibilities, and the naturality law eliminates the wrong ones. You are not guessing an implementation — you are <strong>deriving</strong> it from the type.</p>
 
 <h3>Pattern Matching to Convert</h3>
 <p>To write a natural transformation, pattern match on the source type's constructors and build the target type:</p>

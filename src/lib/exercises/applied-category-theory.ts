@@ -51,6 +51,9 @@ export const exercises: Record<string, Exercise> = {
   <li><code>modify f</code> — applies <code>f</code> to the current state</li>
 </ul>
 
+<h3>The Elegance of Explicit State</h3>
+<p>In imperative languages, state is invisible — variables mutate behind the scenes. Haskell's State monad makes state <em>visible in the type</em>: <code>State Int ()</code> declares that this computation reads and writes an <code>Int</code>. Compare <code>tick :: State Int ()</code> with an imperative <code>tick()</code> that mutates a global counter. The Haskell version is simultaneously more honest (state in the type) and more flexible (run with any starting value). The deep insight: "mutable state" is not a primitive — it's a <em>pattern</em> captured as <code>s -> (a, s)</code>. Once you see state as a function, you compose stateful computations algebraically.</p>
+
 <h3>Worked Example</h3>
 <pre><code>-- A "tick" increments the counter state by 1
 tick :: State Int ()
@@ -226,6 +229,9 @@ countOps = runState (tick >> tick >> tick >> get) 0
 -- Example: local (*2) ask, run with env 3:
 -- (g . f) 3 = g (f 3) = g 6 = 6
 -- The modification only affects this computation.</code></pre>
+
+<h3>Reader Is Just Composition</h3>
+<p>Look at the Functor instance: <code>fmap f (Reader g) = Reader (f . g)</code>. That is just function composition! The Reader monad is literally the composition of functions, dressed up with a newtype. Without it, every function needing configuration takes it as an explicit argument — threading an unchanged value through layers of calls is pure incidental complexity. Reader hides this plumbing. The Monad instance is the most minimal monad possible: no state, no effects, no failure — just "you have access to an environment." That is Lampson's design judgment: choose the simplest mechanism that solves the problem.</p>
 
 <h3>Worked Example</h3>
 <pre><code>data Config = Config { appName :: String, maxRetries :: Int }

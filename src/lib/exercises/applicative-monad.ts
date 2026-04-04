@@ -46,6 +46,9 @@ Just x   &gt;&gt;= f = f x       -- unwrap, apply f (which may also fail)</code>
   </tbody>
 </table>
 
+<h3>Complexity Budget</h3>
+<p>The nested case version isn't just ugly — it's <em>dangerous</em>. Every nesting level is a place where you could forget <code>Nothing</code>, handle it inconsistently, or bind the wrong variable. <code>(&gt;&gt;=)</code> doesn't just shorten code — it makes an entire class of bugs <strong>structurally impossible</strong>. The Nothing-handling logic exists once, in the Monad instance, and every use site inherits it for free. The bind operator factors out all incidental complexity, leaving only essential logic: <code>lookupName uid &gt;&gt;= lookupPhone</code>. Developing taste means feeling the pain of incidental complexity <em>before</em> you see the code.</p>
+
 <h3>Your Task</h3>
 <p>Implement three functions:</p>
 <ol>

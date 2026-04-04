@@ -58,6 +58,9 @@ export const exercises: Record<string, Exercise> = {
 <p>To convert a Church boolean back to Haskell's <code>Bool</code>, just apply it to <code>True</code> and <code>False</code>:</p>
 <pre><code>toBool b = b True False</code></pre>
 
+<h3>Data Is Behavior</h3>
+<p>In most languages, booleans are primitive and if-then-else is a special construct. Church showed that <em>neither is necessary</em>. A boolean just IS the act of choosing between two alternatives. This reveals something profound: there is no fundamental distinction between data and functions. This is the purest expression of information-hiding — the internal representation of "true" and "false" is hidden behind the interface of selection, and no client code can depend on anything else.</p>
+
 <h3>Your Task</h3>
 <p>Implement <code>churchTrue</code>, <code>churchFalse</code>, <code>toBool</code>, <code>churchIf</code>, <code>churchNot</code>, <code>churchAnd</code>, and <code>churchOr</code>. The logic combinators work at the concrete <code>Bool -> Bool -> Bool</code> type.</p>
 `,
@@ -477,6 +480,9 @@ toMaybe m = m Nothing Just
   <li><code>head (map f xs)</code> — only <code>f (head xs)</code> is computed</li>
   <li><code>take n infinite</code> — laziness makes infinite structures usable</li>
 </ul>
+
+<h3>Laziness as Design Philosophy</h3>
+<p>The fact that <code>fst (1 + 2, error "boom")</code> returns 3 is not a trick — it reflects a commitment: the meaning of a program is determined by <strong>what you observe</strong>, not by what you wrote. If you never look at the second component, it doesn't exist in any meaningful sense. Producers and consumers are decoupled: the producer doesn't need to know how much the consumer will use. In a strict language, the producer decides how much to compute; in Haskell, the consumer decides. That inversion of control is a genuine architectural improvement.</p>
 
 <h3>Your Task</h3>
 <p>Predict what each expression evaluates to. Think carefully about which sub-expressions are actually <em>needed</em> and which remain as unevaluated thunks.</p>

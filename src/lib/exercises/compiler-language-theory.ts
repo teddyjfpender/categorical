@@ -204,6 +204,9 @@ some p = do x &lt;- p; xs &lt;- many p; return (x:xs)</code></pre>
 <pre><code>natP :: Parser Int
 natP = do digits &lt;- some digitP; return (read digits)</code></pre>
 
+<h3>Composition as Architecture</h3>
+<p>Appreciate what is happening: from <code>charP</code> (matches one character) you built <code>digitP</code> and <code>letterP</code>. From those, with <code>some</code>, you built <code>natP</code>. In the next exercise you'll build an expression parser with operator precedence. At no point do you write a "parsing algorithm." Instead, you assemble parsers from smaller parsers, exactly as you compose functions. Each combinator is independently understandable, testable, and reusable. The Monad instance is the glue. Compare this with a hand-written recursive descent parser where grammar, error handling, and state are tangled together. Here, they are orthogonal. That is good taste in design.</p>
+
 <h3>Your Task</h3>
 <p>Implement <code>Applicative</code> and <code>Monad</code> instances for <code>Parser</code>, then build the combinators <code>orElse</code>, <code>many</code>, <code>some</code>, and <code>natP</code>.</p>
 `,

@@ -329,6 +329,9 @@ foldMap (\\x -> [x]) [1,2,3]  -- [1,2,3]  (each element -> singleton list)</code
 = [1] ++ [2] ++ [3]
 = [1, 2, 3]</code></pre>
 
+<h3>Why foldMap Is Beautiful</h3>
+<p>Notice something remarkable: <code>treeSum</code>, <code>treeProduct</code>, and <code>treeToList</code> all have the <em>exact same structure</em>. The only thing that changes is the Monoid. This is the essence of good design: instead of three separate functions with three separate traversals, you have <strong>one function</strong> parameterized by a choice of algebra. The Monoid <em>is</em> the strategy; <code>foldMap</code> <em>is</em> the universal fold. In an imperative approach, you'd write three loop bodies with three accumulators. Here, the traversal logic exists once, and the "what to do at each node" is captured entirely by the Monoid instance. That is composition as design — small, orthogonal pieces (Foldable + Monoid) combining into something greater than either alone.</p>
+
 <h3>Your Task</h3>
 <p>Use <code>foldMap</code> with different Monoid newtypes to implement three utility functions on your Tree.</p>
 `,

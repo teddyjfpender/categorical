@@ -44,6 +44,9 @@ filter p xs = foldr (\\x acc -> if p x then x : acc else acc) [] xs
 -- reverse as a left fold: build from the opposite end
 reverse xs = foldl (\\acc x -> x : acc) [] xs</code></pre>
 
+<h3>Why This Matters: The Hughes Thesis</h3>
+<p>John Hughes argued that the real power of FP is not the absence of side effects but the presence of <strong>new ways to glue programs together</strong>. <code>foldr</code> is a universal glue. Sum, map, filter, reverse — all are instances of the same pattern. In an imperative language, each would be a separate loop. Here, the control flow is factored out into <code>foldr</code>/<code>foldl</code>, and the business logic lives in the combining function. The fold hides the <em>decision</em> of how to traverse, exposing only the interface of what to do at each element. That is genuine modularity.</p>
+
 <h3>Your Task</h3>
 <p>Implement four common list functions: one with explicit recursion, and three using folds.</p>
 `,
@@ -259,6 +262,9 @@ myGroupBy eq (x:xs) =
 -- In Haskell: map (*2) [1..]                        -- nothing computed yet!
 --             take 5 (map (*2) [1..])               -- only computes 5 elements: [2,4,6,8,10]</code></pre>
 <p>Haskell computes only what <code>take</code> demands. The rest of the infinite list is never touched.</p>
+
+<h3>Laziness as a Modularity Tool</h3>
+<p>Hughes argued that laziness is not primarily about efficiency — it's about <strong>modularity</strong>. Consider <code>take 5 (filter isPrime [2..])</code>. In a strict language, generation and termination are tangled. With laziness, you separate them completely: <code>[2..]</code> generates, <code>filter isPrime</code> selects, <code>take 5</code> stops. Each piece is independent, testable, and recomposable. This is the "Tar Pit" insight applied to control flow: the "when to stop" decision is separated from the "what to generate" logic, eliminating incidental complexity.</p>
 
 <h3>iterate: Building Infinite Sequences</h3>
 <p><code>iterate</code> applies a function repeatedly:</p>

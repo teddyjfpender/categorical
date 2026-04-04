@@ -73,6 +73,9 @@ export const exercises: Record<string, Exercise> = {
 
 <p><strong>The pattern:</strong> look at what types you HAVE (from the inputs), look at what type you NEED (the return type), and find the unique path that connects them.</p>
 
+<h3>Why This Is the Most Beautiful Idea in Programming</h3>
+<p>When you wrote <code>proof6 f g x = g (f x)</code>, you proved that implication is transitive. The <strong>type checker verified your proof</strong>. This is not a metaphor — it is a precise mathematical correspondence. The beauty is that the proof is also the simplest program you could write. There are no alternatives that typecheck. This is the ultimate expression of programming taste: when the types are so precise that there is only one program, there are no design decisions left to get wrong. Good types don't just prevent bugs — they <em>eliminate the possibility space</em> until only correctness remains.</p>
+
 <h3>Your Task</h3>
 <p>Write eight functions that "prove" type-theoretic propositions. Each function's type signature <em>is</em> the proposition &mdash; your implementation is the proof. The types constrain your code so much that there is essentially only one way to write each function.</p>
 `,

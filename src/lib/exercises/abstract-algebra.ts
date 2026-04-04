@@ -484,6 +484,9 @@ fmap f . alpha == alpha . fmap f
 f (a &lt;&gt; b) == f a &lt;&gt; f b</code></pre>
 <p>Both say the same thing: <strong>structure is preserved under the map</strong>. Homomorphisms are to groups what natural transformations are to functors.</p>
 
+<h3>Structure-Preservation as Taste</h3>
+<p>The homomorphism property <code>f (a &lt;&gt; b) == f a &lt;&gt; f b</code> is a <em>design principle</em>. When a function preserves structure, users can reason about it locally (what it does to elements) and globally (what it does to combinations) independently. <code>addOne</code> breaks this promise, meaning you cannot factor computations through it — a complexity burden. Homomorphisms, by contrast, are freely rearrangeable: map before combining or combine before mapping. This freedom is what makes parallel computation possible and functional programs easy to refactor. Developing taste means recognizing when a function "feels wrong" — often that feeling corresponds to failing to be a homomorphism.</p>
+
 <h3>Your Task</h3>
 <p>Write a function that checks whether a given function is a group homomorphism, then define and test various functions.</p>
 `,

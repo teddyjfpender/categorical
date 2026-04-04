@@ -45,6 +45,15 @@ polyEval p (Poly cs) x = foldr (\\c acc -> (c + x * acc) \`mod\` p) 0 cs</code><
   </tbody>
 </table>
 
+<h3>Worked Convolution: (1+x) × (1+x)</h3>
+<pre><code>a = [1, 1],  b = [1, 1]
+
+k=0: a_0×b_0         = 1×1     = 1
+k=1: a_0×b_1 + a_1×b_0 = 1×1 + 1×1 = 2
+k=2: a_1×b_1         = 1×1     = 1
+
+Result: [1, 2, 1] → 1 + 2x + x²</code></pre>
+
 <h3>Your Task</h3>
 <p>Implement polynomial evaluation (Horner's method), addition, multiplication (convolution), and degree computation &mdash; all over Z/pZ.</p>
 `,

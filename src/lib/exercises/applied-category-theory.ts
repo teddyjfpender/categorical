@@ -33,6 +33,16 @@ export const exercises: Record<string, Exercise> = {
   </tbody>
 </table>
 
+<h3>Applicative: pure and &lt;*&gt;</h3>
+<p><code>pure a</code> returns <code>a</code> without touching the state:</p>
+<pre><code>pure a = State $ \\s -> (a, s)</code></pre>
+<p><code>&lt;*&gt;</code> threads state through both computations:</p>
+<pre><code>State sf &lt;*&gt; State sa = State $ \\s ->
+  let (f, s')  = sf s     -- run sf: get function and new state
+      (a, s'') = sa s'    -- run sa with new state: get value
+  in (f a, s'')            -- apply function, return final state</code></pre>
+<p>State flows left-to-right: <code>sf</code> runs first, then <code>sa</code> with the updated state.</p>
+
 <h3>Helpers</h3>
 <ul>
   <li><code>get</code> — returns the current state as the result (and leaves state unchanged)</li>
@@ -192,12 +202,20 @@ countOps = runState (tick >> tick >> tick >> get) 0
     <tr><td>Monad</td><td><code>&gt;&gt;=</code> runs the first reader, passes its result to <code>f</code>, and gives both the same environment</td></tr>
   </tbody>
 </table>
+<p>For <code>&lt;*&gt;</code>: both sides receive the <strong>same</strong> environment (it's read-only, not threaded):</p>
+<pre><code>Reader rf &lt;*&gt; Reader ra = Reader $ \\r -> rf r (ra r)</code></pre>
 
 <h3>Helpers</h3>
 <ul>
   <li><code>ask</code> — returns the entire environment as the result</li>
-  <li><code>local f m</code> — runs <code>m</code> with a modified environment (<code>f</code> is applied before reading)</li>
+  <li><code>local f m</code> — runs <code>m</code> with a modified environment (<code>f</code> is applied before reading):</li>
 </ul>
+<p><code>local f m</code> runs computation <code>m</code> with a <strong>modified</strong> environment — applies <code>f</code> to the environment before passing it in:</p>
+<pre><code>local f (Reader g) = Reader (g . f)
+
+-- Example: local (*2) ask, run with env 3:
+-- (g . f) 3 = g (f 3) = g 6 = 6
+-- The modification only affects this computation.</code></pre>
 
 <h3>Worked Example</h3>
 <pre><code>data Config = Config { appName :: String, maxRetries :: Int }
@@ -382,6 +400,10 @@ retryMsg = do
   <li><strong>Functor:</strong> <code>fmap f (StateT g) = StateT $ \\s -> fmap (\\(a,s') -> (f a, s')) (g s)</code></li>
   <li><strong>Monad:</strong> Run the first computation, use <code>&gt;&gt;=</code> on the inner monad to thread the state</li>
 </ul>
+<p>The double-<code>fmap</code>: <code>g s</code> produces <code>m (a, s')</code> — the pair is inside <code>m</code>. We use <code>m</code>'s <code>fmap</code> to reach inside and transform only the result <code>a</code>, leaving state <code>s'</code> untouched:</p>
+<pre><code>fmap f (StateT g) = StateT $ \\s -> fmap (\\(a, s') -> (f a, s')) (g s)
+--                                  ^^^^
+--                                  m's fmap, not StateT's</code></pre>
 
 <h3>The lift Function</h3>
 <p><code>lift</code> injects a plain <code>m a</code> action into the transformer:</p>
@@ -552,6 +574,7 @@ instance Functor f => Applicative (Free f) where
 instance Functor f => Monad (Free f) where
   Pure a  >>= f = f a
   Free op >>= f = Free (fmap (>>= f) op)</code></pre>
+<p><code>Free op >>= f = Free (fmap (>>= f) op)</code> is subtle. Here <code>op :: f (Free f a)</code> — a functor layer containing the rest of the program. We can't apply <code>f</code> directly because it's buried inside <code>f</code>. So <code>fmap (>>= f) op</code> uses the functor to reach in and recursively apply <code>(>>= f)</code> to the inner <code>Free f a</code>. Think of it as drilling down through each <code>Free</code> layer until hitting a <code>Pure a</code>, then applying <code>f</code>.</p>
 
 <h3>Building a Key-Value Store DSL</h3>
 <p>Define the operations as a functor:</p>

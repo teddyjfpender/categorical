@@ -41,6 +41,9 @@ dot (Vec [1,2,3]) (Vec [4,5,6])
   = sum [4,10,18]
   = 32.0</code></pre>
 
+<h3>Why These Operations Matter</h3>
+<p>These operations are the building blocks of all linear algebra. The <strong>dot product</strong> measures similarity — same-direction vectors have large dot products, perpendicular vectors have zero. The <strong>norm</strong> gives length. Together they express distances, angles, and projections — the foundations of machine learning, 3D graphics, and physics simulations.</p>
+
 <h3>Your Task</h3>
 <p>Implement five vector operations: addition, scalar multiplication, dot product, norm, and zero vector.</p>
 `,
@@ -155,6 +158,7 @@ zeroVec n = Vec (replicate n 0)
   <li>Base case: if any row is empty, return <code>[]</code></li>
   <li>Recursive case: <code>map head rows : transpose (map tail rows)</code></li>
 </ul>
+<p><strong>Why does <code>map head rows</code> give a column?</strong> Each row is a list, and <code>head</code> takes the first element. So <code>map head</code> over all rows collects the first element of every row — which is the first <em>column</em>. Then <code>map tail rows</code> removes that column, and we recurse on the remaining matrix.</p>
 
 <h3>Matrix-Vector Multiplication</h3>
 <p>Each row of the matrix is dotted with the vector:</p>

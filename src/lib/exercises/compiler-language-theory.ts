@@ -195,6 +195,8 @@ orElse (Parser p1) (Parser p2) = Parser $ \\s ->
 <pre><code>many p = (do x &lt;- p; xs &lt;- many p; return (x:xs)) \`orElse\` pure []
 some p = do x &lt;- p; xs &lt;- many p; return (x:xs)</code></pre>
 
+<p><strong>How does <code>many</code> terminate?</strong> Each successful call to <code>p</code> consumes input, so the recursion progresses. When <code>p</code> finally fails, <code>orElse</code> returns <code>pure []</code> — the base case. <code>some</code> requires at least one success by calling <code>p</code> first, then delegates to <code>many</code> for the rest.</p>
+
 <h3>Parsing Numbers</h3>
 <p>With <code>some</code> and <code>digitP</code>, we can parse natural numbers:</p>
 <pre><code>natP :: Parser Int
@@ -372,6 +374,16 @@ natP = do digits <- some digitP; return (read digits)
 chainl1 p op = p >>= rest
   where rest a = (do f &lt;- op; b &lt;- p; rest (f a b)) \`orElse\` pure a</code></pre>
 <p>This parses one <code>p</code>, then repeatedly parses <code>op</code> followed by <code>p</code>, applying the operator left-to-right. So <code>1+2+3</code> becomes <code>Add (Add (Lit 1) (Lit 2)) (Lit 3)</code>.</p>
+
+<h3>Tracing chainl1 (Left-Association)</h3>
+<p>Let's trace <code>chainl1 parseFactor addOp</code> on <code>"1+2+3"</code>:</p>
+<ol>
+  <li><code>p</code> parses <code>1</code> → <code>Lit 1</code>. Then <code>rest (Lit 1)</code> is called.</li>
+  <li><code>rest</code> tries <code>op</code>: sees <code>+</code>, so <code>f = Add</code>. Parses <code>p</code> again: <code>Lit 2</code>. Calls <code>rest (Add (Lit 1) (Lit 2))</code> — the accumulator grows on the <strong>left</strong>.</li>
+  <li><code>rest</code> tries <code>op</code>: sees <code>+</code>, <code>f = Add</code>. Parses <code>Lit 3</code>. Calls <code>rest (Add (Add (Lit 1) (Lit 2)) (Lit 3))</code>.</li>
+  <li><code>rest</code> tries <code>op</code>: no more <code>+</code>, <code>orElse</code> returns <code>pure (Add (Add (Lit 1) (Lit 2)) (Lit 3))</code>.</li>
+</ol>
+<p>The key: <code>rest</code> receives the <em>accumulated AST so far</em> as its argument. Each iteration wraps it on the <strong>left</strong> — that's left-association.</p>
 
 <h3>Handling Whitespace</h3>
 <p>We skip optional spaces around operators using:</p>
@@ -754,6 +766,9 @@ parseLet = do
   body &lt;- parseExpr        -- the body expression
   return (Let name val body)</code></pre>
 <p>And <code>parseFactor</code> must try <code>parseLet</code> and <code>parseVar</code> as alternatives.</p>
+
+<h3>Why Parser Ordering Matters</h3>
+<p><code>parseFactor</code> tries alternatives left to right with <code>orElse</code>. If you try <code>parseVar</code> before <code>parseLet</code>, the input <code>"let x = 5 in x"</code> would match <code>parseVar</code> first — parsing <code>"let"</code> as a variable name! Always try keyword parsers (<code>parseLet</code>) before identifier parsers (<code>parseVar</code>).</p>
 
 <h3>Evaluating with an Environment</h3>
 <p>The evaluator carries a list of variable bindings:</p>

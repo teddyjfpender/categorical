@@ -306,6 +306,8 @@ mul 2 3 &lt;&gt; mul 2 4 = Mod7 6 &lt;&gt; Mod7 1 = Mod7 0   -- since 6+1=7=0 mo
 3 * 5 = 15 = 1  -- found it! Inverse of 3 is 5.</code></pre>
 <p>In Haskell, a list comprehension does this search: <code>head [x | x &lt;- [1..6], (a * x) \`mod\` 7 == 1]</code></p>
 
+<p>This brute-force works because 7 is prime, guaranteeing every non-zero element has exactly one inverse. For composite numbers like 6, the search <code>[x | x &lt;- [1..5], (2 * x) \`mod\` 6 == 1]</code> returns an empty list — 2 has no inverse mod 6 because <code>gcd(2, 6) = 2 ≠ 1</code>. Fields require a prime modulus.</p>
+
 <h3>Your Task</h3>
 <p>Define Ring and Field typeclasses, implement them for Mod7, and verify the distributive law.</p>
 `,

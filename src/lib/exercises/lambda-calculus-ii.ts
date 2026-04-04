@@ -39,6 +39,20 @@ export const exercises: Record<string, Exercise> = {
   </tbody>
 </table>
 
+<h3>Verifying AND</h3>
+<p>Let's trace <code>churchAnd churchTrue churchFalse</code>:</p>
+<pre><code>churchAnd churchTrue churchFalse
+= \\x y -> churchTrue (churchFalse x y) y
+= \\x y -> churchTrue y y       -- churchFalse picks second: y
+= \\x y -> y                     -- churchTrue picks first of (y, y): y
+-- This is churchFalse! True AND False = False ✓</code></pre>
+<p>And <code>churchAnd churchTrue churchTrue</code>:</p>
+<pre><code>churchAnd churchTrue churchTrue
+= \\x y -> churchTrue (churchTrue x y) y
+= \\x y -> churchTrue x y       -- churchTrue picks first: x
+= \\x y -> x                     -- churchTrue picks first again
+-- This is churchTrue! True AND True = True ✓</code></pre>
+
 <h3>Converting Back</h3>
 <p>To convert a Church boolean back to Haskell's <code>Bool</code>, just apply it to <code>True</code> and <code>False</code>:</p>
 <pre><code>toBool b = b True False</code></pre>

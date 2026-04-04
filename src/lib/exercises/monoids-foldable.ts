@@ -320,7 +320,10 @@ getProduct (Product 12) -- 12</code></pre>
 <pre><code>foldMap Sum [1,2,3]          -- Sum 6
 foldMap Product [1,2,3]      -- Product 6
 foldMap (\\x -> [x]) [1,2,3]  -- [1,2,3]  (each element -> singleton list)</code></pre>
-<p>The last one uses lists as a Monoid (where <code>(&lt;&gt;) = (++)</code>). Each element becomes a one-element list, and they get concatenated together.</p>
+<p>Lists form a Monoid with <code>(&lt;&gt;) = (++)</code> (concatenation) and <code>mempty = []</code>. So <code>foldMap (\\x -> [x]) tree</code> wraps each leaf in a singleton list, then concatenates them:</p>
+<pre><code>[1] &lt;&gt; [2] &lt;&gt; [3]
+= [1] ++ [2] ++ [3]
+= [1, 2, 3]</code></pre>
 
 <h3>Your Task</h3>
 <p>Use <code>foldMap</code> with different Monoid newtypes to implement three utility functions on your Tree.</p>

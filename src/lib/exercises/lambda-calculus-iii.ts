@@ -23,6 +23,9 @@ export const exercises: Record<string, Exercise> = {
   </tbody>
 </table>
 
+<h3>Why This Matters</h3>
+<p>In dependently typed languages like Agda, Coq, and Lean, this correspondence is used to write <em>machine-checked proofs</em>. In Haskell, it gives us intuition: if you can write a total function with a given type, you've proved the corresponding logical statement.</p>
+
 <h3>Key Logical Rules as Types</h3>
 <ul>
   <li><strong>Reflexivity (identity):</strong> <code>a -> a</code> &mdash; "A implies A" is trivially true</li>
@@ -34,9 +37,6 @@ export const exercises: Record<string, Exercise> = {
   <li><strong>Uncurrying:</strong> <code>(a -> b -> c) -> (a, b) -> c</code> &mdash; converts curried to uncurried</li>
   <li><strong>Currying:</strong> <code>((a, b) -> c) -> a -> b -> c</code> &mdash; converts uncurried to curried</li>
 </ul>
-
-<h3>Why This Matters</h3>
-<p>In dependently typed languages like Agda, Coq, and Lean, this correspondence is used to write <em>machine-checked proofs</em>. In Haskell, it gives us intuition: if you can write a total function with a given type, you've proved the corresponding logical statement.</p>
 
 <h3>The Technique: Let the Types Guide You</h3>
 <p>When the types are polymorphic (type variables like <code>a</code>, <code>b</code>), there's usually only <strong>one</strong> way to write the function. The types tell you exactly what to do:</p>
@@ -206,6 +206,9 @@ proof8 f a b = f (a, b)
   </tbody>
 </table>
 <p>The continuation <code>k</code> says "what to do next with the result." To extract the final value, pass <code>id</code> as the continuation.</p>
+
+<h3>Why Lambdas Replace the Call Stack</h3>
+<p>In direct style, <code>f (g x)</code> implicitly uses the call stack: compute <code>g x</code>, push the result, then call <code>f</code>. In CPS, we make this explicit: <code>gCPS x (\\r -> fCPS r k)</code> says "compute <code>g</code> of <code>x</code>, and when you get result <code>r</code>, feed it to <code>f</code>, which passes its result to <code>k</code>." The lambda <code>\\r -> fCPS r k</code> <em>is</em> the call stack, turned into a function.</p>
 
 <h3>Composing CPS Functions</h3>
 <p>The power of CPS emerges when you <strong>chain</strong> computations. Instead of nested calls like <code>mul (add x y) (add x y)</code>, you thread continuations:</p>
@@ -408,8 +411,8 @@ freeVars (App f a)    = nub (freeVars f ++ freeVars a)</code></pre>
   <li>Otherwise: no reduction possible (return <code>Nothing</code>)</li>
 </ol>
 
-<h3>A Note on Capture</h3>
-<p>Our <code>substitute</code> function is simplified — it doesn't handle <strong>variable capture</strong> (where substituting into a lambda accidentally binds a free variable). A production interpreter would use alpha-renaming or De Bruijn indices to avoid this. For our exercises, the simplified version works correctly because our test terms are chosen to avoid capture.</p>
+<h3>A Note on Variable Capture (Not Required)</h3>
+<p>Our <code>substitute</code> is simplified. Consider substituting <code>x → y</code> in <code>\\y. x</code>. The correct result renames the bound <code>y</code>: <code>\\z. y</code>. Our version produces <code>\\y. y</code> — the free <code>y</code> appears bound. This is <strong>variable capture</strong>. Our test terms avoid this, so the simplified version works for this exercise. Production interpreters use alpha-renaming or De Bruijn indices.</p>
 
 <h3>Your Task</h3>
 <p>Define the <code>Term</code> type and implement <code>freeVars</code>, <code>substitute</code>, <code>isValue</code>, and <code>step</code>.</p>

@@ -273,7 +273,7 @@ take 4 (iterate (+3) 0)   -- [0, 3, 6, 9]</code></pre>
 -- tail fibs  = 1 : 1 : 2 : 3 : 5 : 8 : ...
 -- zipWith +  = 1 : 2 : 3 : 5 : 8 : 13 : ...
 -- Result: 0 : 1 : [1, 2, 3, 5, 8, 13, ...]</code></pre>
-<p>Laziness makes this work — each element is computed only when needed, and the computed values are <strong>shared</strong> (not recomputed).</p>
+<p>In a strict language, defining <code>fibs</code> in terms of itself would immediately try to evaluate the entire list — infinite loop. Haskell's laziness means <code>fibs</code> starts as an unevaluated thunk. The first two elements <code>0</code> and <code>1</code> are available immediately. When <code>zipWith</code> needs the third element, it looks at <code>fibs !! 0</code> (already computed: <code>0</code>) and <code>tail fibs !! 0</code> (already computed: <code>1</code>), producing <code>1</code>. Each new element only requires elements already computed — the "pulling" of values on demand is what makes the circular definition terminate.</p>
 
 <h3>zipWith: Pairwise Combination</h3>
 <p><code>zipWith</code> applies a function to corresponding elements of two lists:</p>
@@ -556,6 +556,15 @@ items = [(2, 3), (3, 4), (4, 5)]
   | wi > w    = dp (i-1) w                     -- too heavy, skip
   | otherwise = max (dp (i-1) w)               -- skip
                     (vi + dp (i-1) (w - wi))   -- take</code></pre>
+
+<h3>From 1D to 2D</h3>
+<p>The pattern is identical to <code>fibMemo</code>, just with a 2D index:</p>
+<pre><code>-- 1D: arr = listArray (0, n)         [go i   | i &lt;- [0..n]]
+-- 2D: arr = listArray ((0,0),(n,c))  [go i w | i &lt;- [0..n], w &lt;- [0..c]]
+
+-- 1D lookup: arr ! i
+-- 2D lookup: arr ! (i, w)</code></pre>
+<p>The list comprehension generates all entries in row-major order. The lazy self-reference, the <code>go</code> function reading from <code>arr</code> — everything works identically.</p>
 
 <h3>Your Task</h3>
 <p>Implement memoized DP solutions using <code>Data.Array</code>.</p>

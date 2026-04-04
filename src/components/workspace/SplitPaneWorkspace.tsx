@@ -3,6 +3,7 @@ import { DescriptionPanel } from './DescriptionPanel';
 import { EditorPanel } from './EditorPanel';
 import { ExerciseNav } from './ExerciseNav';
 import { ExerciseSidebar } from './ExerciseSidebar';
+import { ResultModal } from '../ui/ResultModal';
 import { getExecutionService } from '../../lib/services/executionService';
 import { useProgressStore } from '../../lib/stores/progressStore';
 import type { Exercise, TestRunResult } from '../../lib/types/exercise';
@@ -42,6 +43,7 @@ export function SplitPaneWorkspace({
   const [revealedHints, setRevealedHints] = useState(0);
   const [showSolution, setShowSolution] = useState(false);
   const [activeLeftTab, setActiveLeftTab] = useState<'description' | 'hints' | 'solution'>('description');
+  const [showResultModal, setShowResultModal] = useState(false);
 
   const exercise = exercises[currentIndex];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,6 +102,7 @@ export function SplitPaneWorkspace({
       });
     } finally {
       setIsRunning(false);
+      setShowResultModal(true);
     }
   }, [code, exercise, markCompleted]);
 
@@ -213,6 +216,26 @@ export function SplitPaneWorkspace({
           </div>
         </div>
       </div>
+
+      {/* Result modal — shows after each run */}
+      {result && (
+        <ResultModal
+          open={showResultModal}
+          result={result}
+          exerciseTitle={exercise.title}
+          nextExerciseTitle={
+            currentIndex < exercises.length - 1
+              ? exercises[currentIndex + 1].title
+              : undefined
+          }
+          onClose={() => setShowResultModal(false)}
+          onNextExercise={
+            currentIndex < exercises.length - 1
+              ? () => switchExercise(currentIndex + 1)
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

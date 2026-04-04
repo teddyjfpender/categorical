@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'basic-functions': {
     id: 'basic-functions',
+    language: 'haskell',
     title: 'Define Your First Functions',
     difficulty: 'beginner',
     order: 1,
@@ -107,6 +108,7 @@ larger x y = if x > y then x else y
 
   'concrete-types': {
     id: 'concrete-types',
+    language: 'haskell',
     title: 'Add Type Signatures',
     difficulty: 'beginner',
     order: 2,
@@ -207,6 +209,7 @@ add x y = x + y
 
   'pattern-matching': {
     id: 'pattern-matching',
+    language: 'haskell',
     title: 'Pattern Matching',
     difficulty: 'beginner',
     order: 3,
@@ -393,6 +396,7 @@ maybeApply f _        (Just x) = f x
 
   'algebraic-data-types': {
     id: 'algebraic-data-types',
+    language: 'haskell',
     title: 'Define a Shape Type',
     difficulty: 'beginner',
     order: 4,
@@ -538,6 +542,7 @@ area (Triangle b h)  = 0.5 * b * h
 
   'polymorphic-types': {
     id: 'polymorphic-types',
+    language: 'haskell',
     title: 'Polymorphic Types and Constraints',
     difficulty: 'beginner',
     order: 5,
@@ -647,6 +652,7 @@ len (_:xs) = 1 + len xs
 
   'parametric-polymorphism': {
     id: 'parametric-polymorphism',
+    language: 'haskell',
     title: 'Parametric Polymorphism',
     difficulty: 'beginner',
     order: 6,
@@ -737,6 +743,7 @@ compose f g x = f (g x)
 
   'typeclasses-intro': {
     id: 'typeclasses-intro',
+    language: 'haskell',
     title: 'Writing Typeclass Instances',
     difficulty: 'beginner',
     order: 7,

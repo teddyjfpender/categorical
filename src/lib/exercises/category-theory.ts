@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'using-fmap': {
     id: 'using-fmap',
+    language: 'haskell',
     title: 'Using fmap',
     difficulty: 'beginner',
     order: 1,
@@ -105,6 +106,7 @@ lengths xs = fmap length xs
 
   'functor-instance': {
     id: 'functor-instance',
+    language: 'haskell',
     title: 'Write a Functor Instance',
     difficulty: 'intermediate',
     order: 2,
@@ -196,6 +198,7 @@ instance Functor Tree where
 
   'functor-laws': {
     id: 'functor-laws',
+    language: 'haskell',
     title: 'The Functor Laws',
     difficulty: 'intermediate',
     order: 3,
@@ -291,6 +294,7 @@ compositionLaw f g tree = fmap (f . g) tree == (fmap f . fmap g) tree
 
   'natural-transformation': {
     id: 'natural-transformation',
+    language: 'haskell',
     title: 'Natural Transformations',
     difficulty: 'intermediate',
     order: 4,

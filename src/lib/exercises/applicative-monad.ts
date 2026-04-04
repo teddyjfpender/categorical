@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'maybe-monad': {
     id: 'maybe-monad',
+    language: 'haskell',
     title: 'Maybe Monad: Chaining Fallible Operations',
     difficulty: 'intermediate',
     order: 1,
@@ -147,6 +148,7 @@ chainDivide x y z = safeDivide x y >>= \\r -> safeDivide r z
 
   'do-notation': {
     id: 'do-notation',
+    language: 'haskell',
     title: 'Do-Notation: Imperative-Style Haskell',
     difficulty: 'intermediate',
     order: 2,
@@ -296,6 +298,7 @@ validateUser name age email = do
 
   'either-error-handling': {
     id: 'either-error-handling',
+    language: 'haskell',
     title: 'Either Monad: Errors with Context',
     difficulty: 'intermediate',
     order: 3,

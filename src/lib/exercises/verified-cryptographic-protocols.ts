@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'polynomial-arithmetic': {
     id: 'polynomial-arithmetic',
+    language: 'haskell',
     title: 'Polynomial Arithmetic over Finite Fields',
     difficulty: 'intermediate',
     order: 1,
@@ -162,6 +163,7 @@ polyDeg (Poly cs) = go (length cs - 1) cs
 
   'lagrange-interpolation': {
     id: 'lagrange-interpolation',
+    language: 'haskell',
     title: 'Lagrange Interpolation',
     difficulty: 'advanced',
     order: 2,
@@ -310,6 +312,7 @@ lagrangeEval p points x = sum terms \`mod\` p
 
   'shamir-secret-sharing': {
     id: 'shamir-secret-sharing',
+    language: 'haskell',
     title: "Shamir's Secret Sharing",
     difficulty: 'advanced',
     order: 3,
@@ -470,6 +473,7 @@ reconstructSecret p shares = lagrangeEval p shares 0
 
   'schnorr-protocol': {
     id: 'schnorr-protocol',
+    language: 'haskell',
     title: 'Schnorr Identification Protocol',
     difficulty: 'advanced',
     order: 4,

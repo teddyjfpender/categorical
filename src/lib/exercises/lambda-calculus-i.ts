@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'lambda-identity': {
     id: 'lambda-identity',
+    language: 'haskell',
     title: 'Lambda Expressions: The Building Blocks',
     difficulty: 'beginner',
     order: 1,
@@ -160,6 +161,7 @@ answer8 = 100
 
   'beta-reduction': {
     id: 'beta-reduction',
+    language: 'haskell',
     title: 'Beta Reduction: Substitution in Action',
     difficulty: 'beginner',
     order: 2,
@@ -315,6 +317,7 @@ answer6 = 11
 
   'lambda-combinators': {
     id: 'lambda-combinators',
+    language: 'haskell',
     title: 'Combinators: Functions from Functions',
     difficulty: 'beginner',
     order: 3,
@@ -466,6 +469,7 @@ sComb = \\f g x -> f x (g x)
 
   'higher-order-lambdas': {
     id: 'higher-order-lambdas',
+    language: 'haskell',
     title: 'Higher-Order Functions as Lambda Calculus',
     difficulty: 'beginner',
     order: 4,
@@ -600,6 +604,7 @@ myFlip = \\f x y -> f y x
 
   'currying-partial': {
     id: 'currying-partial',
+    language: 'haskell',
     title: 'Currying: One Argument at a Time',
     difficulty: 'beginner',
     order: 5,

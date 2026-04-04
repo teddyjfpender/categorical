@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'curry-howard': {
     id: 'curry-howard',
+    language: 'haskell',
     title: 'Curry-Howard: Types as Propositions, Programs as Proofs',
     difficulty: 'advanced',
     order: 1,
@@ -189,6 +190,7 @@ proof8 f a b = f (a, b)
 
   'cps-transform': {
     id: 'cps-transform',
+    language: 'haskell',
     title: 'Continuation-Passing Style',
     difficulty: 'advanced',
     order: 2,
@@ -343,6 +345,7 @@ fibCPS n k = fibCPS (n - 1) (\\a -> fibCPS (n - 2) (\\b -> k (a + b)))
 
   'lambda-ast': {
     id: 'lambda-ast',
+    language: 'haskell',
     title: 'Lambda Calculus AST',
     difficulty: 'advanced',
     order: 3,
@@ -531,6 +534,7 @@ step _ = Nothing
 
   'lambda-interpreter': {
     id: 'lambda-interpreter',
+    language: 'haskell',
     title: 'Build a Lambda Calculus Interpreter',
     difficulty: 'advanced',
     order: 4,

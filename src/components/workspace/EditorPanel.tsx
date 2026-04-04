@@ -1,7 +1,15 @@
 import { useState, useCallback } from 'react';
 import { CodeEditor } from '../editor/CodeEditor';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import type { TestRunResult } from '../../lib/types/exercise';
+import type { TestRunResult, Language } from '../../lib/types/exercise';
+
+const LANGUAGE_LABELS: Record<Language, string> = {
+  haskell: 'Haskell',
+  typescript: 'TypeScript',
+  rust: 'Rust',
+  cuda: 'CUDA',
+  rocm: 'ROCm',
+};
 
 interface EditorPanelProps {
   code: string;
@@ -11,12 +19,13 @@ interface EditorPanelProps {
   result: TestRunResult | null;
   isRunning: boolean;
   completed: boolean;
+  language?: Language;
 }
 
 const MIN_OUTPUT_HEIGHT = 80;
 const OUTPUT_TOP_MARGIN = 100;
 
-export function EditorPanel({ code, onChange, onRun, onReset, result, isRunning }: EditorPanelProps) {
+export function EditorPanel({ code, onChange, onRun, onReset, result, isRunning, language = 'haskell' }: EditorPanelProps) {
   const [outputHeight, setOutputHeight] = useState(200);
   const [showResetModal, setShowResetModal] = useState(false);
 
@@ -49,7 +58,7 @@ export function EditorPanel({ code, onChange, onRun, onReset, result, isRunning 
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-bg-secondary flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-text-muted font-medium">Editor</span>
-          <span className="text-[10px] text-text-muted/60">Haskell</span>
+          <span className="text-[10px] text-text-muted/60">{LANGUAGE_LABELS[language]}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -73,6 +82,7 @@ export function EditorPanel({ code, onChange, onRun, onReset, result, isRunning 
           value={code}
           onChange={onChange}
           onRun={onRun}
+          language={language}
           className="h-full [&_.cm-editor]:h-full [&_.cm-scroller]:!overflow-auto"
         />
       </div>

@@ -1,7 +1,9 @@
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+export type Language = 'haskell' | 'typescript' | 'rust' | 'cuda' | 'rocm';
 
 export interface Exercise {
   id: string;
+  language: Language;
   title: string;
   difficulty: Difficulty;
   order: number;

@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'vector-operations': {
     id: 'vector-operations',
+    language: 'haskell',
     title: 'Vector Operations',
     difficulty: 'intermediate',
     order: 1,
@@ -136,6 +137,7 @@ zeroVec n = Vec (replicate n 0)
 
   'matrix-operations': {
     id: 'matrix-operations',
+    language: 'haskell',
     title: 'Matrix Operations',
     difficulty: 'intermediate',
     order: 2,
@@ -273,6 +275,7 @@ identity n = Mat [ [ if i == j then 1 else 0 | j <- [0..n-1] ] | i <- [0..n-1] ]
 
   'linear-transformations': {
     id: 'linear-transformations',
+    language: 'haskell',
     title: 'Linear Transformations',
     difficulty: 'advanced',
     order: 3,
@@ -448,6 +451,7 @@ compositionLaw a b v =
 
   'gaussian-elimination': {
     id: 'gaussian-elimination',
+    language: 'haskell',
     title: 'Gaussian Elimination',
     difficulty: 'advanced',
     order: 4,

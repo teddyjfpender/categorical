@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'semigroup-intro': {
     id: 'semigroup-intro',
+    language: 'haskell',
     title: 'Semigroup: Combining Values',
     difficulty: 'beginner',
     order: 1,
@@ -82,6 +83,7 @@ instance Semigroup Inventory where
 
   'monoid-instance': {
     id: 'monoid-instance',
+    language: 'haskell',
     title: 'Monoid: The Identity Element',
     difficulty: 'beginner',
     order: 2,
@@ -181,6 +183,7 @@ identityLaw x = (mempty <> x == x) && (x <> mempty == x)
 
   'foldable-basics': {
     id: 'foldable-basics',
+    language: 'haskell',
     title: 'Foldable: Collapsing Structure',
     difficulty: 'intermediate',
     order: 3,
@@ -288,6 +291,7 @@ instance Foldable Tree where
 
   'foldmap-power': {
     id: 'foldmap-power',
+    language: 'haskell',
     title: 'foldMap: Folding with Monoids',
     difficulty: 'intermediate',
     order: 4,

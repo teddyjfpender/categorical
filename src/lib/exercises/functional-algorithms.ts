@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'recursion-patterns': {
     id: 'recursion-patterns',
+    language: 'haskell',
     title: 'Recursion Patterns: foldr vs foldl',
     difficulty: 'beginner',
     order: 1,
@@ -123,6 +124,7 @@ myFilter p = foldr (\\x acc -> if p x then x : acc else acc) []
 
   'higher-order-algorithms': {
     id: 'higher-order-algorithms',
+    language: 'haskell',
     title: 'Higher-Order Algorithm Design',
     difficulty: 'beginner',
     order: 2,
@@ -245,6 +247,7 @@ myGroupBy eq (x:xs) =
 
   'lazy-infinite-lists': {
     id: 'lazy-infinite-lists',
+    language: 'haskell',
     title: 'Lazy Evaluation and Infinite Lists',
     difficulty: 'intermediate',
     order: 3,
@@ -369,6 +372,7 @@ fizzBuzzNumbers = filter (\\n -> n \`mod\` 3 == 0 && n \`mod\` 5 == 0) [1..]
 
   'divide-and-conquer': {
     id: 'divide-and-conquer',
+    language: 'haskell',
     title: 'Divide and Conquer: Merge Sort',
     difficulty: 'intermediate',
     order: 4,
@@ -498,6 +502,7 @@ mergeSort xs  =
 
   'lazy-memoization': {
     id: 'lazy-memoization',
+    language: 'haskell',
     title: 'Dynamic Programming via Lazy Memoization',
     difficulty: 'advanced',
     order: 5,

@@ -212,6 +212,7 @@ export function SplitPaneWorkspace({
               result={result}
               isRunning={isRunning}
               completed={completed}
+              language={exercise.language}
             />
           </div>
         </div>

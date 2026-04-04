@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'modular-arithmetic': {
     id: 'modular-arithmetic',
+    language: 'haskell',
     title: 'Modular Arithmetic in Haskell',
     difficulty: 'intermediate',
     order: 1,
@@ -117,6 +118,7 @@ instance Num Mod7 where
 
   'group-typeclass': {
     id: 'group-typeclass',
+    language: 'haskell',
     title: 'Groups: Monoids with Inverses',
     difficulty: 'intermediate',
     order: 2,
@@ -260,6 +262,7 @@ inverseLaw a = (a <> invert a == mempty) && (invert a <> a == mempty)
 
   'ring-field': {
     id: 'ring-field',
+    language: 'haskell',
     title: 'Rings and Fields',
     difficulty: 'advanced',
     order: 3,
@@ -433,6 +436,7 @@ distributionLaw a b c = mul a (b <> c) == (mul a b <> mul a c)
 
   'group-homomorphism': {
     id: 'group-homomorphism',
+    language: 'haskell',
     title: 'Group Homomorphisms',
     difficulty: 'advanced',
     order: 4,

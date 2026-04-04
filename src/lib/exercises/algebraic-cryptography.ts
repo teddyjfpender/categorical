@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'finite-field-gfp': {
     id: 'finite-field-gfp',
+    language: 'haskell',
     title: 'Finite Fields GF(p)',
     difficulty: 'intermediate',
     order: 1,
@@ -166,6 +167,7 @@ gfDiv (GF a p) (GF b _) = mkGF (a * modInverse b p) p
 
   'diffie-hellman': {
     id: 'diffie-hellman',
+    language: 'haskell',
     title: 'Diffie-Hellman Key Exchange',
     difficulty: 'intermediate',
     order: 2,
@@ -303,6 +305,7 @@ dhExchange p g aPriv bPriv = (aPub, bPub, secret)
 
   'rsa-encryption': {
     id: 'rsa-encryption',
+    language: 'haskell',
     title: 'RSA Encryption',
     difficulty: 'advanced',
     order: 3,
@@ -485,6 +488,7 @@ rsaRoundTrip p q e msg = do
 
   'elliptic-curve-addition': {
     id: 'elliptic-curve-addition',
+    language: 'haskell',
     title: 'Elliptic Curve Point Addition',
     difficulty: 'advanced',
     order: 4,
@@ -689,6 +693,7 @@ ecMul curve n pt
 
   'pedersen-commitment': {
     id: 'pedersen-commitment',
+    language: 'haskell',
     title: 'Pedersen Commitment Scheme',
     difficulty: 'advanced',
     order: 5,

@@ -6,17 +6,33 @@ import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { haskell } from './extensions/haskellLanguage';
+import { rust } from '@codemirror/lang-rust';
+import { javascript } from '@codemirror/lang-javascript';
+import { cpp } from '@codemirror/lang-cpp';
 import { categoricalTheme, categoricalHighlighting } from './extensions/theme';
+import type { Language } from '../../lib/types/exercise';
+import type { Extension } from '@codemirror/state';
+
+function getLanguageExtension(lang?: Language): Extension {
+  switch (lang) {
+    case 'rust': return rust();
+    case 'typescript': return javascript({ typescript: true });
+    case 'cuda': return cpp();
+    case 'rocm': return cpp();
+    default: return haskell();
+  }
+}
 
 interface CodeEditorProps {
   value: string;
   onChange?: (value: string) => void;
   onRun?: () => void;
   readOnly?: boolean;
+  language?: Language;
   className?: string;
 }
 
-export function CodeEditor({ value, onChange, onRun, readOnly = false, className = '' }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, readOnly = false, language, className = '' }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -60,7 +76,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly = false, className
         bracketMatching(),
         closeBrackets(),
         highlightSelectionMatches(),
-        haskell(),
+        getLanguageExtension(language),
         categoricalTheme,
         categoricalHighlighting,
         runKeymap,

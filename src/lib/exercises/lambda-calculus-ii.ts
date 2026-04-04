@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'church-booleans': {
     id: 'church-booleans',
+    language: 'haskell',
     title: 'Church Booleans: Logic from Pure Functions',
     difficulty: 'intermediate',
     order: 1,
@@ -162,6 +163,7 @@ churchOr a b = \\x y -> a x (b x y)
 
   'church-numerals': {
     id: 'church-numerals',
+    language: 'haskell',
     title: 'Church Numerals: Numbers from Pure Functions',
     difficulty: 'intermediate',
     order: 2,
@@ -301,6 +303,7 @@ mul m n f = m (n f)
 
   'church-pairs-maybe': {
     id: 'church-pairs-maybe',
+    language: 'haskell',
     title: 'Church Pairs and Maybe',
     difficulty: 'intermediate',
     order: 3,
@@ -437,6 +440,7 @@ toMaybe m = m Nothing Just
 
   'reduction-strategies': {
     id: 'reduction-strategies',
+    language: 'haskell',
     title: 'Reduction Strategies: How Haskell Evaluates',
     difficulty: 'intermediate',
     order: 4,
@@ -584,6 +588,7 @@ answer8 = 3
 
   'fixpoint-recursion': {
     id: 'fixpoint-recursion',
+    language: 'haskell',
     title: 'Fixed Points: Recursion from Lambda Calculus',
     difficulty: 'intermediate',
     order: 5,

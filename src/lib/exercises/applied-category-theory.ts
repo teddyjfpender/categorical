@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'state-monad': {
     id: 'state-monad',
+    language: 'haskell',
     title: 'State Monad from Scratch',
     difficulty: 'intermediate',
     order: 1,
@@ -190,6 +191,7 @@ countOps = runState (tick >> tick >> tick >> get) 0
 
   'reader-monad': {
     id: 'reader-monad',
+    language: 'haskell',
     title: 'Reader Monad from Scratch',
     difficulty: 'intermediate',
     order: 2,
@@ -352,6 +354,7 @@ retryMsg = do
 
   'monad-transformers': {
     id: 'monad-transformers',
+    language: 'haskell',
     title: 'Monad Transformers: StateT',
     difficulty: 'advanced',
     order: 3,
@@ -550,6 +553,7 @@ safeAdd = do
 
   'free-monads': {
     id: 'free-monads',
+    language: 'haskell',
     title: 'Free Monads: Build a DSL',
     difficulty: 'advanced',
     order: 4,

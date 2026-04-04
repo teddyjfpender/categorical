@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'reading-values': {
     id: 'reading-values',
+    language: 'haskell',
     title: 'Values and Their Types',
     difficulty: 'beginner',
     order: 1,
@@ -140,6 +141,7 @@ answer8 = 'a'
 
   'reading-expressions': {
     id: 'reading-expressions',
+    language: 'haskell',
     title: 'Reading Expressions',
     difficulty: 'beginner',
     order: 2,
@@ -305,6 +307,7 @@ answer10 = 8
 
   'reading-functions': {
     id: 'reading-functions',
+    language: 'haskell',
     title: 'Reading Function Definitions',
     difficulty: 'beginner',
     order: 3,
@@ -480,6 +483,7 @@ answer8 = 14
 
   'reading-types': {
     id: 'reading-types',
+    language: 'haskell',
     title: 'Reading Type Signatures',
     difficulty: 'beginner',
     order: 4,
@@ -663,6 +667,7 @@ answer8 = "Bool"
 
   'function-application': {
     id: 'function-application',
+    language: 'haskell',
     title: 'Calling Functions',
     difficulty: 'beginner',
     order: 5,

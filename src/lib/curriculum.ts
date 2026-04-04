@@ -5,6 +5,8 @@
  * Sidebar, Dashboard, syllabus page, and exercises.ts all import from this file.
  */
 
+import type { Language } from './types/exercise';
+
 export type ModuleStatus = 'available' | 'coming-soon';
 export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms'
   | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto' | 'lambda-calculus';
@@ -23,6 +25,7 @@ export interface CurriculumModule {
   icon: string;
   order: number;
   track: TrackSlug;
+  language: Language;
   status: ModuleStatus;
   prerequisites: string[];
   lessons: CurriculumLesson[];
@@ -104,6 +107,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u2981',
     order: 0,
     track: 'foundation',
+    language: 'haskell',
     status: 'available',
     prerequisites: [],
     lessons: [{
@@ -123,6 +127,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03BB',
     order: 1,
     track: 'foundation',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['reading-haskell'],
     lessons: [{
@@ -143,6 +148,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u2295',
     order: 2,
     track: 'foundation',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['type-systems'],
     lessons: [{
@@ -159,6 +165,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u2219',
     order: 3,
     track: 'category-theory',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['type-systems'],
     lessons: [{
@@ -175,6 +182,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u226B',
     order: 4,
     track: 'category-theory',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['category-theory', 'monoids-foldable'],
     lessons: [{
@@ -191,6 +199,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u2124',
     order: 5,
     track: 'algebra-crypto',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['monoids-foldable'],
     lessons: [{
@@ -207,6 +216,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u2234',
     order: 6,
     track: 'algebra-crypto',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['abstract-algebra', 'applicative-monad'],
     lessons: [{
@@ -226,6 +236,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03B1',
     order: 7,
     track: 'algorithms',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['type-systems', 'monoids-foldable'],
     lessons: [{
@@ -245,6 +256,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u21D2',
     order: 8,
     track: 'applied-ct',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['applicative-monad'],
     lessons: [{
@@ -261,6 +273,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03B3',
     order: 9,
     track: 'languages',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['category-theory-ii', 'functional-algorithms'],
     lessons: [{
@@ -277,6 +290,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u27E8',
     order: 10,
     track: 'linear-algebra',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['type-systems', 'monoids-foldable', 'abstract-algebra'],
     lessons: [{
@@ -293,6 +307,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03C3',
     order: 11,
     track: 'verified-crypto',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['algebraic-cryptography', 'typed-linear-algebra'],
     lessons: [{
@@ -309,6 +324,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03BB',
     order: 12,
     track: 'lambda-calculus',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['reading-haskell'],
     lessons: [{
@@ -325,6 +341,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03BB',
     order: 13,
     track: 'lambda-calculus',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['lambda-calculus', 'type-systems'],
     lessons: [{
@@ -341,6 +358,7 @@ export const modules: CurriculumModule[] = [
     icon: '\u03BB',
     order: 14,
     track: 'lambda-calculus',
+    language: 'haskell',
     status: 'available',
     prerequisites: ['lambda-calculus-ii', 'category-theory'],
     lessons: [{

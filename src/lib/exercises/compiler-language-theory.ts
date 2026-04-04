@@ -3,6 +3,7 @@ import type { Exercise } from '../types/exercise';
 export const exercises: Record<string, Exercise> = {
   'parser-type': {
     id: 'parser-type',
+    language: 'haskell',
     title: 'Define a Parser Type',
     difficulty: 'intermediate',
     order: 1,
@@ -156,6 +157,7 @@ stringP (c:cs) = Parser $ \\s -> case runParser (charP (== c)) s of
 
   'parser-combinators': {
     id: 'parser-combinators',
+    language: 'haskell',
     title: 'Parser Combinators',
     difficulty: 'intermediate',
     order: 2,
@@ -345,6 +347,7 @@ natP = do digits <- some digitP; return (read digits)
 
   'expression-parser': {
     id: 'expression-parser',
+    language: 'haskell',
     title: 'Expression Parser with Precedence',
     difficulty: 'advanced',
     order: 3,
@@ -622,6 +625,7 @@ parseString input = case runParser parseExpr input of
 
   'ast-evaluator': {
     id: 'ast-evaluator',
+    language: 'haskell',
     title: 'AST Evaluator',
     difficulty: 'intermediate',
     order: 4,
@@ -750,6 +754,7 @@ evalWithVars env (Var name)  = lookup name env
 
   'interpreter': {
     id: 'interpreter',
+    language: 'haskell',
     title: 'Build a Mini Interpreter',
     difficulty: 'advanced',
     order: 5,

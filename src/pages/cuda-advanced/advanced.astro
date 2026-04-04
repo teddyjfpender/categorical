@@ -1,0 +1,24 @@
+---
+import WorkspaceLayout from '../../layouts/WorkspaceLayout.astro';
+import { getCollection } from 'astro:content';
+import { getExercisesByModule } from '../../lib/exercises';
+
+const lessons = await getCollection('lessons');
+const lesson = lessons.find(l => l.id === 'cuda-advanced/advanced');
+
+if (!lesson) {
+  return Astro.redirect('/');
+}
+
+const exercises = getExercisesByModule('cuda-advanced');
+---
+
+<WorkspaceLayout
+  title={lesson.data.title}
+  module={lesson.data.module}
+  moduleTitle={lesson.data.moduleTitle}
+  lessonSlug="advanced"
+  exercises={exercises}
+  lessonContent=""
+  description={lesson.data.description}
+/>

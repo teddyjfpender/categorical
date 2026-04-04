@@ -49,9 +49,13 @@ export class MockExecutor implements ExecutionService {
 
     // Run per-exercise pattern validation.
     // Strip comment lines so patterns only match real code.
+    // Supports both Haskell (--) and C-family (//) comment styles.
     const uncommented = code
       .split('\n')
-      .filter((line) => !line.trimStart().startsWith('--'))
+      .filter((line) => {
+        const trimmed = line.trimStart();
+        return !trimmed.startsWith('--') && !trimmed.startsWith('//');
+      })
       .join('\n');
     const tests: TestCase[] = [];
     const patterns = exercise.successPatterns;

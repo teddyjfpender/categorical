@@ -9,7 +9,8 @@ import type { Language } from './types/exercise';
 
 export type ModuleStatus = 'available' | 'coming-soon';
 export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms'
-  | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto' | 'lambda-calculus';
+  | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto' | 'lambda-calculus'
+  | 'ts-design' | 'ts-advanced' | 'rust-ownership' | 'rust-systems' | 'gpu-fundamentals' | 'gpu-portable';
 
 export interface Track {
   slug: TrackSlug;
@@ -94,6 +95,42 @@ export const tracks: Track[] = [
     title: 'Lambda Calculus',
     description: 'The theoretical foundations of functional programming: lambda expressions, Church encodings, reduction, types, and Curry-Howard',
     order: 9,
+  },
+  {
+    slug: 'ts-design',
+    title: 'TypeScript: Design',
+    description: 'Type-driven design, API patterns, and functional programming in TypeScript',
+    order: 10,
+  },
+  {
+    slug: 'ts-advanced',
+    title: 'TypeScript: Advanced Types',
+    description: 'Mapped types, conditional types, template literals, and type-level programming',
+    order: 11,
+  },
+  {
+    slug: 'rust-ownership',
+    title: 'Rust: Ownership',
+    description: 'Ownership, borrowing, lifetimes, and the borrow checker as a design discipline',
+    order: 12,
+  },
+  {
+    slug: 'rust-systems',
+    title: 'Rust: Systems',
+    description: 'Zero-cost abstractions, unsafe code, cryptographic implementations',
+    order: 13,
+  },
+  {
+    slug: 'gpu-fundamentals',
+    title: 'GPU: CUDA',
+    description: 'Parallel thinking, thread hierarchy, memory models, and kernel design',
+    order: 14,
+  },
+  {
+    slug: 'gpu-portable',
+    title: 'GPU: ROCm/HIP',
+    description: 'Portable GPU programming, CUDA-to-HIP translation, AMD architecture',
+    order: 15,
   },
 ];
 
@@ -366,6 +403,239 @@ export const modules: CurriculumModule[] = [
       title: 'Types, Curry-Howard, and Interpreters',
       path: '/lambda-calculus-iii/types-and-interpreters',
       exerciseIds: ['curry-howard', 'cps-transform', 'lambda-ast', 'lambda-interpreter'],
+    }],
+  },
+
+  // ── TypeScript ──────────────────────────────────────────────────────
+
+  {
+    slug: 'ts-type-driven',
+    title: 'Type-Driven Design',
+    description: 'Discriminated unions, branded types, exhaustive matching, and type narrowing.',
+    icon: '\u0054',
+    order: 15,
+    track: 'ts-design',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: [],
+    lessons: [{
+      slug: 'type-driven',
+      title: 'Type-Driven Design',
+      path: '/ts-type-driven/type-driven',
+      exerciseIds: ['ts-discriminated-unions', 'ts-branded-types', 'ts-exhaustive-matching', 'ts-type-narrowing'],
+    }],
+  },
+  {
+    slug: 'ts-api-patterns',
+    title: 'API Design Patterns',
+    description: 'Builder pattern, fluent APIs, Result types, and error handling by design.',
+    icon: '\u0054',
+    order: 16,
+    track: 'ts-design',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-type-driven'],
+    lessons: [{
+      slug: 'api-patterns',
+      title: 'API Design Patterns',
+      path: '/ts-api-patterns/api-patterns',
+      exerciseIds: ['ts-builder-pattern', 'ts-result-type', 'ts-fluent-api', 'ts-error-handling'],
+    }],
+  },
+  {
+    slug: 'ts-functional',
+    title: 'Functional TypeScript',
+    description: 'Immutability, pipe/compose, option chaining, and algebraic patterns.',
+    icon: '\u0054',
+    order: 17,
+    track: 'ts-advanced',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-api-patterns'],
+    lessons: [{
+      slug: 'functional',
+      title: 'Functional TypeScript',
+      path: '/ts-functional/functional',
+      exerciseIds: ['ts-immutability', 'ts-pipe-compose', 'ts-option-pattern', 'ts-algebraic-effects'],
+    }],
+  },
+  {
+    slug: 'ts-type-level',
+    title: 'Advanced Type System',
+    description: 'Mapped types, conditional types, template literals, and type-level programming.',
+    icon: '\u0054',
+    order: 18,
+    track: 'ts-advanced',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-functional'],
+    lessons: [{
+      slug: 'type-level',
+      title: 'Type-Level Programming',
+      path: '/ts-type-level/type-level',
+      exerciseIds: ['ts-mapped-types', 'ts-conditional-types', 'ts-template-literals', 'ts-type-challenges'],
+    }],
+  },
+
+  // ── Rust ────────────────────────────────────────────────────────────
+
+  {
+    slug: 'rust-ownership-borrowing',
+    title: 'Ownership & Borrowing',
+    description: 'Move semantics, the borrow checker, lifetime annotations, and interior mutability.',
+    icon: '\u0052',
+    order: 19,
+    track: 'rust-ownership',
+    language: 'rust',
+    status: 'available',
+    prerequisites: [],
+    lessons: [{
+      slug: 'ownership',
+      title: 'Ownership and Borrowing',
+      path: '/rust-ownership-borrowing/ownership',
+      exerciseIds: ['rust-move-semantics', 'rust-borrowing', 'rust-lifetimes', 'rust-interior-mutability'],
+    }],
+  },
+  {
+    slug: 'rust-zero-cost',
+    title: 'Zero-Cost Abstractions',
+    description: 'Traits, generics, iterators, and const generics — abstractions that compile to optimal code.',
+    icon: '\u0052',
+    order: 20,
+    track: 'rust-ownership',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-ownership-borrowing'],
+    lessons: [{
+      slug: 'zero-cost',
+      title: 'Zero-Cost Abstractions',
+      path: '/rust-zero-cost/zero-cost',
+      exerciseIds: ['rust-traits', 'rust-generics-monomorphization', 'rust-iterators', 'rust-const-generics'],
+    }],
+  },
+  {
+    slug: 'rust-unsafe-ffi',
+    title: 'Unsafe & Soundness',
+    description: 'Raw pointers, unsafe blocks, soundness reasoning, and when unsafe is justified.',
+    icon: '\u0052',
+    order: 21,
+    track: 'rust-systems',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-zero-cost'],
+    lessons: [{
+      slug: 'unsafe',
+      title: 'Unsafe Rust and Soundness',
+      path: '/rust-unsafe-ffi/unsafe',
+      exerciseIds: ['rust-raw-pointers', 'rust-unsafe-blocks', 'rust-soundness', 'rust-safe-abstractions'],
+    }],
+  },
+  {
+    slug: 'rust-crypto',
+    title: 'Cryptographic Rust',
+    description: 'Constant-time operations, field arithmetic, and EdDSA signatures in Rust.',
+    icon: '\u0052',
+    order: 22,
+    track: 'rust-systems',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-unsafe-ffi'],
+    lessons: [{
+      slug: 'crypto',
+      title: 'Cryptographic Implementations',
+      path: '/rust-crypto/crypto',
+      exerciseIds: ['rust-constant-time', 'rust-field-arithmetic', 'rust-eddsa', 'rust-hash-functions'],
+    }],
+  },
+
+  // ── CUDA ───────────────────────────────────────────────────────────
+
+  {
+    slug: 'cuda-parallel',
+    title: 'Parallel Fundamentals',
+    description: 'Thread hierarchy, memory spaces, kernel launch syntax, and SIMT execution.',
+    icon: '\u0043',
+    order: 23,
+    track: 'gpu-fundamentals',
+    language: 'cuda',
+    status: 'available',
+    prerequisites: [],
+    lessons: [{
+      slug: 'parallel',
+      title: 'CUDA Parallel Fundamentals',
+      path: '/cuda-parallel/parallel',
+      exerciseIds: ['cuda-thread-hierarchy', 'cuda-kernel-launch', 'cuda-memory-spaces', 'cuda-synchronization'],
+    }],
+  },
+  {
+    slug: 'cuda-memory',
+    title: 'Memory Hierarchy',
+    description: 'Global, shared, and register memory — coalesced access, bank conflicts, and tiling.',
+    icon: '\u0043',
+    order: 24,
+    track: 'gpu-fundamentals',
+    language: 'cuda',
+    status: 'available',
+    prerequisites: ['cuda-parallel'],
+    lessons: [{
+      slug: 'memory',
+      title: 'GPU Memory Hierarchy',
+      path: '/cuda-memory/memory',
+      exerciseIds: ['cuda-global-memory', 'cuda-shared-memory', 'cuda-tiling', 'cuda-occupancy'],
+    }],
+  },
+  {
+    slug: 'cuda-advanced',
+    title: 'Advanced Patterns',
+    description: 'Warp-level primitives, parallel reduction, scan algorithms, and performance tuning.',
+    icon: '\u0043',
+    order: 25,
+    track: 'gpu-fundamentals',
+    language: 'cuda',
+    status: 'available',
+    prerequisites: ['cuda-memory'],
+    lessons: [{
+      slug: 'advanced',
+      title: 'Advanced CUDA Patterns',
+      path: '/cuda-advanced/advanced',
+      exerciseIds: ['cuda-warp-primitives', 'cuda-reduction', 'cuda-scan', 'cuda-performance'],
+    }],
+  },
+
+  // ── ROCm/HIP ──────────────────────────────────────────────────────
+
+  {
+    slug: 'rocm-fundamentals',
+    title: 'HIP Fundamentals',
+    description: 'CUDA to HIP translation, portable kernel design, and hipify patterns.',
+    icon: '\u0048',
+    order: 26,
+    track: 'gpu-portable',
+    language: 'rocm',
+    status: 'available',
+    prerequisites: ['cuda-parallel'],
+    lessons: [{
+      slug: 'hip',
+      title: 'HIP Fundamentals',
+      path: '/rocm-fundamentals/hip',
+      exerciseIds: ['rocm-hip-basics', 'rocm-cuda-translation', 'rocm-portable-kernels', 'rocm-hipify'],
+    }],
+  },
+  {
+    slug: 'rocm-architecture',
+    title: 'AMD Architecture',
+    description: 'Wavefronts vs warps, LDS vs shared memory, GCN/RDNA differences.',
+    icon: '\u0048',
+    order: 27,
+    track: 'gpu-portable',
+    language: 'rocm',
+    status: 'available',
+    prerequisites: ['rocm-fundamentals'],
+    lessons: [{
+      slug: 'architecture',
+      title: 'AMD GPU Architecture',
+      path: '/rocm-architecture/architecture',
+      exerciseIds: ['rocm-wavefronts', 'rocm-lds', 'rocm-gcn-rdna', 'rocm-profiling'],
     }],
   },
 ];

@@ -16,6 +16,10 @@ import { exercises as typedLinearAlgebra } from './typed-linear-algebra';
 import { exercises as lambdaCalculusI } from './lambda-calculus-i';
 import { exercises as lambdaCalculusII } from './lambda-calculus-ii';
 import { exercises as lambdaCalculusIII } from './lambda-calculus-iii';
+import { exercises as typescript } from './typescript';
+import { exercises as rust } from './rust';
+import { exercises as cuda } from './cuda';
+import { exercises as rocm } from './rocm';
 
 const allExercises: Record<string, Exercise> = {
   ...readingHaskell,
@@ -33,6 +37,10 @@ const allExercises: Record<string, Exercise> = {
   ...lambdaCalculusI,
   ...lambdaCalculusII,
   ...lambdaCalculusIII,
+  ...typescript,
+  ...rust,
+  ...cuda,
+  ...rocm,
 };
 
 export function getExercise(id: string): Exercise | undefined {

@@ -18,11 +18,12 @@ interface SplitPaneWorkspaceProps {
   initialExerciseIndex?: number;
 }
 
-// Lazy-init on client only to avoid SSR/hydration mismatch
-let executor: ReturnType<typeof getExecutionService> | null = null;
-function getExecutor() {
-  if (!executor) executor = getExecutionService();
-  return executor;
+// Get the executor for a specific language (lazy-init on client only)
+import type { Language } from '../../lib/types/exercise';
+const executorCache: Partial<Record<Language, ReturnType<typeof getExecutionService>>> = {};
+function getExecutor(language: Language = 'haskell') {
+  if (!executorCache[language]) executorCache[language] = getExecutionService(language);
+  return executorCache[language]!;
 }
 
 export function SplitPaneWorkspace({
@@ -86,7 +87,7 @@ export function SplitPaneWorkspace({
     setIsRunning(true);
     setResult(null);
     try {
-      const testResult = await getExecutor().runTests(code, exercise);
+      const testResult = await getExecutor(exercise.language).runTests(code, exercise);
       setResult(testResult);
       if (testResult.success) {
         markCompleted(exercise.id);

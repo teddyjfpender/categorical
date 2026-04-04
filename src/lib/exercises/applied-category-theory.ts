@@ -74,19 +74,27 @@ newtype State s a = State { runState :: s -> (a, s) }
 --    Unwrap with runState or pattern match: State g
 --    Then: \\s -> let (a, s') = g s in (f a, s')
 instance Functor (State s) where
-  fmap f (State g) = error "implement fmap"
+  fmap f (State g) = State $ \\s ->
+    let (a, s') = g s
+    in error "return (f a, s')"
 
 -- 2. Applicative instance
 --    pure: wrap a value, don't touch the state
 --    (<*>): run sf to get (f, s'), run sa with s' to get (a, s''), return (f a, s'')
 instance Applicative (State s) where
-  pure a = error "implement pure"
-  State sf <*> State sa = error "implement (<*>)"
+  pure a = State $ \\s -> error "return (a, s)"
+  State sf <*> State sa = State $ \\s ->
+    let (f, s')  = sf s
+        (a, s'') = sa s'
+    in error "return (f a, s'')"
 
 -- 3. Monad instance
 --    (>>=): run sa to get (a, s'), then run (f a) with s'
 instance Monad (State s) where
-  State sa >>= f = error "implement (>>=)"
+  return = pure
+  State sa >>= f = State $ \\s ->
+    let (a, s') = sa s
+    in error "run f a with state s' using runState"
 
 -- 4. get: return the current state as the result
 get :: State s s
@@ -636,7 +644,8 @@ data Free f a = Pure a | Free (f (Free f a))
 
 -- 1. Functor instance for Free
 instance Functor f => Functor (Free f) where
-  fmap f x = error "implement fmap"
+  fmap f (Pure a)  = error "wrap f a in Pure"
+  fmap f (Free op) = error "Free (fmap (fmap f) op)"
 
 -- 2. Applicative instance for Free
 instance Functor f => Applicative (Free f) where
@@ -645,7 +654,9 @@ instance Functor f => Applicative (Free f) where
 
 -- 3. Monad instance for Free
 instance Functor f => Monad (Free f) where
-  x >>= f = error "implement (>>=)"
+  return = pure
+  Pure a  >>= f = error "apply f to a"
+  Free op >>= f = error "Free (fmap (>>= f) op)"
 
 -- Key-Value store functor
 data KVF next
@@ -655,7 +666,9 @@ data KVF next
 
 -- 4. Functor instance for KVF
 instance Functor KVF where
-  fmap f op = error "implement fmap for KVF"
+  fmap f (Get k cont)    = error "Get k (f . cont)"
+  fmap f (Put k v next)  = error "Put k v (f next)"
+  fmap f (Delete k next) = error "Delete k (f next)"
 
 -- 5. Smart constructors
 getKV :: String -> Free KVF String

@@ -85,15 +85,15 @@ churchIf b t f = error "apply the boolean to then and else"
 -- | Church NOT: swap the arguments so True becomes False and vice versa.
 --   Specialized at Bool -> Bool -> Bool for composability.
 churchNot :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
-churchNot b = error "return a new Church boolean with swapped selection"
+churchNot b = \\x y -> error "b selects, but swap: b y x"
 
 -- | Church AND: if a is true, result depends on b; otherwise false.
 churchAnd :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
-churchAnd a b = error "if a selects true-branch, delegate to b"
+churchAnd a b = \\x y -> error "if a picks true-branch, delegate to b; otherwise y"
 
 -- | Church OR: if a is true, result is true; otherwise depends on b.
 churchOr :: (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool) -> (Bool -> Bool -> Bool)
-churchOr a b = error "if a selects true-branch, done; otherwise delegate to b"
+churchOr a b = \\x y -> error "if a picks true-branch, x; otherwise delegate to b"
 `,
     solutionCode: `module ChurchBooleans where
 

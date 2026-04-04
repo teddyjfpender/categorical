@@ -466,7 +466,22 @@ chainl1 p op = error "implement chainl1"
 --    Number: parse natP, wrap in Lit
 --    Parens: parse '(', skipSpaces, parseExpr, skipSpaces, ')', return the expr
 parseFactor :: Parser Expr
-parseFactor = error "implement parseFactor"
+parseFactor = litP \`orElse\` parenP
+  where
+    litP = do
+      _ <- skipSpaces
+      n <- natP
+      _ <- skipSpaces
+      error "return Lit n"
+    parenP = do
+      _ <- skipSpaces
+      _ <- charP (== '(')
+      _ <- skipSpaces
+      e <- parseExpr
+      _ <- skipSpaces
+      _ <- charP (== ')')
+      _ <- skipSpaces
+      error "return e"
 
 -- 3. parseTerm: chain factors with * (higher precedence)
 --    Use chainl1 with parseFactor and a parser that matches '*' and returns Mul

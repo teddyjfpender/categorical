@@ -52,7 +52,7 @@ mkMod7 n = error "reduce n mod 7"
 
 -- 2. Equality: two Mod7 values are equal if their underlying Ints are.
 instance Eq Mod7 where
-  (==) = error "implement equality"
+  Mod7 a == Mod7 b = error "compare a and b"
 
 -- 3. Num instance: all arithmetic reduces mod 7.
 --    Use mkMod7 in +, *, negate, and fromInteger to ensure
@@ -185,19 +185,16 @@ instance Monoid Mod7 where
   mempty = error "implement mempty"
 
 -- 3. Define the Group typeclass.
---    Uncomment and complete:
--- class Monoid a => Group a where
---   invert :: a -> a
+class Monoid a => Group a where
+  invert :: a -> a
 
 -- 4. Implement Group for Mod7 (additive inverse = negate).
---    Uncomment and complete:
--- instance Group Mod7 where
---   invert = ???
+instance Group Mod7 where
+  invert = error "what function negates a Mod7?"
 
 -- 5. Check the inverse law: a <> invert a == mempty AND invert a <> a == mempty
---    Uncomment and complete:
--- inverseLaw :: (Group a, Eq a) => a -> Bool
--- inverseLaw a = ???
+inverseLaw :: (Group a, Eq a) => a -> Bool
+inverseLaw a = error "check (a <> invert a == mempty) && (invert a <> a == mempty)"
 `,
     solutionCode: `module GroupTypeclass where
 
@@ -339,34 +336,29 @@ instance Group Mod7 where invert = negate
 -- Same pattern as Group: define the class, then write the instance.
 
 -- 1. Ring: a Group with multiplication and a multiplicative identity.
---    Uncomment and complete:
--- class Group a => Ring a where
---   one :: a
---   mul :: a -> a -> a
+class Group a => Ring a where
+  one :: a
+  mul :: a -> a -> a
 
 -- 2. Implement Ring for Mod7.
---    Uncomment and complete:
--- instance Ring Mod7 where
---   one = ???
---   mul (Mod7 a) (Mod7 b) = ???
+instance Ring Mod7 where
+  one = error "multiplicative identity"
+  mul (Mod7 a) (Mod7 b) = error "multiply and reduce mod 7"
 
 -- 3. Field: a Ring where every non-zero element has a multiplicative inverse.
---    Uncomment and complete:
--- class Ring a => Field a where
---   mulInv :: a -> a
+class Ring a => Field a where
+  mulInv :: a -> a
 
 -- 4. Implement Field for Mod7.
 --    To find the inverse of a: search 1..6 for x where a*x = 1 (mod 7).
 --    Use: head [x | x <- [1..6], (a * x) \`mod\` 7 == 1]
---    Uncomment and complete:
--- instance Field Mod7 where
---   mulInv (Mod7 0) = error "no inverse for 0"
---   mulInv (Mod7 a) = ???
+instance Field Mod7 where
+  mulInv (Mod7 0) = error "no inverse for 0"
+  mulInv (Mod7 a) = error "search: mkMod7 (head [x | x <- [1..6], (a*x) \`mod\` 7 == 1])"
 
 -- 5. Check the distributive law: mul a (b <> c) == mul a b <> mul a c
---    Uncomment and complete:
--- distributionLaw :: (Ring a, Eq a) => a -> a -> a -> Bool
--- distributionLaw a b c = ???
+distributionLaw :: (Ring a, Eq a) => a -> a -> a -> Bool
+distributionLaw a b c = error "check mul a (b <> c) == (mul a b <> mul a c)"
 `,
     solutionCode: `module RingField where
 
@@ -424,10 +416,10 @@ distributionLaw a b c = mul a (b <> c) == (mul a b <> mul a c)
     ],
     concepts: ['ring', 'field', 'multiplicative-inverse', 'distribution'],
     successPatterns: [
-      'class\\s+Group\\s+\\w+\\s*=>\\s*Ring',
-      'class\\s+Ring\\s+\\w+\\s*=>\\s*Field',
-      'instance\\s+Ring\\s+Mod7',
-      'instance\\s+Field\\s+Mod7',
+      'one\\s*=\\s*Mod7\\s+1',
+      'mul.*=.*mkMod7',
+      'mulInv.*head\\s*\\[',
+      'distributionLaw.*mul.*<>',
     ],
     testNames: [
       'multiplication mod 7',

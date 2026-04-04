@@ -383,9 +383,9 @@ freeVars (App f a)    = nub (freeVars f ++ freeVars a)</code></pre>
 <h3>Values and Single-Step Reduction</h3>
 <p>In the lambda calculus, the only <strong>values</strong> (fully evaluated terms) are lambda abstractions. The single-step reduction function <code>step</code> performs one beta-reduction:</p>
 <ul>
-  <li><code>App (Lam x body) arg</code> &rarr; <code>substitute x arg body</code> (beta reduction)</li>
-  <li><code>App f arg</code> where <code>f</code> can step &rarr; <code>App f' arg</code> (reduce the function first)</li>
-  <li>Everything else &rarr; <code>Nothing</code> (already a value or stuck)</li>
+  <li><code>App (Lam x body) arg</code> → <code>substitute x arg body</code> (beta reduction)</li>
+  <li><code>App f arg</code> where <code>f</code> can step → <code>App f' arg</code> (reduce the function first)</li>
+  <li>Everything else → <code>Nothing</code> (already a value or stuck)</li>
 </ul>
 
 <h3>Tracing Multi-Step Reduction</h3>

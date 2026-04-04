@@ -10,7 +10,7 @@ export const exercises: Record<string, Exercise> = {
 <p>Lambda calculus is the theoretical foundation of all functional programming. In this exercise you'll learn to <strong>read</strong> lambda expressions in Haskell and predict what they evaluate to.</p>
 
 <h3>What Is a Lambda?</h3>
-<p>A <strong>lambda expression</strong> (also called an <em>anonymous function</em>) is a function without a name. In Haskell, the backslash <code>\\</code> stands for the Greek letter &lambda; (lambda):</p>
+<p>A <strong>lambda expression</strong> (also called an <em>anonymous function</em>) is a function without a name. In Haskell, the backslash <code>\\</code> stands for the Greek letter λ (lambda):</p>
 <pre><code>\\x -> x + 1</code></pre>
 <p>This means: "a function that takes <code>x</code> and returns <code>x + 1</code>." It's exactly like writing <code>f x = x + 1</code>, but without giving it the name <code>f</code>.</p>
 
@@ -27,8 +27,8 @@ export const exercises: Record<string, Exercise> = {
 <pre><code>\\x -> \\y -> x + y</code></pre>
 <p>This means: "a function that takes <code>x</code> and returns <em>another function</em> that takes <code>y</code> and returns <code>x + y</code>." When you apply it to two arguments:</p>
 <pre><code>(\\x -> \\y -> x + y) 3 4
--- Step 1: substitute x = 3 &rarr; \\y -> 3 + y
--- Step 2: substitute y = 4 &rarr; 3 + 4
+-- Step 1: substitute x = 3 → \\y -> 3 + y
+-- Step 2: substitute y = 4 → 3 + 4
 -- Result: 7</code></pre>
 
 <h3>The Const Function</h3>
@@ -39,8 +39,8 @@ export const exercises: Record<string, Exercise> = {
 <h3>Higher-Order Lambdas</h3>
 <p>Lambdas can take <strong>functions</strong> as arguments:</p>
 <pre><code>(\\f -> f 10) (\\x -> x + 1)
--- substitute f = (\\x -> x + 1) &rarr; (\\x -> x + 1) 10
--- substitute x = 10 &rarr; 10 + 1
+-- substitute f = (\\x -> x + 1) → (\\x -> x + 1) 10
+-- substitute x = 10 → 10 + 1
 -- Result: 11</code></pre>
 
 <h3>Alpha Equivalence</h3>
@@ -168,7 +168,7 @@ answer8 = 100
 
 <h3>The Beta Reduction Rule</h3>
 <p>The notation is:</p>
-<pre><code>(\\x -> body) arg  &rarr;  body[x := arg]</code></pre>
+<pre><code>(\\x -> body) arg  →  body[x := arg]</code></pre>
 <p>Read this as: "Replace every <code>x</code> in <code>body</code> with <code>arg</code>."</p>
 
 <h4>Example 1: Simple substitution</h4>
@@ -206,7 +206,7 @@ answer8 = 100
 <p>When an inner lambda uses the same parameter name as an outer one, the inner binding <strong>shadows</strong> (hides) the outer one:</p>
 <pre><code>(\\x -> (\\x -> x + 1) x) 10
 -- The outer \\x binds to 10
--- (\\x -> x + 1) 10  &larr; now the inner \\x binds to 10
+-- (\\x -> x + 1) 10  ← now the inner \\x binds to 10
 -- 10 + 1
 -- Result: 11</code></pre>
 <p>The inner <code>x</code> is a completely separate variable that happens to have the same name.</p>

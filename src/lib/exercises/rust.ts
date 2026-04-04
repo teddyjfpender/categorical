@@ -2849,4 +2849,2767 @@ impl BloomFilter {
       'Bloom filter does not contain cherry',
     ],
   },
+
+  // ─────────────────────────────────────────────────────────
+  // Module: Async From Scratch — "What async/await compiles to"
+  // ─────────────────────────────────────────────────────────
+
+  'rust-futures-basics': {
+    id: 'rust-futures-basics',
+    language: 'rust',
+    title: 'Futures By Hand: What Async Compiles To',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Real Problem: Async Is Magic Until You Build It</h3>
+
+<p>Most developers use <code>async/await</code> without understanding what it compiles to. They add <code>.await</code> and it works — until it doesn't. Then they face incomprehensible errors about <code>Pin</code>, <code>Unpin</code>, and <code>Send</code> bounds.</p>
+
+<p>The truth is simple: <strong>every async fn compiles to a state machine that implements <code>Future</code></strong>. When you write <code>async { a().await; b().await }</code>, the compiler generates an enum with one variant per await point and a <code>poll()</code> method that advances through them.</p>
+
+<h3>The Future Trait</h3>
+
+<pre><code>pub trait Future {
+    type Output;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt;;
+}
+
+pub enum Poll&lt;T&gt; {
+    Ready(T),     // computation is done, here's the result
+    Pending,      // not done yet — call me again later
+}</code></pre>
+
+<p>An executor calls <code>poll()</code> repeatedly. When a future returns <code>Pending</code>, it must arrange for the <code>Waker</code> in <code>cx</code> to be called when progress is possible. The waker tells the executor: "poll me again."</p>
+
+<h3>Building a Minimal Executor</h3>
+
+<p>A real executor like tokio uses epoll/kqueue for I/O. But the core loop is simple:</p>
+
+<pre><code>loop {
+    match future.poll(cx) {
+        Poll::Ready(val) =&gt; return val,
+        Poll::Pending =&gt; { /* wait for waker to fire, then loop */ }
+    }
+}</code></pre>
+
+<p>We'll use <code>AtomicBool</code> as our waker signal — when the future calls <code>wake()</code>, it sets the flag, and the executor spins until it sees it.</p>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Understand the abstraction by building it." Tokio, async-std, smol — they all build on this same protocol. Once you've hand-written a Future, <code>async/await</code> is just syntactic sugar, not magic.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a <code>Countdown</code> future that returns <code>Poll::Pending</code> a specified number of times before resolving, and a <code>block_on()</code> executor that drives any future to completion.</p>
+`,
+    starterCode: `// Futures By Hand: What Async Compiles To
+//
+// No tokio. No async-std. Just the raw Future trait and a
+// hand-rolled executor. This is what the runtime does for you.
+
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Wake, Waker};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+
+/// A future that returns Poll::Pending exactly \`remaining\` times,
+/// then returns Poll::Ready with the total number of polls it took.
+struct Countdown {
+    remaining: u32,
+    total_polls: u32,
+}
+
+impl Countdown {
+    fn new(count: u32) -> Self {
+        todo!("initialize remaining and total_polls")
+    }
+}
+
+impl Future for Countdown {
+    type Output = u32;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<u32> {
+        todo!(
+            "1. Increment total_polls
+             2. If remaining > 0, decrement remaining, call cx.waker().wake_by_ref(), return Pending
+             3. Otherwise return Ready(total_polls)"
+        )
+    }
+}
+
+/// A simple waker backed by an AtomicBool flag.
+struct Signal {
+    woken: AtomicBool,
+}
+
+impl Signal {
+    fn new() -> Self {
+        todo!("create with woken = false")
+    }
+}
+
+impl Wake for Signal {
+    fn wake(self: Arc<Self>) {
+        todo!("set woken to true")
+    }
+}
+
+/// Drive a future to completion by polling in a loop.
+/// Uses our Signal-based waker.
+fn block_on<F: Future>(mut future: F) -> F::Output {
+    todo!(
+        "1. Create Arc<Signal>, convert to Waker with Waker::from(arc)
+         2. Pin the future with pin!() or unsafe Pin::new_unchecked
+         3. Loop: poll with context, return on Ready, on Pending reset the flag and continue"
+    )
+}
+`,
+    solutionCode: `use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Wake, Waker};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+
+struct Countdown {
+    remaining: u32,
+    total_polls: u32,
+}
+
+impl Countdown {
+    fn new(count: u32) -> Self {
+        Countdown { remaining: count, total_polls: 0 }
+    }
+}
+
+impl Future for Countdown {
+    type Output = u32;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<u32> {
+        let this = self.get_mut();
+        this.total_polls += 1;
+        if this.remaining > 0 {
+            this.remaining -= 1;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(this.total_polls)
+        }
+    }
+}
+
+struct Signal {
+    woken: AtomicBool,
+}
+
+impl Signal {
+    fn new() -> Self {
+        Signal { woken: AtomicBool::new(false) }
+    }
+}
+
+impl Wake for Signal {
+    fn wake(self: Arc<Self>) {
+        self.woken.store(true, Ordering::SeqCst);
+    }
+}
+
+fn block_on<F: Future>(mut future: F) -> F::Output {
+    let signal = Arc::new(Signal::new());
+    let waker = Waker::from(signal.clone());
+    let mut cx = Context::from_waker(&waker);
+    let mut future = unsafe { Pin::new_unchecked(&mut future) };
+    loop {
+        match future.as_mut().poll(&mut cx) {
+            Poll::Ready(val) => return val,
+            Poll::Pending => {
+                signal.woken.store(false, Ordering::SeqCst);
+            }
+        }
+    }
+}
+`,
+    testCode: `let result = block_on(Countdown::new(0));
+    assert_test_eq("countdown 0 total polls", 1u32, result);
+    let result = block_on(Countdown::new(3));
+    assert_test_eq("countdown 3 total polls", 4u32, result);
+    let result = block_on(Countdown::new(10));
+    assert_test_eq("countdown 10 total polls", 11u32, result);
+    let result = block_on(Countdown::new(1));
+    assert_test_eq("countdown 1 total polls", 2u32, result);
+    let c = Countdown::new(5);
+    assert_test_eq("countdown new remaining", 5u32, c.remaining);
+    assert_test_eq("countdown new total_polls", 0u32, c.total_polls);
+    let signal = Arc::new(Signal::new());
+    assert_test("signal starts false", !signal.woken.load(Ordering::SeqCst));
+    let s2 = signal.clone();
+    Arc::clone(&s2).wake();
+    assert_test("signal wake sets true", signal.woken.load(Ordering::SeqCst));`,
+    hints: [
+      'In <code>Countdown::new</code>, set <code>remaining</code> to the input count and <code>total_polls</code> to 0.',
+      'In <code>poll()</code>, use <code>self.get_mut()</code> to get a <code>&amp;mut Countdown</code> from the <code>Pin</code>. This is safe because <code>Countdown</code> is <code>Unpin</code> (no self-references). Increment <code>total_polls</code> on every call.',
+      'When returning <code>Pending</code>, always call <code>cx.waker().wake_by_ref()</code> — this tells the executor to poll again. Without this, the executor would sleep forever waiting for a notification that never comes.',
+      'In <code>block_on</code>, create the waker with <code>Waker::from(arc.clone())</code>. Use <code>unsafe { Pin::new_unchecked(&amp;mut future) }</code> to pin it (safe because we never move it after pinning). Loop: poll, match, return on Ready, reset the flag on Pending.',
+    ],
+    concepts: ['Future trait', 'Poll::Pending/Ready', 'Waker', 'executor', 'state machine', 'async desugaring'],
+    successPatterns: [
+      'Poll::Pending',
+      'Poll::Ready',
+      'wake_by_ref',
+      'Waker::from',
+    ],
+    testNames: [
+      'Countdown(0) completes in 1 poll',
+      'Countdown(3) completes in 4 polls',
+      'Countdown(10) completes in 11 polls',
+      'Countdown(1) completes in 2 polls',
+      'Countdown::new sets remaining correctly',
+      'Countdown::new starts total_polls at 0',
+      'Signal starts as not woken',
+      'Signal wake sets flag to true',
+    ],
+  },
+
+  'rust-pin-unpin': {
+    id: 'rust-pin-unpin',
+    language: 'rust',
+    title: 'Pin & Unpin: Why Self-References Break Moves',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Real Problem: Moving Invalidates Pointers</h3>
+
+<p>Rust normally moves values by memcpy-ing bytes. This is fine for most types. But what if a struct contains a pointer to <em>itself</em>? After a move, the pointer still points to the old location — instant undefined behavior.</p>
+
+<pre><code>// Conceptually what breaks:
+struct SelfRef {
+    data: String,
+    ptr: *const String,  // points to self.data
+}
+
+let mut a = SelfRef::new();   // ptr points to a.data
+let b = a;                     // memcpy! b.ptr still points to a's old location
+// b.ptr is now DANGLING</code></pre>
+
+<p>This isn't hypothetical. Every async fn compiles to a struct that may hold references across await points — references to its own local variables. Moving that struct after the first poll would invalidate those references.</p>
+
+<h3>Pin: A Guarantee of Immobility</h3>
+
+<p><code>Pin&lt;P&gt;</code> wraps a pointer type <code>P</code> and prevents moving the pointee out. <code>Pin&lt;Box&lt;T&gt;&gt;</code> means: "I promise this <code>T</code> will never be moved again." The Future trait requires <code>Pin&lt;&amp;mut Self&gt;</code> precisely for this reason.</p>
+
+<p>If a type is <code>Unpin</code> (most types), <code>Pin</code> is a no-op — you can freely move it. Only types that opt out of <code>Unpin</code> (via <code>PhantomPinned</code>) actually need pinning.</p>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Pin exists because async state machines are self-referential." It's not an arbitrary API complexity — it solves a real problem that arises the moment you compile <code>async/await</code> to a state machine.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a self-referential struct that demonstrates why Pin is necessary. Show the difference between pinned and unpinned types, and implement safe access patterns using Pin.</p>
+`,
+    starterCode: `// Pin & Unpin: Why Self-References Break Moves
+//
+// Demonstrate why Pin exists: self-referential structs
+// become unsound if moved.
+
+use std::pin::Pin;
+use std::marker::PhantomPinned;
+
+/// A struct that holds a value and a "cached pointer" to it.
+/// The pointer simulates what async state machines do internally.
+/// After init(), \`cached_ptr\` points to \`data\`. Moving the struct
+/// would invalidate this pointer.
+struct SelfReferential {
+    data: String,
+    cached_ptr: *const String,
+    _pin: PhantomPinned,
+}
+
+impl SelfReferential {
+    /// Create a new instance with an unset pointer (null).
+    fn new(data: String) -> Self {
+        todo!("create with data, null pointer, and PhantomPinned")
+    }
+
+    /// Initialize the self-reference. MUST be called on a pinned instance.
+    /// Sets cached_ptr to point to self.data.
+    fn init(self: Pin<&mut Self>) {
+        todo!(
+            "use unsafe to get a raw pointer to self.data
+             and store it in cached_ptr"
+        )
+    }
+
+    /// Read the data through the cached pointer. Returns None if not initialized.
+    fn read_cached(self: Pin<&Self>) -> Option<&str> {
+        todo!(
+            "if cached_ptr is null, return None
+             otherwise unsafe deref the pointer and return Some"
+        )
+    }
+
+    /// Read data directly (always works).
+    fn read_direct(self: Pin<&Self>) -> &str {
+        todo!("return &self.data")
+    }
+}
+
+/// Demonstrates that Unpin types can be freely moved even when pinned.
+/// Vec<i32> is Unpin, so Pin<&mut Vec<i32>> lets you move the inner value.
+fn demonstrate_unpin() -> (Vec<i32>, Vec<i32>) {
+    todo!(
+        "1. Create a Vec, pin it with Box::pin
+         2. Show you can still access it normally because Vec is Unpin
+         3. Return two vecs showing the data is accessible"
+    )
+}
+`,
+    solutionCode: `use std::pin::Pin;
+use std::marker::PhantomPinned;
+
+struct SelfReferential {
+    data: String,
+    cached_ptr: *const String,
+    _pin: PhantomPinned,
+}
+
+impl SelfReferential {
+    fn new(data: String) -> Self {
+        SelfReferential {
+            data,
+            cached_ptr: std::ptr::null(),
+            _pin: PhantomPinned,
+        }
+    }
+
+    fn init(self: Pin<&mut Self>) {
+        let self_ref: *const String = &self.data;
+        unsafe {
+            let this = self.get_unchecked_mut();
+            this.cached_ptr = self_ref;
+        }
+    }
+
+    fn read_cached(self: Pin<&Self>) -> Option<&str> {
+        if self.cached_ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { &*self.cached_ptr }.as_str())
+        }
+    }
+
+    fn read_direct(self: Pin<&Self>) -> &str {
+        &self.data
+    }
+}
+
+fn demonstrate_unpin() -> (Vec<i32>, Vec<i32>) {
+    let v1 = vec![1, 2, 3];
+    let pinned = Box::pin(v1);
+    let first_clone = pinned.clone();
+    let v2 = vec![4, 5, 6];
+    let pinned2 = Box::pin(v2);
+    let second_clone = pinned2.clone();
+    (first_clone, second_clone)
+}
+`,
+    testCode: `let mut boxed = Box::pin(SelfReferential::new(String::from("hello pin")));
+    assert_test("before init is None", boxed.as_ref().read_cached().is_none());
+    assert_test_eq("direct read before init", "hello pin", boxed.as_ref().read_direct());
+    boxed.as_mut().init();
+    assert_test_eq("cached read after init", Some("hello pin"), boxed.as_ref().read_cached());
+    assert_test_eq("direct read after init", "hello pin", boxed.as_ref().read_direct());
+    let mut boxed2 = Box::pin(SelfReferential::new(String::from("world")));
+    boxed2.as_mut().init();
+    assert_test_eq("second instance cached", Some("world"), boxed2.as_ref().read_cached());
+    let (v1, v2) = demonstrate_unpin();
+    assert_test_eq("unpin vec1", vec![1, 2, 3], v1);
+    assert_test_eq("unpin vec2", vec![4, 5, 6], v2);`,
+    hints: [
+      'In <code>new()</code>, use <code>std::ptr::null()</code> for the initial <code>cached_ptr</code> and <code>PhantomPinned</code> for the <code>_pin</code> field. <code>PhantomPinned</code> is a zero-sized type that opts out of <code>Unpin</code>.',
+      'In <code>init()</code>, first get a raw pointer to <code>self.data</code> with <code>&amp;self.data as *const String</code>. Then use <code>unsafe { self.get_unchecked_mut() }</code> to get a mutable reference and set <code>cached_ptr</code>.',
+      'In <code>read_cached()</code>, check <code>self.cached_ptr.is_null()</code>. If not null, use <code>unsafe { &amp;*self.cached_ptr }</code> to dereference the raw pointer back to a <code>&amp;String</code>, then call <code>.as_str()</code>.',
+      'For <code>demonstrate_unpin()</code>, <code>Vec&lt;i32&gt;</code> implements <code>Unpin</code>, so <code>Box::pin(vec)</code> still allows full access. Use <code>.clone()</code> to get copies of the data. The point: <code>Pin</code> only restricts types that are <code>!Unpin</code>.',
+    ],
+    concepts: ['Pin', 'Unpin', 'PhantomPinned', 'self-referential structs', 'async state machines', 'memory safety'],
+    successPatterns: [
+      'PhantomPinned',
+      'get_unchecked_mut',
+      'cached_ptr',
+      'Pin<',
+    ],
+    testNames: [
+      'Cached read is None before init',
+      'Direct read works before init',
+      'Cached read returns data after init',
+      'Direct read works after init',
+      'Second instance has independent cached pointer',
+      'Unpin Vec can be cloned from pin (v1)',
+      'Unpin Vec can be cloned from pin (v2)',
+    ],
+  },
+
+  'rust-async-patterns': {
+    id: 'rust-async-patterns',
+    language: 'rust',
+    title: 'Async Combinators: Composition of Futures',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Real Problem: Composing Asynchronous Operations</h3>
+
+<p>In synchronous code, composition is trivial: <code>let result = f(g(x))</code>. But async operations return futures — values that represent <em>eventual</em> results. How do you chain them? How do you race them?</p>
+
+<p>Libraries give you <code>.and_then()</code>, <code>select!()</code>, <code>join!()</code>. But these are just <strong>Future wrappers</strong> — structs that implement <code>Future</code> by delegating to inner futures. There's no magic.</p>
+
+<h3>The Combinator Pattern</h3>
+
+<p>John Hughes' influential paper "Why Functional Programming Matters" argues that the power of FP comes from its <strong>composition tools</strong> — combinators that build complex behaviors from simple pieces. The same principle applies to async:</p>
+
+<pre><code>// AndThen: run F1, then pass its result to a closure that creates F2
+// This is what .await; does in sequence
+
+// Race: poll both F1 and F2, return whichever finishes first
+// This is what select! does</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Combinators are the algebra of async." Just as monadic bind chains synchronous computations, <code>AndThen</code> chains async ones. Just as <code>Alternative</code> picks the first success, <code>Race</code> picks the first completion. Same math, different runtime.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement <code>AndThen</code> and <code>Race</code> as manual Future implementations. Also implement a <code>Ready</code> future (immediately resolves) to use as building blocks.</p>
+`,
+    starterCode: `// Async Combinators: Composition of Futures
+//
+// Build complex async behavior from simple pieces.
+// No macros, no runtime — just Future impls.
+
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+/// A future that immediately resolves with a value.
+/// This is the "return" / "pure" of the async world.
+struct Ready<T> {
+    value: Option<T>,
+}
+
+fn ready<T>(val: T) -> Ready<T> {
+    todo!("wrap val in Ready with Some")
+}
+
+impl<T> Future for Ready<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
+        todo!("take the value out of Option and return Ready, panic if polled twice")
+    }
+}
+
+/// A future that returns Pending \`n\` times, then Ready with a value.
+struct Delayed<T> {
+    value: Option<T>,
+    remaining: u32,
+}
+
+fn delayed<T>(val: T, ticks: u32) -> Delayed<T> {
+    todo!("create Delayed with remaining = ticks")
+}
+
+impl<T> Future for Delayed<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        todo!(
+            "if remaining > 0: decrement, wake, return Pending
+             else: take value and return Ready"
+        )
+    }
+}
+
+/// Chains two futures: runs first, then passes its output to a closure
+/// that produces the second future.
+struct AndThen<F1, F2, Func> {
+    first: Option<F1>,
+    second: Option<F2>,
+    func: Option<Func>,
+}
+
+fn and_then<F1, F2, Func>(future: F1, func: Func) -> AndThen<F1, F2, Func>
+where
+    F1: Future,
+    F2: Future,
+    Func: FnOnce(F1::Output) -> F2,
+{
+    todo!("create with first = Some(future), func = Some(func), second = None")
+}
+
+impl<F1, F2, Func> Future for AndThen<F1, F2, Func>
+where
+    F1: Future + Unpin,
+    F2: Future + Unpin,
+    Func: FnOnce(F1::Output) -> F2 + Unpin,
+{
+    type Output = F2::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F2::Output> {
+        todo!(
+            "1. If first is Some, poll it. On Ready, take func, call it, store in second.
+             2. If second is Some, poll it and return result.
+             3. Use Pin::new() since types are Unpin."
+        )
+    }
+}
+
+/// Races two futures: returns the output of whichever finishes first.
+struct Race<F1, F2> {
+    first: Option<F1>,
+    second: Option<F2>,
+}
+
+fn race<F1, F2>(f1: F1, f2: F2) -> Race<F1, F2>
+where
+    F1: Future,
+    F2: Future<Output = F1::Output>,
+{
+    todo!("create with both as Some")
+}
+
+impl<F1, F2> Future for Race<F1, F2>
+where
+    F1: Future + Unpin,
+    F2: Future<Output = F1::Output> + Unpin,
+{
+    type Output = F1::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F1::Output> {
+        todo!(
+            "poll first — if Ready, return it
+             poll second — if Ready, return it
+             otherwise Pending"
+        )
+    }
+}
+`,
+    solutionCode: `use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+struct Ready<T> {
+    value: Option<T>,
+}
+
+fn ready<T>(val: T) -> Ready<T> {
+    Ready { value: Some(val) }
+}
+
+impl<T> Future for Ready<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
+        let this = self.get_mut();
+        Poll::Ready(this.value.take().expect("Ready polled after completion"))
+    }
+}
+
+struct Delayed<T> {
+    value: Option<T>,
+    remaining: u32,
+}
+
+fn delayed<T>(val: T, ticks: u32) -> Delayed<T> {
+    Delayed { value: Some(val), remaining: ticks }
+}
+
+impl<T> Future for Delayed<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        let this = self.get_mut();
+        if this.remaining > 0 {
+            this.remaining -= 1;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(this.value.take().expect("Delayed polled after completion"))
+        }
+    }
+}
+
+struct AndThen<F1, F2, Func> {
+    first: Option<F1>,
+    second: Option<F2>,
+    func: Option<Func>,
+}
+
+fn and_then<F1, F2, Func>(future: F1, func: Func) -> AndThen<F1, F2, Func>
+where
+    F1: Future,
+    F2: Future,
+    Func: FnOnce(F1::Output) -> F2,
+{
+    AndThen {
+        first: Some(future),
+        second: None,
+        func: Some(func),
+    }
+}
+
+impl<F1, F2, Func> Future for AndThen<F1, F2, Func>
+where
+    F1: Future + Unpin,
+    F2: Future + Unpin,
+    Func: FnOnce(F1::Output) -> F2 + Unpin,
+{
+    type Output = F2::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F2::Output> {
+        let this = self.get_mut();
+        if let Some(ref mut first) = this.first {
+            match Pin::new(first).poll(cx) {
+                Poll::Ready(val) => {
+                    this.first = None;
+                    let func = this.func.take().expect("func already consumed");
+                    this.second = Some(func(val));
+                    cx.waker().wake_by_ref();
+                    return Poll::Pending;
+                }
+                Poll::Pending => return Poll::Pending,
+            }
+        }
+        if let Some(ref mut second) = this.second {
+            return Pin::new(second).poll(cx);
+        }
+        unreachable!("AndThen polled after completion")
+    }
+}
+
+struct Race<F1, F2> {
+    first: Option<F1>,
+    second: Option<F2>,
+}
+
+fn race<F1, F2>(f1: F1, f2: F2) -> Race<F1, F2>
+where
+    F1: Future,
+    F2: Future<Output = F1::Output>,
+{
+    Race { first: Some(f1), second: Some(f2) }
+}
+
+impl<F1, F2> Future for Race<F1, F2>
+where
+    F1: Future + Unpin,
+    F2: Future<Output = F1::Output> + Unpin,
+{
+    type Output = F1::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F1::Output> {
+        let this = self.get_mut();
+        if let Some(ref mut first) = this.first {
+            if let Poll::Ready(val) = Pin::new(first).poll(cx) {
+                this.first = None;
+                this.second = None;
+                return Poll::Ready(val);
+            }
+        }
+        if let Some(ref mut second) = this.second {
+            if let Poll::Ready(val) = Pin::new(second).poll(cx) {
+                this.first = None;
+                this.second = None;
+                return Poll::Ready(val);
+            }
+        }
+        Poll::Pending
+    }
+}
+`,
+    testCode: `use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+    use std::task::{Wake, Waker};
+
+    struct Sig { w: AtomicBool }
+    impl Sig { fn new() -> Self { Sig { w: AtomicBool::new(false) } } }
+    impl Wake for Sig { fn wake(self: Arc<Self>) { self.w.store(true, Ordering::SeqCst); } }
+
+    fn run<F: Future + Unpin>(mut f: F) -> F::Output {
+        let sig = Arc::new(Sig::new());
+        let waker = Waker::from(sig.clone());
+        let mut cx = Context::from_waker(&waker);
+        loop {
+            match Pin::new(&mut f).poll(&mut cx) {
+                Poll::Ready(v) => return v,
+                Poll::Pending => { sig.w.store(false, Ordering::SeqCst); }
+            }
+        }
+    }
+
+    assert_test_eq("ready resolves", 42i32, run(ready(42i32)));
+    assert_test_eq("delayed 0", 99i32, run(delayed(99i32, 0)));
+    assert_test_eq("delayed 5", 7i32, run(delayed(7i32, 5)));
+    let chained = and_then(ready(10i32), |x| ready(x + 5));
+    assert_test_eq("and_then ready+ready", 15i32, run(chained));
+    let chained2 = and_then(delayed(3i32, 2), |x| delayed(x * 10, 1));
+    assert_test_eq("and_then delayed+delayed", 30i32, run(chained2));
+    let r = race(delayed(1i32, 10), ready(2i32));
+    assert_test_eq("race fast wins", 2i32, run(r));
+    let r2 = race(ready(100i32), delayed(200i32, 5));
+    assert_test_eq("race first ready wins", 100i32, run(r2));`,
+    hints: [
+      'For <code>Ready</code>, use <code>self.get_mut().value.take()</code> to move the value out of the <code>Option</code>. The <code>take()</code> leaves <code>None</code> behind, so polling twice will panic via <code>.expect()</code>.',
+      'For <code>Delayed</code>, check <code>remaining</code> first. If > 0, decrement, call <code>cx.waker().wake_by_ref()</code>, and return <code>Pending</code>. Otherwise <code>.take()</code> the value and return <code>Ready</code>.',
+      'For <code>AndThen</code>, use a two-phase approach: while <code>first</code> is <code>Some</code>, poll it. When it resolves, take the closure with <code>.take()</code>, call it to produce the second future, store it in <code>self.second</code>. Then poll <code>second</code>.',
+      'For <code>Race</code>, try polling <code>first</code>. If it returns <code>Ready</code>, return immediately. Otherwise try <code>second</code>. If neither is ready, return <code>Pending</code>. Since both are <code>Unpin</code>, use <code>Pin::new()</code>.',
+    ],
+    concepts: ['future combinators', 'and_then', 'race', 'composition', 'Hughes combinators', 'async algebra'],
+    successPatterns: [
+      'Pin::new\\(',
+      'Poll::Ready',
+      'Poll::Pending',
+      '\\.take\\(\\)',
+    ],
+    testNames: [
+      'Ready future resolves immediately',
+      'Delayed(0) resolves immediately',
+      'Delayed(5) resolves after 5 ticks',
+      'AndThen chains two Ready futures',
+      'AndThen chains two Delayed futures',
+      'Race: second wins when faster',
+      'Race: first wins when faster',
+    ],
+  },
+
+  'rust-channels': {
+    id: 'rust-channels',
+    language: 'rust',
+    title: 'Channels: Share by Communicating (CSP)',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Real Problem: Shared Mutable State</h3>
+
+<p>The traditional approach to concurrency is shared mutable state protected by locks. This works, but it's the source of nearly every concurrency bug: deadlocks, data races, priority inversion, lock ordering violations.</p>
+
+<pre><code>// The shared-state approach (fragile):
+let data = Arc::new(Mutex::new(Vec::new()));
+// Now EVERY thread must remember to lock, and lock in the right ORDER.
+// Forget once → data race. Lock in wrong order → deadlock.</code></pre>
+
+<h3>CSP: Communicating Sequential Processes</h3>
+
+<p>Tony Hoare's CSP (1978) proposed a different model: instead of sharing memory, <strong>share by communicating</strong>. Each process has private state and communicates with others through channels. Go adopted this as a language primitive. Rust's <code>std::sync::mpsc</code> provides it in the standard library.</p>
+
+<pre><code>// The channel approach (structured):
+// Producer sends data through a channel. Consumer receives it.
+// No shared state. No locks. No deadlocks.</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Don't communicate by sharing memory; share memory by communicating." — Go proverb, but the idea is Hoare's. Channels turn unstructured shared state into structured message passing.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a bounded channel from scratch using <code>Mutex&lt;VecDeque&lt;T&gt;&gt;</code>. Implement <code>try_send</code> (fails when full) and <code>try_recv</code> (returns None when empty). Single-threaded tests prove correctness.</p>
+`,
+    starterCode: `// Channels: Share by Communicating (CSP)
+//
+// Build a bounded channel from scratch.
+// No async, no threads — just the data structure.
+
+use std::sync::Mutex;
+use std::collections::VecDeque;
+
+/// Error returned when the channel is full.
+#[derive(Debug, PartialEq)]
+struct ChannelFull<T>(T);
+
+/// A bounded channel that holds at most \`capacity\` items.
+struct Channel<T> {
+    buffer: Mutex<VecDeque<T>>,
+    capacity: usize,
+}
+
+impl<T> Channel<T> {
+    /// Create a new channel with the given capacity.
+    fn new(capacity: usize) -> Self {
+        todo!("initialize buffer and capacity")
+    }
+
+    /// Try to send a value. Returns Err(ChannelFull(val)) if the channel is full.
+    fn try_send(&self, val: T) -> Result<(), ChannelFull<T>> {
+        todo!(
+            "lock the buffer, check length against capacity,
+             push_back if room, return Err if full"
+        )
+    }
+
+    /// Try to receive a value. Returns None if the channel is empty.
+    fn try_recv(&self) -> Option<T> {
+        todo!("lock the buffer, pop_front")
+    }
+
+    /// Returns the number of items currently in the channel.
+    fn len(&self) -> usize {
+        todo!("lock the buffer, return len")
+    }
+
+    /// Returns true if the channel is empty.
+    fn is_empty(&self) -> bool {
+        todo!("lock the buffer, check is_empty")
+    }
+
+    /// Returns true if the channel is full.
+    fn is_full(&self) -> bool {
+        todo!("lock the buffer, check len == capacity")
+    }
+}
+
+/// A helper that creates a (sender_fn, receiver_fn) pair over a shared channel.
+/// This simulates the producer/consumer pattern without threads.
+fn channel_pair<T>(capacity: usize) -> (Channel<T>, ()) {
+    todo!("just return (Channel::new(capacity), ())")
+}
+`,
+    solutionCode: `use std::sync::Mutex;
+use std::collections::VecDeque;
+
+#[derive(Debug, PartialEq)]
+struct ChannelFull<T>(T);
+
+struct Channel<T> {
+    buffer: Mutex<VecDeque<T>>,
+    capacity: usize,
+}
+
+impl<T> Channel<T> {
+    fn new(capacity: usize) -> Self {
+        Channel {
+            buffer: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+        }
+    }
+
+    fn try_send(&self, val: T) -> Result<(), ChannelFull<T>> {
+        let mut buf = self.buffer.lock().unwrap();
+        if buf.len() >= self.capacity {
+            Err(ChannelFull(val))
+        } else {
+            buf.push_back(val);
+            Ok(())
+        }
+    }
+
+    fn try_recv(&self) -> Option<T> {
+        let mut buf = self.buffer.lock().unwrap();
+        buf.pop_front()
+    }
+
+    fn len(&self) -> usize {
+        let buf = self.buffer.lock().unwrap();
+        buf.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        let buf = self.buffer.lock().unwrap();
+        buf.is_empty()
+    }
+
+    fn is_full(&self) -> bool {
+        let buf = self.buffer.lock().unwrap();
+        buf.len() >= self.capacity
+    }
+}
+
+fn channel_pair<T>(capacity: usize) -> (Channel<T>, ()) {
+    (Channel::new(capacity), ())
+}
+`,
+    testCode: `let ch: Channel<i32> = Channel::new(3);
+    assert_test("new channel is empty", ch.is_empty());
+    assert_test("new channel not full", !ch.is_full());
+    assert_test_eq("new channel len 0", 0usize, ch.len());
+    assert_test_eq("send 1", Ok(()), ch.try_send(10));
+    assert_test_eq("send 2", Ok(()), ch.try_send(20));
+    assert_test_eq("send 3", Ok(()), ch.try_send(30));
+    assert_test("full after 3", ch.is_full());
+    assert_test_eq("len is 3", 3usize, ch.len());
+    assert_test_eq("send when full", Err(ChannelFull(40)), ch.try_send(40));
+    assert_test_eq("recv first", Some(10), ch.try_recv());
+    assert_test_eq("recv second", Some(20), ch.try_recv());
+    assert_test_eq("recv third", Some(30), ch.try_recv());
+    assert_test_eq("recv empty", None::<i32>, ch.try_recv());
+    assert_test("empty after drain", ch.is_empty());
+    let (ch2, _) = channel_pair::<String>(2);
+    assert_test_eq("pair send", Ok(()), ch2.try_send(String::from("hello")));
+    assert_test_eq("pair recv", Some(String::from("hello")), ch2.try_recv());`,
+    hints: [
+      'In <code>new()</code>, use <code>Mutex::new(VecDeque::with_capacity(capacity))</code> to pre-allocate the buffer.',
+      'In <code>try_send()</code>, call <code>self.buffer.lock().unwrap()</code> to get the <code>MutexGuard</code>. Check <code>buf.len() >= self.capacity</code>. If full, return <code>Err(ChannelFull(val))</code> — this gives the value back to the caller.',
+      'In <code>try_recv()</code>, lock the mutex and call <code>pop_front()</code>. <code>VecDeque::pop_front</code> already returns <code>Option&lt;T&gt;</code>, which is exactly what we need.',
+      'The <code>Mutex</code> ensures that even if multiple threads call <code>try_send</code>/<code>try_recv</code> concurrently, the buffer is never accessed simultaneously. The <code>MutexGuard</code> is dropped when it goes out of scope, releasing the lock automatically.',
+    ],
+    concepts: ['CSP', 'channels', 'bounded buffer', 'Mutex', 'VecDeque', 'producer-consumer', 'message passing'],
+    successPatterns: [
+      'Mutex::new',
+      'push_back',
+      'pop_front',
+      'lock\\(\\)\\.unwrap\\(\\)',
+    ],
+    testNames: [
+      'New channel is empty',
+      'New channel is not full',
+      'New channel has length 0',
+      'Send succeeds when space available',
+      'Channel becomes full at capacity',
+      'Length matches number of sent items',
+      'Send fails when channel is full',
+      'Receive returns items in FIFO order',
+      'Receive returns None when empty',
+      'Channel is empty after draining',
+      'Channel pair works with String type',
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // Module: Advanced Traits — "Controlling the type system"
+  // ─────────────────────────────────────────────────────────
+
+  'rust-sealed-traits': {
+    id: 'rust-sealed-traits',
+    language: 'rust',
+    title: 'Sealed Traits: Controlling Extension Points',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Real Problem: Uncontrolled Trait Implementations</h3>
+
+<p>When you publish a trait, <em>anyone</em> can implement it. This is usually good — it's the open/closed principle. But sometimes you need to promise exhaustive matching or add methods without breaking downstream code.</p>
+
+<pre><code>// Problem: if anyone can impl this, we can never add methods
+pub trait DatabaseDialect {
+    fn format_select(&amp;self) -&gt; String;
+    // Adding this later BREAKS all external impls:
+    // fn format_join(&amp;self) -&gt; String;
+}</code></pre>
+
+<p>The sealed trait pattern lets you have a public trait that <strong>only your crate can implement</strong>. External code can <em>use</em> the trait (call its methods, use it as a bound) but cannot implement it for new types.</p>
+
+<h3>The Pattern</h3>
+
+<pre><code>mod private {
+    pub trait Sealed {}
+}
+
+pub trait MyTrait: private::Sealed {
+    fn method(&amp;self) -&gt; String;
+}
+
+// Only types in THIS module can impl Sealed, therefore
+// only types in THIS module can impl MyTrait.</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Not every extension point should be open." The sealed trait pattern is Rust's answer to final classes in Java, but more precise — you close the implementations while keeping the interface open for use.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a sealed <code>DatabaseDialect</code> trait with two sealed implementations (Postgres and SQLite), and show that the pattern enables safe exhaustive matching.</p>
+`,
+    starterCode: `// Sealed Traits: Controlling Extension Points
+//
+// The sealed trait pattern: public interface, private implementations.
+// Only YOUR types can implement the trait.
+
+/// Private module — the Sealed trait is pub to the crate but
+/// the module itself is not pub to external crates.
+mod private {
+    pub trait Sealed {}
+}
+
+/// A sealed trait: only types that impl private::Sealed can impl this.
+/// External code can USE this trait but cannot IMPLEMENT it.
+trait DatabaseDialect: private::Sealed {
+    fn name(&self) -> &'static str;
+    fn format_select(&self, table: &str, columns: &[&str]) -> String;
+    fn format_limit(&self, query: &str, n: usize) -> String;
+    fn placeholder(&self, index: usize) -> String;
+}
+
+struct Postgres;
+struct Sqlite;
+
+// TODO: Implement private::Sealed for both Postgres and Sqlite
+// TODO: Implement DatabaseDialect for both
+
+impl DatabaseDialect for Postgres {
+    fn name(&self) -> &'static str {
+        todo!("return \"PostgreSQL\"")
+    }
+
+    fn format_select(&self, table: &str, columns: &[&str]) -> String {
+        todo!("return SELECT col1, col2 FROM table")
+    }
+
+    fn format_limit(&self, query: &str, n: usize) -> String {
+        todo!("return query LIMIT n")
+    }
+
+    fn placeholder(&self, index: usize) -> String {
+        todo!("return $1, $2, etc (Postgres style)")
+    }
+}
+
+impl DatabaseDialect for Sqlite {
+    fn name(&self) -> &'static str {
+        todo!("return \"SQLite\"")
+    }
+
+    fn format_select(&self, table: &str, columns: &[&str]) -> String {
+        todo!("return SELECT col1, col2 FROM table")
+    }
+
+    fn format_limit(&self, query: &str, n: usize) -> String {
+        todo!("return query LIMIT n")
+    }
+
+    fn placeholder(&self, index: usize) -> String {
+        todo!("return ?1, ?2, etc (SQLite style)")
+    }
+}
+
+/// Because the trait is sealed, we can exhaustively handle all dialects.
+/// This function takes a trait object and builds a parameterized INSERT.
+fn build_insert(dialect: &dyn DatabaseDialect, table: &str, columns: &[&str]) -> String {
+    todo!(
+        "Build: INSERT INTO table (col1, col2) VALUES (placeholder(1), placeholder(2))
+         Use dialect.placeholder(i) for each column index"
+    )
+}
+`,
+    solutionCode: `mod private {
+    pub trait Sealed {}
+}
+
+trait DatabaseDialect: private::Sealed {
+    fn name(&self) -> &'static str;
+    fn format_select(&self, table: &str, columns: &[&str]) -> String;
+    fn format_limit(&self, query: &str, n: usize) -> String;
+    fn placeholder(&self, index: usize) -> String;
+}
+
+struct Postgres;
+struct Sqlite;
+
+impl private::Sealed for Postgres {}
+impl private::Sealed for Sqlite {}
+
+impl DatabaseDialect for Postgres {
+    fn name(&self) -> &'static str {
+        "PostgreSQL"
+    }
+
+    fn format_select(&self, table: &str, columns: &[&str]) -> String {
+        format!("SELECT {} FROM {}", columns.join(", "), table)
+    }
+
+    fn format_limit(&self, query: &str, n: usize) -> String {
+        format!("{} LIMIT {}", query, n)
+    }
+
+    fn placeholder(&self, index: usize) -> String {
+        format!("${"$"}{}", index)
+    }
+}
+
+impl DatabaseDialect for Sqlite {
+    fn name(&self) -> &'static str {
+        "SQLite"
+    }
+
+    fn format_select(&self, table: &str, columns: &[&str]) -> String {
+        format!("SELECT {} FROM {}", columns.join(", "), table)
+    }
+
+    fn format_limit(&self, query: &str, n: usize) -> String {
+        format!("{} LIMIT {}", query, n)
+    }
+
+    fn placeholder(&self, index: usize) -> String {
+        format!("?{}", index)
+    }
+}
+
+fn build_insert(dialect: &dyn DatabaseDialect, table: &str, columns: &[&str]) -> String {
+    let cols = columns.join(", ");
+    let placeholders: Vec<String> = (1..=columns.len())
+        .map(|i| dialect.placeholder(i))
+        .collect();
+    let vals = placeholders.join(", ");
+    format!("INSERT INTO {} ({}) VALUES ({})", table, cols, vals)
+}
+`,
+    testCode: `let pg = Postgres;
+    let sl = Sqlite;
+    assert_test_eq("pg name", "PostgreSQL", pg.name());
+    assert_test_eq("sl name", "SQLite", sl.name());
+    assert_test_eq("pg select", String::from("SELECT id, name FROM users"), pg.format_select("users", &["id", "name"]));
+    assert_test_eq("sl select", String::from("SELECT id, name FROM users"), sl.format_select("users", &["id", "name"]));
+    assert_test_eq("pg limit", String::from("SELECT * FROM t LIMIT 10"), pg.format_limit("SELECT * FROM t", 10));
+    assert_test_eq("pg placeholder 1", String::from("$1"), pg.placeholder(1));
+    assert_test_eq("pg placeholder 3", String::from("$3"), pg.placeholder(3));
+    assert_test_eq("sl placeholder 1", String::from("?1"), sl.placeholder(1));
+    assert_test_eq("sl placeholder 3", String::from("?3"), sl.placeholder(3));
+    assert_test_eq("pg insert", String::from("INSERT INTO users (name, email) VALUES ($1, $2)"), build_insert(&pg, "users", &["name", "email"]));
+    assert_test_eq("sl insert", String::from("INSERT INTO users (name, email) VALUES (?1, ?2)"), build_insert(&sl, "users", &["name", "email"]));`,
+    hints: [
+      'First implement <code>private::Sealed</code> for both types: <code>impl private::Sealed for Postgres {}</code> and <code>impl private::Sealed for Sqlite {}</code>. These are empty impls — the trait has no methods.',
+      'For <code>format_select</code>, use <code>columns.join(", ")</code> to build the column list and <code>format!("SELECT {} FROM {}", cols, table)</code>.',
+      'For <code>placeholder</code>, Postgres uses <code>$N</code> (dollar-indexed) while SQLite uses <code>?N</code> (question-indexed). Use <code>format!("${}", index)</code> for Postgres.',
+      'For <code>build_insert</code>, use <code>(1..=columns.len()).map(|i| dialect.placeholder(i)).collect::&lt;Vec&lt;_&gt;&gt;()</code> to generate all placeholders, then join with <code>", "</code>.',
+    ],
+    concepts: ['sealed traits', 'module privacy', 'extension control', 'exhaustive matching', 'API design'],
+    successPatterns: [
+      'private::Sealed',
+      'impl private::Sealed for',
+      'dyn DatabaseDialect',
+      'placeholder',
+    ],
+    testNames: [
+      'Postgres name is correct',
+      'SQLite name is correct',
+      'Postgres SELECT formatting',
+      'SQLite SELECT formatting',
+      'Postgres LIMIT formatting',
+      'Postgres $N placeholder style',
+      'Postgres $3 placeholder',
+      'SQLite ?N placeholder style',
+      'SQLite ?3 placeholder',
+      'Postgres INSERT with placeholders',
+      'SQLite INSERT with placeholders',
+    ],
+  },
+
+  'rust-tower-middleware': {
+    id: 'rust-tower-middleware',
+    language: 'rust',
+    title: 'Middleware as Composition: The Service Pattern',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Real Problem: Cross-Cutting Concerns</h3>
+
+<p>Every real service needs logging, timing, auth, rate limiting. The naive approach: cram it all into one function. The result: a 500-line handler where business logic is buried under infrastructure.</p>
+
+<pre><code>// The monolith approach (don't do this):
+fn handle(req: Request) -&gt; Response {
+    let start = Instant::now();           // timing
+    log::info!("incoming: {}", req);      // logging
+    check_auth(&amp;req)?;                    // auth
+    check_rate_limit(&amp;req)?;              // rate limit
+    let response = actual_logic(req);     // BUSINESS LOGIC (finally)
+    log::info!("took {:?}", start.elapsed()); // more timing
+    response
+}</code></pre>
+
+<h3>The Middleware Pattern</h3>
+
+<p>Tower (the Rust HTTP ecosystem's foundation) models services as a trait. Middleware is just a Service that wraps another Service — pure composition:</p>
+
+<pre><code>trait Service {
+    type Response;
+    fn call(&amp;self, req: &amp;str) -&gt; Self::Response;
+}
+
+// Logging&lt;Timing&lt;Echo&gt;&gt; — each layer adds behavior around the next</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Middleware is the decorator pattern done right." Instead of inheritance hierarchies or aspect-oriented programming, you compose behavior through wrapping. Each layer has a single responsibility. Testing each layer in isolation is trivial.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement the Service trait, an Echo service, and Logging + Timing middleware wrappers. Compose them to show <code>Logging&lt;Timing&lt;Echo&gt;&gt;</code>.</p>
+`,
+    starterCode: `// Middleware as Composition: The Service Pattern
+//
+// Simplified Tower-style service trait with middleware wrappers.
+// Composition, not inheritance.
+
+use std::time::Instant;
+
+/// The core Service trait. Every service takes a request (&str)
+/// and returns a Response.
+trait Service {
+    type Response;
+    fn call(&self, req: &str) -> Self::Response;
+}
+
+/// The simplest service: echoes back the request.
+struct Echo;
+
+impl Service for Echo {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        todo!("return format: \"Echo: {req}\"")
+    }
+}
+
+/// Middleware that adds a prefix tag to the response.
+/// Simulates logging by wrapping the inner response with metadata.
+struct Logging<S> {
+    inner: S,
+    tag: String,
+}
+
+impl<S> Logging<S> {
+    fn new(inner: S, tag: &str) -> Self {
+        todo!("store inner and tag")
+    }
+}
+
+impl<S: Service<Response = String>> Service for Logging<S> {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        todo!("return format: \"[{tag}] {inner_response}\"")
+    }
+}
+
+/// Middleware that measures execution time (in a simplified way).
+/// Wraps response with timing info.
+struct Timing<S> {
+    inner: S,
+}
+
+impl<S> Timing<S> {
+    fn new(inner: S) -> Self {
+        todo!("store inner")
+    }
+}
+
+impl<S: Service<Response = String>> Service for Timing<S> {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        todo!(
+            "1. Record start = Instant::now()
+             2. Call inner
+             3. Record elapsed
+             4. Return format: \"{response} (elapsed: {elapsed:?})\"
+             Note: for tests, just return \"{response} (timed)\" for determinism"
+        )
+    }
+}
+
+/// Middleware that transforms the request before passing it to inner.
+struct RequestMapper<S, F> {
+    inner: S,
+    mapper: F,
+}
+
+impl<S, F> RequestMapper<S, F> {
+    fn new(inner: S, mapper: F) -> Self {
+        todo!("store inner and mapper")
+    }
+}
+
+impl<S, F> Service for RequestMapper<S, F>
+where
+    S: Service<Response = String>,
+    F: Fn(&str) -> String,
+{
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        todo!("apply mapper to req, then call inner with the mapped req")
+    }
+}
+
+/// Compose multiple middleware layers and demonstrate the pipeline.
+fn compose_pipeline() -> String {
+    todo!(
+        "Build: Logging<Timing<Echo>> with tag \"APP\"
+         Call with request \"hello\"
+         Return the result"
+    )
+}
+`,
+    solutionCode: `use std::time::Instant;
+
+trait Service {
+    type Response;
+    fn call(&self, req: &str) -> Self::Response;
+}
+
+struct Echo;
+
+impl Service for Echo {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        format!("Echo: {}", req)
+    }
+}
+
+struct Logging<S> {
+    inner: S,
+    tag: String,
+}
+
+impl<S> Logging<S> {
+    fn new(inner: S, tag: &str) -> Self {
+        Logging { inner, tag: tag.to_string() }
+    }
+}
+
+impl<S: Service<Response = String>> Service for Logging<S> {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        let response = self.inner.call(req);
+        format!("[{}] {}", self.tag, response)
+    }
+}
+
+struct Timing<S> {
+    inner: S,
+}
+
+impl<S> Timing<S> {
+    fn new(inner: S) -> Self {
+        Timing { inner }
+    }
+}
+
+impl<S: Service<Response = String>> Service for Timing<S> {
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        let _start = Instant::now();
+        let response = self.inner.call(req);
+        format!("{} (timed)", response)
+    }
+}
+
+struct RequestMapper<S, F> {
+    inner: S,
+    mapper: F,
+}
+
+impl<S, F> RequestMapper<S, F> {
+    fn new(inner: S, mapper: F) -> Self {
+        RequestMapper { inner, mapper }
+    }
+}
+
+impl<S, F> Service for RequestMapper<S, F>
+where
+    S: Service<Response = String>,
+    F: Fn(&str) -> String,
+{
+    type Response = String;
+
+    fn call(&self, req: &str) -> String {
+        let mapped = (self.mapper)(req);
+        self.inner.call(&mapped)
+    }
+}
+
+fn compose_pipeline() -> String {
+    let service = Logging::new(Timing::new(Echo), "APP");
+    service.call("hello")
+}
+`,
+    testCode: `let echo = Echo;
+    assert_test_eq("echo", String::from("Echo: hello"), echo.call("hello"));
+    assert_test_eq("echo world", String::from("Echo: world"), echo.call("world"));
+    let logged = Logging::new(Echo, "TEST");
+    assert_test_eq("logging echo", String::from("[TEST] Echo: hello"), logged.call("hello"));
+    let timed = Timing::new(Echo);
+    assert_test_eq("timing echo", String::from("Echo: hello (timed)"), timed.call("hello"));
+    let full = Logging::new(Timing::new(Echo), "APP");
+    assert_test_eq("full pipeline", String::from("[APP] Echo: hello (timed)"), full.call("hello"));
+    let mapped = RequestMapper::new(Echo, |r: &str| r.to_uppercase());
+    assert_test_eq("request mapper", String::from("Echo: HELLO"), mapped.call("hello"));
+    let full_mapped = Logging::new(Timing::new(RequestMapper::new(Echo, |r: &str| format!("REQ:{}", r))), "SVC");
+    assert_test_eq("full with mapper", String::from("[SVC] Echo: REQ:test (timed)"), full_mapped.call("test"));
+    assert_test_eq("compose_pipeline", String::from("[APP] Echo: hello (timed)"), compose_pipeline());`,
+    hints: [
+      'For <code>Echo</code>, use <code>format!("Echo: {}", req)</code>. This is the base service — no wrapping, just echo.',
+      'For <code>Logging</code>, call <code>self.inner.call(req)</code> first to get the inner response, then wrap it: <code>format!("[{}] {}", self.tag, response)</code>.',
+      'For <code>Timing</code>, since tests need deterministic output, use <code>format!("{} (timed)", response)</code> rather than actual elapsed time. In production you would use <code>Instant::now()</code> and <code>.elapsed()</code>.',
+      'For <code>RequestMapper</code>, apply the closure to transform the request: <code>let mapped = (self.mapper)(req)</code>, then pass <code>&amp;mapped</code> to <code>self.inner.call()</code>.',
+    ],
+    concepts: ['Service trait', 'middleware pattern', 'decorator composition', 'Tower architecture', 'separation of concerns'],
+    successPatterns: [
+      'impl Service for',
+      'self\\.inner\\.call',
+      'Logging::new',
+      'Timing::new',
+    ],
+    testNames: [
+      'Echo returns formatted request',
+      'Echo with different input',
+      'Logging wraps with tag',
+      'Timing wraps with timing marker',
+      'Full pipeline: Logging<Timing<Echo>>',
+      'RequestMapper transforms input',
+      'Full pipeline with RequestMapper',
+      'compose_pipeline returns correct result',
+    ],
+  },
+
+  'rust-type-state': {
+    id: 'rust-type-state',
+    language: 'rust',
+    title: 'Type-State: Compile-Time State Machines',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Real Problem: Invalid State at Runtime</h3>
+
+<p>Builders and state machines often rely on runtime checks: "did the user call <code>.url()</code> before <code>.build()</code>?" If not, you panic or return an error. But the programmer's mistake is known at <em>write time</em>, not run time. Why wait?</p>
+
+<pre><code>// Runtime state machine (fragile):
+let req = RequestBuilder::new()
+    .build();   // OOPS: no URL, no method
+                // Panics at runtime, not compile time</code></pre>
+
+<h3>Type-State Pattern</h3>
+
+<p>Use phantom type parameters to encode state in the type system. Transitions consume the old type and return a new one. The <code>.build()</code> method only exists on the type with all fields set:</p>
+
+<pre><code>RequestBuilder&lt;NoUrl, NoMethod&gt;
+    .url("...")       → RequestBuilder&lt;HasUrl, NoMethod&gt;
+    .method("GET")    → RequestBuilder&lt;HasUrl, HasMethod&gt;
+    .build()          → Request     // only available here!</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Make invalid states unrepresentable." If the type system encodes which transitions are legal, the compiler rejects invalid sequences. No runtime checks needed. No documentation needed. The API is its own specification.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a type-state <code>RequestBuilder</code> where <code>.build()</code> is only callable when both URL and method are set.</p>
+`,
+    starterCode: `// Type-State: Compile-Time State Machines
+//
+// The builder pattern with phantom types ensures that
+// .build() can only be called when all required fields are set.
+
+use std::marker::PhantomData;
+
+/// State markers — zero-sized types used only at the type level.
+struct NoUrl;
+struct HasUrl;
+struct NoMethod;
+struct HasMethod;
+
+/// The final request, produced only when builder is fully configured.
+#[derive(Debug, PartialEq)]
+struct Request {
+    url: String,
+    method: String,
+    headers: Vec<(String, String)>,
+}
+
+/// A builder that tracks which fields have been set via type parameters.
+/// U = URL state, M = Method state.
+struct RequestBuilder<U, M> {
+    url: Option<String>,
+    method: Option<String>,
+    headers: Vec<(String, String)>,
+    _url_state: PhantomData<U>,
+    _method_state: PhantomData<M>,
+}
+
+impl RequestBuilder<NoUrl, NoMethod> {
+    /// Start building a request. Nothing is set yet.
+    fn new() -> Self {
+        todo!("return builder with None/empty fields and PhantomData")
+    }
+}
+
+impl<M> RequestBuilder<NoUrl, M> {
+    /// Set the URL. Transitions from NoUrl to HasUrl.
+    /// Returns a NEW builder with different type parameter.
+    fn url(self, url: &str) -> RequestBuilder<HasUrl, M> {
+        todo!(
+            "return RequestBuilder<HasUrl, M> with url set,
+             carrying over method, headers"
+        )
+    }
+}
+
+impl<U> RequestBuilder<U, NoMethod> {
+    /// Set the HTTP method. Transitions from NoMethod to HasMethod.
+    fn method(self, method: &str) -> RequestBuilder<U, HasMethod> {
+        todo!(
+            "return RequestBuilder<U, HasMethod> with method set,
+             carrying over url, headers"
+        )
+    }
+}
+
+impl<U, M> RequestBuilder<U, M> {
+    /// Add a header. Available in ANY state — doesn't change state.
+    fn header(self, key: &str, value: &str) -> RequestBuilder<U, M> {
+        todo!("push header and return self with same type parameters")
+    }
+}
+
+impl RequestBuilder<HasUrl, HasMethod> {
+    /// Build the final request. ONLY available when both URL and method are set.
+    /// This is the key insight: the type system prevents calling this too early.
+    fn build(self) -> Request {
+        todo!("construct Request from the builder fields, unwrapping Options")
+    }
+}
+`,
+    solutionCode: `use std::marker::PhantomData;
+
+struct NoUrl;
+struct HasUrl;
+struct NoMethod;
+struct HasMethod;
+
+#[derive(Debug, PartialEq)]
+struct Request {
+    url: String,
+    method: String,
+    headers: Vec<(String, String)>,
+}
+
+struct RequestBuilder<U, M> {
+    url: Option<String>,
+    method: Option<String>,
+    headers: Vec<(String, String)>,
+    _url_state: PhantomData<U>,
+    _method_state: PhantomData<M>,
+}
+
+impl RequestBuilder<NoUrl, NoMethod> {
+    fn new() -> Self {
+        RequestBuilder {
+            url: None,
+            method: None,
+            headers: Vec::new(),
+            _url_state: PhantomData,
+            _method_state: PhantomData,
+        }
+    }
+}
+
+impl<M> RequestBuilder<NoUrl, M> {
+    fn url(self, url: &str) -> RequestBuilder<HasUrl, M> {
+        RequestBuilder {
+            url: Some(url.to_string()),
+            method: self.method,
+            headers: self.headers,
+            _url_state: PhantomData,
+            _method_state: PhantomData,
+        }
+    }
+}
+
+impl<U> RequestBuilder<U, NoMethod> {
+    fn method(self, method: &str) -> RequestBuilder<U, HasMethod> {
+        RequestBuilder {
+            url: self.url,
+            method: Some(method.to_string()),
+            headers: self.headers,
+            _url_state: PhantomData,
+            _method_state: PhantomData,
+        }
+    }
+}
+
+impl<U, M> RequestBuilder<U, M> {
+    fn header(self, key: &str, value: &str) -> RequestBuilder<U, M> {
+        let mut headers = self.headers;
+        headers.push((key.to_string(), value.to_string()));
+        RequestBuilder {
+            url: self.url,
+            method: self.method,
+            headers,
+            _url_state: PhantomData,
+            _method_state: PhantomData,
+        }
+    }
+}
+
+impl RequestBuilder<HasUrl, HasMethod> {
+    fn build(self) -> Request {
+        Request {
+            url: self.url.unwrap(),
+            method: self.method.unwrap(),
+            headers: self.headers,
+        }
+    }
+}
+`,
+    testCode: `let req = RequestBuilder::new()
+        .url("https://example.com")
+        .method("GET")
+        .build();
+    assert_test_eq("basic build url", "https://example.com", req.url.as_str());
+    assert_test_eq("basic build method", "GET", req.method.as_str());
+    assert_test("basic build no headers", req.headers.is_empty());
+    let req2 = RequestBuilder::new()
+        .method("POST")
+        .url("https://api.test/data")
+        .header("Content-Type", "application/json")
+        .build();
+    assert_test_eq("reverse order url", "https://api.test/data", req2.url.as_str());
+    assert_test_eq("reverse order method", "POST", req2.method.as_str());
+    assert_test_eq("header count", 1usize, req2.headers.len());
+    assert_test_eq("header key", "Content-Type", req2.headers[0].0.as_str());
+    assert_test_eq("header value", "application/json", req2.headers[0].1.as_str());
+    let req3 = RequestBuilder::new()
+        .url("https://x.com")
+        .header("A", "1")
+        .method("PUT")
+        .header("B", "2")
+        .build();
+    assert_test_eq("multi header count", 2usize, req3.headers.len());
+    assert_test_eq("multi header method", "PUT", req3.method.as_str());`,
+    hints: [
+      'In <code>new()</code>, all <code>Option</code> fields are <code>None</code>, headers is <code>Vec::new()</code>. Both phantom fields are <code>PhantomData</code>. The type is <code>RequestBuilder&lt;NoUrl, NoMethod&gt;</code>.',
+      'In <code>url()</code>, you consume <code>self</code> (type <code>RequestBuilder&lt;NoUrl, M&gt;</code>) and return a new <code>RequestBuilder&lt;HasUrl, M&gt;</code>. Carry over <code>self.method</code>, <code>self.headers</code>. The <code>M</code> parameter is preserved unchanged.',
+      'In <code>header()</code>, the type parameters <code>U, M</code> don\'t change — adding a header doesn\'t change the state. Create a new builder with the same types and the header appended.',
+      '<code>build()</code> is only implemented for <code>RequestBuilder&lt;HasUrl, HasMethod&gt;</code>. This means calling <code>.build()</code> on a builder missing URL or method is a <strong>compile error</strong>, not a runtime error. Use <code>.unwrap()</code> on the Options since they are guaranteed to be Some.',
+    ],
+    concepts: ['type-state pattern', 'phantom types', 'compile-time state machine', 'builder pattern', 'zero-cost abstractions'],
+    successPatterns: [
+      'url:\\s*None',
+      'url:\\s*Some\\(',
+      'self\\.url\\.unwrap\\(\\)',
+      'method:\\s*Some\\(',
+    ],
+    testNames: [
+      'Build with url then method: correct URL',
+      'Build with url then method: correct method',
+      'Build with no headers: empty',
+      'Build with method then url: correct URL',
+      'Build with method then url: correct method',
+      'Headers are preserved',
+      'Header key is correct',
+      'Header value is correct',
+      'Multiple headers across state transitions',
+      'Method preserved across header additions',
+    ],
+  },
+
+  'rust-gats': {
+    id: 'rust-gats',
+    language: 'rust',
+    title: 'GATs: Lending Iterators & Lifetime Association',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Real Problem: Iterators That Borrow From Self</h3>
+
+<p>Rust's standard <code>Iterator</code> trait has a fundamental limitation: <code>type Item</code> cannot borrow from the iterator itself. This means you can't write an iterator that yields references to its internal buffer — the references would need a lifetime tied to <code>&amp;self</code>, but the associated type has no way to express that.</p>
+
+<pre><code>// This is IMPOSSIBLE with standard Iterator:
+trait Iterator {
+    type Item;  // no lifetime parameter!
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
+}
+// Can't write type Item = &amp;[T]; — what lifetime?</code></pre>
+
+<h3>GATs: Generic Associated Types</h3>
+
+<p>Stable since Rust 1.65, GATs allow associated types to have generic parameters, including lifetimes:</p>
+
+<pre><code>trait LendingIterator {
+    type Item&lt;'a&gt; where Self: 'a;
+    fn next&lt;'a&gt;(&amp;'a mut self) -&gt; Option&lt;Self::Item&lt;'a&gt;&gt;;
+}
+// Now Item can borrow from self — the lifetime is tied to the borrow!</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"GATs fill the gap between Iterator and streaming." They express relationships the old type system couldn't: an output type whose lifetime is tied to the input borrow. This enables zero-copy streaming, windowed iteration, and lending patterns that were previously impossible to express safely.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a <code>LendingIterator</code> trait and a <code>Windows</code> iterator that yields overlapping slices from a buffer — each slice borrows from the iterator itself.</p>
+`,
+    starterCode: `// GATs: Lending Iterators & Lifetime Association
+//
+// Generic Associated Types let us express "the output borrows from self."
+// This was impossible before Rust 1.65.
+
+/// A lending iterator: each item borrows from the iterator itself.
+/// The key difference from std::Iterator: Item has a lifetime parameter.
+trait LendingIterator {
+    type Item<'a> where Self: 'a;
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+}
+
+/// Yields overlapping windows of a fixed size from a slice.
+/// Each window borrows from the internal data — this is WHY we need GATs.
+struct Windows<'data, T> {
+    data: &'data [T],
+    window_size: usize,
+    position: usize,
+}
+
+impl<'data, T> Windows<'data, T> {
+    fn new(data: &'data [T], window_size: usize) -> Self {
+        todo!("initialize with position = 0")
+    }
+}
+
+impl<'data, T> LendingIterator for Windows<'data, T> {
+    type Item<'a> = &'a [T] where Self: 'a;
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
+        todo!(
+            "if position + window_size <= data.len():
+               return Some(&data[position..position+window_size]), advance position
+             else: return None"
+        )
+    }
+}
+
+/// Counts how many items a lending iterator yields.
+fn count_items<I: LendingIterator>(iter: &mut I) -> usize {
+    todo!("loop calling next(), count until None")
+}
+
+/// Collects all windows as owned Vecs (converts borrowed slices to owned).
+/// This demonstrates that you CAN collect from a lending iterator — you just
+/// need to clone/copy the data.
+fn collect_windows(data: &[i32], window_size: usize) -> Vec<Vec<i32>> {
+    todo!(
+        "create Windows iterator, loop over next(),
+         convert each &[i32] to Vec<i32>, collect all"
+    )
+}
+
+/// A lending iterator over chunks of mutable references.
+/// Each chunk is a mutable borrow — can't exist simultaneously.
+struct MutChunks<'data, T> {
+    data: &'data mut [T],
+    chunk_size: usize,
+    position: usize,
+}
+
+impl<'data, T> MutChunks<'data, T> {
+    fn new(data: &'data mut [T], chunk_size: usize) -> Self {
+        todo!("initialize with position = 0")
+    }
+}
+
+impl<'data, T> LendingIterator for MutChunks<'data, T> {
+    type Item<'a> = &'a mut [T] where Self: 'a;
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
+        todo!(
+            "if position < data.len():
+               compute end = min(position+chunk_size, data.len())
+               use unsafe to reborrow a mutable slice of data[position..end]
+               advance position
+               return Some(slice)
+             else: None"
+        )
+    }
+}
+`,
+    solutionCode: `trait LendingIterator {
+    type Item<'a> where Self: 'a;
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+}
+
+struct Windows<'data, T> {
+    data: &'data [T],
+    window_size: usize,
+    position: usize,
+}
+
+impl<'data, T> Windows<'data, T> {
+    fn new(data: &'data [T], window_size: usize) -> Self {
+        Windows { data, window_size, position: 0 }
+    }
+}
+
+impl<'data, T> LendingIterator for Windows<'data, T> {
+    type Item<'a> = &'a [T] where Self: 'a;
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
+        if self.position + self.window_size <= self.data.len() {
+            let window = &self.data[self.position..self.position + self.window_size];
+            self.position += 1;
+            Some(window)
+        } else {
+            None
+        }
+    }
+}
+
+fn count_items<I: LendingIterator>(iter: &mut I) -> usize {
+    let mut count = 0;
+    while let Some(_) = iter.next() {
+        count += 1;
+    }
+    count
+}
+
+fn collect_windows(data: &[i32], window_size: usize) -> Vec<Vec<i32>> {
+    let mut windows = Windows::new(data, window_size);
+    let mut result = Vec::new();
+    while let Some(w) = windows.next() {
+        result.push(w.to_vec());
+    }
+    result
+}
+
+struct MutChunks<'data, T> {
+    data: &'data mut [T],
+    chunk_size: usize,
+    position: usize,
+}
+
+impl<'data, T> MutChunks<'data, T> {
+    fn new(data: &'data mut [T], chunk_size: usize) -> Self {
+        MutChunks { data, chunk_size, position: 0 }
+    }
+}
+
+impl<'data, T> LendingIterator for MutChunks<'data, T> {
+    type Item<'a> = &'a mut [T] where Self: 'a;
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
+        if self.position >= self.data.len() {
+            return None;
+        }
+        let end = std::cmp::min(self.position + self.chunk_size, self.data.len());
+        let start = self.position;
+        self.position = end;
+        let ptr = self.data.as_mut_ptr();
+        Some(unsafe { std::slice::from_raw_parts_mut(ptr.add(start), end - start) })
+    }
+}
+`,
+    testCode: `let data = [1, 2, 3, 4, 5];
+    let mut w = Windows::new(&data, 3);
+    assert_test_eq("window 1", Some(&[1, 2, 3][..]), w.next());
+    assert_test_eq("window 2", Some(&[2, 3, 4][..]), w.next());
+    assert_test_eq("window 3", Some(&[3, 4, 5][..]), w.next());
+    assert_test_eq("window exhausted", None::<&[i32]>, w.next());
+    let data2 = [10, 20, 30, 40, 50];
+    let mut w2 = Windows::new(&data2, 2);
+    assert_test_eq("count windows of 2 over 5", 4usize, count_items(&mut w2));
+    let collected = collect_windows(&[1, 2, 3, 4], 2);
+    assert_test_eq("collect window count", 3usize, collected.len());
+    assert_test_eq("collect window 0", vec![1, 2], collected[0]);
+    assert_test_eq("collect window 1", vec![2, 3], collected[1]);
+    assert_test_eq("collect window 2", vec![3, 4], collected[2]);
+    let mut arr = [10, 20, 30, 40, 50];
+    let mut chunks = MutChunks::new(&mut arr, 2);
+    if let Some(chunk) = chunks.next() {
+        chunk[0] = 100;
+    }
+    if let Some(chunk) = chunks.next() {
+        chunk[0] = 300;
+    }
+    drop(chunks);
+    assert_test_eq("mut chunk modified idx 0", 100, arr[0]);
+    assert_test_eq("mut chunk modified idx 2", 300, arr[2]);`,
+    hints: [
+      'For <code>Windows::next()</code>, check <code>self.position + self.window_size &lt;= self.data.len()</code>. Return a slice <code>&amp;self.data[self.position..self.position + self.window_size]</code> and then increment <code>self.position</code> by 1.',
+      'For <code>count_items()</code>, use a <code>while let Some(_) = iter.next()</code> loop. You can\'t use a <code>for</code> loop because <code>LendingIterator</code> isn\'t <code>std::iter::Iterator</code>.',
+      'For <code>collect_windows()</code>, call <code>.to_vec()</code> on each borrowed slice to convert <code>&amp;[i32]</code> into an owned <code>Vec&lt;i32&gt;</code>. This is the "escape hatch" from lending — clone the data to own it.',
+      'For <code>MutChunks::next()</code>, you need <code>unsafe</code> because the borrow checker can\'t prove that consecutive mutable slices don\'t overlap. Use <code>self.data.as_mut_ptr()</code> and <code>std::slice::from_raw_parts_mut(ptr.add(start), len)</code>.',
+    ],
+    concepts: ['GATs', 'LendingIterator', 'lifetime association', 'windowed iteration', 'zero-copy streaming'],
+    successPatterns: [
+      "type Item<'a>",
+      'LendingIterator',
+      'where Self:',
+      'from_raw_parts_mut',
+    ],
+    testNames: [
+      'Windows yields first window',
+      'Windows yields second window',
+      'Windows yields third window',
+      'Windows returns None when exhausted',
+      'count_items counts windows correctly',
+      'collect_windows returns correct count',
+      'collect_windows first window is correct',
+      'collect_windows second window is correct',
+      'collect_windows third window is correct',
+      'MutChunks mutation visible at index 0',
+      'MutChunks mutation visible at index 2',
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // Module: Performance & Memory — "The fastest code is the code that doesn't run"
+  // ─────────────────────────────────────────────────────────
+
+  'rust-cache-friendly': {
+    id: 'rust-cache-friendly',
+    language: 'rust',
+    title: 'Data-Oriented Design: AoS vs SoA',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Real Problem: Cache Misses Kill Performance</h3>
+
+<p>Modern CPUs don't access memory one byte at a time. They load entire <strong>cache lines</strong> (typically 64 bytes). When you iterate over an array, if the next element is already in the cache line, access is nearly free. If it's in a different cache line, you wait ~100 cycles for the fetch.</p>
+
+<p>This means <strong>how you lay out data matters more than the algorithm</strong> for many workloads.</p>
+
+<h3>AoS vs SoA</h3>
+
+<pre><code>// Array of Structs (AoS): each struct has ALL fields
+struct Particle { x: f64, y: f64, vx: f64, vy: f64, mass: f64 }
+Vec&lt;Particle&gt;
+// Memory: [x,y,vx,vy,mass | x,y,vx,vy,mass | ...]
+// Updating positions? You load mass into cache but never use it.
+
+// Struct of Arrays (SoA): each field has its own array
+struct Particles { xs: Vec&lt;f64&gt;, ys: Vec&lt;f64&gt;, vxs: Vec&lt;f64&gt;, vys: Vec&lt;f64&gt; }
+// Memory: [x,x,x,...] [y,y,y,...] [vx,vx,vx,...] [vy,vy,vy,...]
+// Updating positions? You only load x and vx — perfect cache utilization.</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Data-oriented design: let the data access pattern drive the layout, not the object model." Entity Component Systems (ECS) in game engines, columnar databases (Parquet), and SIMD processing all use SoA for the same reason: sequential access to homogeneous data is what hardware is built for.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement both AoS and SoA layouts for a particle system. Show how the update loop differs and why SoA is more cache-friendly.</p>
+`,
+    starterCode: `// Data-Oriented Design: AoS vs SoA
+//
+// Array of Structs vs Struct of Arrays.
+// Same data, different memory layout, different cache behavior.
+
+/// Array of Structs: the traditional OOP layout.
+#[derive(Debug, Clone, PartialEq)]
+struct Particle {
+    x: f64,
+    y: f64,
+    vx: f64,
+    vy: f64,
+}
+
+/// Update positions for AoS: iterate over each particle.
+/// Each cache line loads x, y, vx, vy together — not ideal if you only need x, vx.
+fn update_positions_aos(particles: &mut Vec<Particle>, dt: f64) {
+    todo!("for each particle: x += vx * dt, y += vy * dt")
+}
+
+/// Struct of Arrays: data-oriented layout.
+/// Each field is a contiguous array — perfect for sequential access.
+struct ParticlesSoA {
+    xs: Vec<f64>,
+    ys: Vec<f64>,
+    vxs: Vec<f64>,
+    vys: Vec<f64>,
+}
+
+impl ParticlesSoA {
+    fn new() -> Self {
+        todo!("create with empty Vecs")
+    }
+
+    fn len(&self) -> usize {
+        todo!("return xs.len()")
+    }
+
+    fn push(&mut self, x: f64, y: f64, vx: f64, vy: f64) {
+        todo!("push to each Vec")
+    }
+
+    /// Convert from AoS to SoA.
+    fn from_aos(particles: &[Particle]) -> Self {
+        todo!("iterate and split each field into separate Vecs")
+    }
+
+    /// Convert back to AoS (for comparison).
+    fn to_aos(&self) -> Vec<Particle> {
+        todo!("zip all arrays and build Particle structs")
+    }
+}
+
+/// Update positions for SoA: iterate over xs and vxs together, then ys and vys.
+/// Each inner loop touches only the arrays it needs — maximum cache utilization.
+fn update_positions_soa(particles: &mut ParticlesSoA, dt: f64) {
+    todo!(
+        "for i in 0..len: xs[i] += vxs[i] * dt
+         for i in 0..len: ys[i] += vys[i] * dt"
+    )
+}
+
+/// Compute the average x position for both layouts.
+fn average_x_aos(particles: &[Particle]) -> f64 {
+    todo!("sum all x values, divide by count")
+}
+
+fn average_x_soa(particles: &ParticlesSoA) -> f64 {
+    todo!("sum xs array, divide by count")
+}
+`,
+    solutionCode: `#[derive(Debug, Clone, PartialEq)]
+struct Particle {
+    x: f64,
+    y: f64,
+    vx: f64,
+    vy: f64,
+}
+
+fn update_positions_aos(particles: &mut Vec<Particle>, dt: f64) {
+    for p in particles.iter_mut() {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+    }
+}
+
+struct ParticlesSoA {
+    xs: Vec<f64>,
+    ys: Vec<f64>,
+    vxs: Vec<f64>,
+    vys: Vec<f64>,
+}
+
+impl ParticlesSoA {
+    fn new() -> Self {
+        ParticlesSoA {
+            xs: Vec::new(),
+            ys: Vec::new(),
+            vxs: Vec::new(),
+            vys: Vec::new(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.xs.len()
+    }
+
+    fn push(&mut self, x: f64, y: f64, vx: f64, vy: f64) {
+        self.xs.push(x);
+        self.ys.push(y);
+        self.vxs.push(vx);
+        self.vys.push(vy);
+    }
+
+    fn from_aos(particles: &[Particle]) -> Self {
+        let mut soa = ParticlesSoA::new();
+        for p in particles {
+            soa.push(p.x, p.y, p.vx, p.vy);
+        }
+        soa
+    }
+
+    fn to_aos(&self) -> Vec<Particle> {
+        (0..self.len())
+            .map(|i| Particle {
+                x: self.xs[i],
+                y: self.ys[i],
+                vx: self.vxs[i],
+                vy: self.vys[i],
+            })
+            .collect()
+    }
+}
+
+fn update_positions_soa(particles: &mut ParticlesSoA, dt: f64) {
+    for i in 0..particles.len() {
+        particles.xs[i] += particles.vxs[i] * dt;
+    }
+    for i in 0..particles.len() {
+        particles.ys[i] += particles.vys[i] * dt;
+    }
+}
+
+fn average_x_aos(particles: &[Particle]) -> f64 {
+    if particles.is_empty() { return 0.0; }
+    let sum: f64 = particles.iter().map(|p| p.x).sum();
+    sum / particles.len() as f64
+}
+
+fn average_x_soa(particles: &ParticlesSoA) -> f64 {
+    if particles.len() == 0 { return 0.0; }
+    let sum: f64 = particles.xs.iter().sum();
+    sum / particles.len() as f64
+}
+`,
+    testCode: `let mut aos = vec![
+        Particle { x: 0.0, y: 0.0, vx: 1.0, vy: 2.0 },
+        Particle { x: 10.0, y: 20.0, vx: -1.0, vy: 0.5 },
+    ];
+    update_positions_aos(&mut aos, 1.0);
+    assert_test_eq("aos p0 x", 1.0f64, aos[0].x);
+    assert_test_eq("aos p0 y", 2.0f64, aos[0].y);
+    assert_test_eq("aos p1 x", 9.0f64, aos[1].x);
+    assert_test_eq("aos p1 y", 20.5f64, aos[1].y);
+    let mut soa = ParticlesSoA::new();
+    soa.push(0.0, 0.0, 1.0, 2.0);
+    soa.push(10.0, 20.0, -1.0, 0.5);
+    update_positions_soa(&mut soa, 1.0);
+    assert_test_eq("soa x0", 1.0f64, soa.xs[0]);
+    assert_test_eq("soa y0", 2.0f64, soa.ys[0]);
+    assert_test_eq("soa x1", 9.0f64, soa.xs[1]);
+    assert_test_eq("soa y1", 20.5f64, soa.ys[1]);
+    let aos_orig = vec![
+        Particle { x: 1.0, y: 2.0, vx: 3.0, vy: 4.0 },
+        Particle { x: 5.0, y: 6.0, vx: 7.0, vy: 8.0 },
+    ];
+    let soa_conv = ParticlesSoA::from_aos(&aos_orig);
+    assert_test_eq("from_aos len", 2usize, soa_conv.len());
+    let back = soa_conv.to_aos();
+    assert_test_eq("roundtrip", aos_orig, back);
+    assert_test_eq("avg_x_aos", 5.0f64, average_x_aos(&[
+        Particle { x: 0.0, y: 0.0, vx: 0.0, vy: 0.0 },
+        Particle { x: 10.0, y: 0.0, vx: 0.0, vy: 0.0 },
+    ]));
+    let mut soa_avg = ParticlesSoA::new();
+    soa_avg.push(0.0, 0.0, 0.0, 0.0);
+    soa_avg.push(10.0, 0.0, 0.0, 0.0);
+    assert_test_eq("avg_x_soa", 5.0f64, average_x_soa(&soa_avg));`,
+    hints: [
+      'For <code>update_positions_aos</code>, iterate with <code>particles.iter_mut()</code> and update <code>p.x += p.vx * dt</code> and <code>p.y += p.vy * dt</code> for each particle.',
+      'For <code>from_aos</code>, iterate over the AoS slice and push each field into the corresponding SoA Vec. For <code>to_aos</code>, iterate over indices and reconstruct each Particle.',
+      'For <code>update_positions_soa</code>, use TWO separate loops: first update all x positions, then all y positions. This maximizes cache line utilization — each loop touches only two arrays.',
+      'For <code>average_x_aos</code>, use <code>.iter().map(|p| p.x).sum()</code>. For SoA, use <code>.xs.iter().sum()</code> — notice how SoA makes this simpler and more cache-friendly since it only touches the xs array.',
+    ],
+    concepts: ['AoS vs SoA', 'cache lines', 'data-oriented design', 'ECS', 'memory layout', 'spatial locality'],
+    successPatterns: [
+      'ParticlesSoA',
+      'xs\\.push|xs\\[',
+      'iter_mut\\(\\)',
+      'from_aos|to_aos',
+    ],
+    testNames: [
+      'AoS update: particle 0 x position',
+      'AoS update: particle 0 y position',
+      'AoS update: particle 1 x position',
+      'AoS update: particle 1 y position',
+      'SoA update: x[0] position',
+      'SoA update: y[0] position',
+      'SoA update: x[1] position',
+      'SoA update: y[1] position',
+      'AoS to SoA conversion preserves length',
+      'AoS -> SoA -> AoS roundtrip is lossless',
+      'Average X for AoS is correct',
+      'Average X for SoA is correct',
+    ],
+  },
+
+  'rust-arena-allocation': {
+    id: 'rust-arena-allocation',
+    language: 'rust',
+    title: 'Arena Allocation: The Best Allocator Is No Allocator',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Real Problem: Death by a Thousand Allocations</h3>
+
+<p>General-purpose allocators (malloc/free) are optimized for flexibility, not speed. Every allocation searches free lists, updates metadata, and may acquire locks. For workloads that create many small objects (parsers, compilers, game entities), this overhead dominates.</p>
+
+<pre><code>// The slow way: individual heap allocations
+for _ in 0..10_000 {
+    let node = Box::new(AstNode { ... });  // 10,000 malloc calls
+    nodes.push(node);
+}
+// Then 10,000 free calls when nodes is dropped</code></pre>
+
+<h3>Arena Allocation</h3>
+
+<p>An arena allocates a large chunk upfront and hands out pointers into it. Individual objects are never freed — the entire arena is freed at once. This gives you:</p>
+
+<ul>
+<li><strong>O(1) allocation</strong>: just bump a pointer</li>
+<li><strong>Zero individual drops</strong>: one bulk deallocation</li>
+<li><strong>Cache-friendly</strong>: objects are contiguous in memory</li>
+<li><strong>Safe references</strong>: all references last as long as the arena</li>
+</ul>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"The fastest allocation is the one you don't do." Arenas trade individual deallocation for bulk deallocation. For phase-based workloads (parse, compile, done), this is optimal.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a typed arena using <code>RefCell&lt;Vec&lt;T&gt;&gt;</code> that hands out references with the arena's lifetime.</p>
+`,
+    starterCode: `// Arena Allocation: The Best Allocator Is No Allocator
+//
+// Bulk allocation, zero individual drops, cache-friendly.
+// Uses RefCell<Vec<T>> for interior mutability.
+
+use std::cell::RefCell;
+
+/// A typed arena that allocates objects and returns references to them.
+/// All references live as long as the arena.
+struct Arena<T> {
+    chunks: RefCell<Vec<Vec<T>>>,
+    chunk_capacity: usize,
+}
+
+impl<T> Arena<T> {
+    /// Create an arena where each internal chunk can hold \`chunk_capacity\` items.
+    fn new(chunk_capacity: usize) -> Self {
+        todo!("initialize with one empty chunk pre-allocated")
+    }
+
+    /// Allocate a value in the arena and return a reference to it.
+    /// The reference lives as long as the arena (&self lifetime).
+    fn alloc(&self, val: T) -> &T {
+        todo!(
+            "1. Borrow chunks mutably
+             2. If current chunk is full, push a new chunk
+             3. Push val to current chunk
+             4. Return a reference to the just-pushed element
+             NOTE: Use unsafe to extend the lifetime of the reference"
+        )
+    }
+
+    /// Returns the total number of allocated objects.
+    fn count(&self) -> usize {
+        todo!("sum the lengths of all chunks")
+    }
+}
+
+/// Demonstrates arena usage: allocate many strings, collect references.
+fn arena_demo() -> Vec<String> {
+    todo!(
+        "1. Create Arena<String> with capacity 4
+         2. Allocate 6 strings
+         3. Collect the references into a Vec<String> by cloning
+         4. Return the Vec"
+    )
+}
+
+/// A simple tree node that references other nodes in the same arena.
+/// This pattern is common in compilers and interpreters.
+#[derive(Debug)]
+struct TreeNode<'arena> {
+    value: i32,
+    children: Vec<&'arena TreeNode<'arena>>,
+}
+
+/// Build a tree using arena allocation.
+/// All nodes live in the arena — no Box, no Rc, just references.
+fn build_tree<'a>(arena: &'a Arena<TreeNode<'a>>) -> &'a TreeNode<'a> {
+    todo!(
+        "1. Allocate leaf nodes (value: 1, 2, 3) with empty children
+         2. Allocate root (value: 0) with children pointing to the leaves
+         3. Return &root"
+    )
+}
+`,
+    solutionCode: `use std::cell::RefCell;
+
+struct Arena<T> {
+    chunks: RefCell<Vec<Vec<T>>>,
+    chunk_capacity: usize,
+}
+
+impl<T> Arena<T> {
+    fn new(chunk_capacity: usize) -> Self {
+        Arena {
+            chunks: RefCell::new(vec![Vec::with_capacity(chunk_capacity)]),
+            chunk_capacity,
+        }
+    }
+
+    fn alloc(&self, val: T) -> &T {
+        let mut chunks = self.chunks.borrow_mut();
+        let needs_new_chunk = {
+            let last = chunks.last().unwrap();
+            last.len() >= self.chunk_capacity
+        };
+        if needs_new_chunk {
+            chunks.push(Vec::with_capacity(self.chunk_capacity));
+        }
+        let last = chunks.last_mut().unwrap();
+        last.push(val);
+        let reference = last.last().unwrap();
+        unsafe { &*(reference as *const T) }
+    }
+
+    fn count(&self) -> usize {
+        let chunks = self.chunks.borrow();
+        chunks.iter().map(|c| c.len()).sum()
+    }
+}
+
+fn arena_demo() -> Vec<String> {
+    let arena = Arena::<String>::new(4);
+    let refs: Vec<&String> = (0..6)
+        .map(|i| arena.alloc(format!("item_{}", i)))
+        .collect();
+    refs.into_iter().map(|s| s.clone()).collect()
+}
+
+#[derive(Debug)]
+struct TreeNode<'arena> {
+    value: i32,
+    children: Vec<&'arena TreeNode<'arena>>,
+}
+
+fn build_tree<'a>(arena: &'a Arena<TreeNode<'a>>) -> &'a TreeNode<'a> {
+    let leaf1 = arena.alloc(TreeNode { value: 1, children: vec![] });
+    let leaf2 = arena.alloc(TreeNode { value: 2, children: vec![] });
+    let leaf3 = arena.alloc(TreeNode { value: 3, children: vec![] });
+    let root = arena.alloc(TreeNode {
+        value: 0,
+        children: vec![leaf1, leaf2, leaf3],
+    });
+    root
+}
+`,
+    testCode: `let arena: Arena<i32> = Arena::new(4);
+    let r1 = arena.alloc(10);
+    let r2 = arena.alloc(20);
+    let r3 = arena.alloc(30);
+    assert_test_eq("alloc 1", &10, r1);
+    assert_test_eq("alloc 2", &20, r2);
+    assert_test_eq("alloc 3", &30, r3);
+    assert_test_eq("count 3", 3usize, arena.count());
+    let r4 = arena.alloc(40);
+    let r5 = arena.alloc(50);
+    assert_test_eq("count 5 (spans chunks)", 5usize, arena.count());
+    assert_test_eq("alloc 4 after chunk boundary", &40, r4);
+    assert_test_eq("alloc 5 after chunk boundary", &50, r5);
+    let demo = arena_demo();
+    assert_test_eq("demo len", 6usize, demo.len());
+    assert_test_eq("demo first", String::from("item_0"), demo[0]);
+    assert_test_eq("demo last", String::from("item_5"), demo[5]);
+    let tree_arena: Arena<TreeNode> = Arena::new(8);
+    let root = build_tree(&tree_arena);
+    assert_test_eq("tree root value", 0i32, root.value);
+    assert_test_eq("tree children count", 3usize, root.children.len());
+    assert_test_eq("tree child 0", 1i32, root.children[0].value);
+    assert_test_eq("tree child 2", 3i32, root.children[2].value);`,
+    hints: [
+      'In <code>new()</code>, initialize <code>chunks</code> with <code>vec![Vec::with_capacity(chunk_capacity)]</code> to pre-allocate one chunk.',
+      'In <code>alloc()</code>, borrow the chunks mutably. Check if the last chunk is full (<code>len() >= chunk_capacity</code>). If so, push a new <code>Vec::with_capacity()</code>. Push the value to the last chunk, then use <code>unsafe { &amp;*(reference as *const T) }</code> to extend the reference lifetime.',
+      'The <code>unsafe</code> in <code>alloc()</code> is sound because: (1) the Vec never reallocates once full (we create a new chunk instead), and (2) the reference lives as long as the arena since chunks are never dropped while the arena lives.',
+      'For <code>build_tree()</code>, allocate leaf nodes first (they have empty children vecs), then allocate the root node with children pointing to the leaves. All nodes live in the same arena, so references are valid for the same lifetime.',
+    ],
+    concepts: ['arena allocation', 'bulk allocation', 'cache locality', 'RefCell', 'lifetime extension', 'zero-cost trees'],
+    successPatterns: [
+      'RefCell::new',
+      'as \\*const',
+      'with_capacity',
+      'Arena<',
+    ],
+    testNames: [
+      'Arena alloc returns correct value (1)',
+      'Arena alloc returns correct value (2)',
+      'Arena alloc returns correct value (3)',
+      'Arena count after 3 allocs',
+      'Arena count spans chunk boundaries',
+      'Arena alloc works across chunks (4)',
+      'Arena alloc works across chunks (5)',
+      'arena_demo returns 6 items',
+      'arena_demo first item is correct',
+      'arena_demo last item is correct',
+      'Tree root value is 0',
+      'Tree has 3 children',
+      'Tree child 0 value is 1',
+      'Tree child 2 value is 3',
+    ],
+  },
+
+  'rust-simd-basics': {
+    id: 'rust-simd-basics',
+    language: 'rust',
+    title: 'SIMD Thinking: Data Parallelism by Hand',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Real Problem: Processing One Element at a Time</h3>
+
+<p>Scalar code processes one value per instruction. But CPUs have SIMD registers (128-bit SSE, 256-bit AVX, 512-bit AVX-512) that can process 4, 8, or 16 values <em>simultaneously</em>. A 16-byte SIMD register can XOR sixteen u8 values in a single instruction — 16x throughput.</p>
+
+<pre><code>// Scalar: 16 iterations, 16 instructions
+for i in 0..16 { result[i] = a[i] ^ b[i]; }
+
+// SIMD: 1 iteration, 1 instruction (conceptually)
+result = _mm_xor_si128(a, b);  // all 16 bytes at once</code></pre>
+
+<h3>SIMD Thinking Without std::simd</h3>
+
+<p>Since <code>std::simd</code> is nightly-only, we'll teach the <em>mental model</em> using fixed-size arrays. The key insight: <strong>operate on arrays as single units</strong>. Don't think "loop over elements" — think "apply operation to the whole vector."</p>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"Think in vectors, not scalars." The SIMD mindset transforms how you structure algorithms: you work on arrays of values rather than individual values. Even without hardware SIMD, this often leads to better cache performance and auto-vectorization.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement vectorized operations on <code>[u8; 16]</code> arrays: add, xor, mask, and search. Process all 16 elements as a unit.</p>
+`,
+    starterCode: `// SIMD Thinking: Data Parallelism by Hand
+//
+// Process [u8; 16] arrays as single units.
+// This is the mental model behind real SIMD instructions.
+
+type Lane = [u8; 16];
+
+/// Element-wise addition with wrapping (overflow wraps to 0).
+/// Simulates: _mm_add_epi8 (SSE2)
+fn lane_add(a: &Lane, b: &Lane) -> Lane {
+    todo!("for each i: result[i] = a[i].wrapping_add(b[i])")
+}
+
+/// Element-wise XOR.
+/// Simulates: _mm_xor_si128 (SSE2)
+fn lane_xor(a: &Lane, b: &Lane) -> Lane {
+    todo!("for each i: result[i] = a[i] ^ b[i]")
+}
+
+/// Element-wise comparison: produces a mask where each byte is
+/// 0xFF if a[i] == b[i], 0x00 otherwise.
+/// Simulates: _mm_cmpeq_epi8 (SSE2)
+fn lane_cmpeq(a: &Lane, b: &Lane) -> Lane {
+    todo!("for each i: result[i] = if a[i] == b[i] { 0xFF } else { 0x00 }")
+}
+
+/// Reduce: count how many bytes in the lane are non-zero.
+/// Simulates: _mm_movemask_epi8 + popcnt (SSE2)
+fn lane_count_nonzero(a: &Lane) -> u32 {
+    todo!("count elements where a[i] != 0")
+}
+
+/// Saturating add: adds but clamps at 255 instead of wrapping.
+/// Simulates: _mm_adds_epu8 (SSE2)
+fn lane_adds(a: &Lane, b: &Lane) -> Lane {
+    todo!("for each i: result[i] = a[i].saturating_add(b[i])")
+}
+
+/// Select: use mask to choose between two lanes.
+/// Where mask[i] is 0xFF, take from a; where 0x00, take from b.
+/// Simulates: _mm_blendv_epi8 (SSE4.1)
+fn lane_select(mask: &Lane, a: &Lane, b: &Lane) -> Lane {
+    todo!("for each i: result[i] = if mask[i] != 0 { a[i] } else { b[i] }")
+}
+
+/// Find the index of the first occurrence of \`needle\` in the lane.
+/// Returns None if not found. Uses lane_cmpeq internally.
+fn lane_find(haystack: &Lane, needle: u8) -> Option<usize> {
+    todo!(
+        "1. Create a lane filled with needle
+         2. Use lane_cmpeq to find matches
+         3. Find first non-zero index"
+    )
+}
+
+/// Apply a simple byte cipher: XOR each byte with a repeating key pattern.
+fn lane_cipher(data: &Lane, key: &Lane) -> Lane {
+    todo!("just use lane_xor — XOR cipher is its own inverse")
+}
+`,
+    solutionCode: `type Lane = [u8; 16];
+
+fn lane_add(a: &Lane, b: &Lane) -> Lane {
+    let mut result = [0u8; 16];
+    for i in 0..16 {
+        result[i] = a[i].wrapping_add(b[i]);
+    }
+    result
+}
+
+fn lane_xor(a: &Lane, b: &Lane) -> Lane {
+    let mut result = [0u8; 16];
+    for i in 0..16 {
+        result[i] = a[i] ^ b[i];
+    }
+    result
+}
+
+fn lane_cmpeq(a: &Lane, b: &Lane) -> Lane {
+    let mut result = [0u8; 16];
+    for i in 0..16 {
+        result[i] = if a[i] == b[i] { 0xFF } else { 0x00 };
+    }
+    result
+}
+
+fn lane_count_nonzero(a: &Lane) -> u32 {
+    let mut count = 0u32;
+    for i in 0..16 {
+        if a[i] != 0 {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn lane_adds(a: &Lane, b: &Lane) -> Lane {
+    let mut result = [0u8; 16];
+    for i in 0..16 {
+        result[i] = a[i].saturating_add(b[i]);
+    }
+    result
+}
+
+fn lane_select(mask: &Lane, a: &Lane, b: &Lane) -> Lane {
+    let mut result = [0u8; 16];
+    for i in 0..16 {
+        result[i] = if mask[i] != 0 { a[i] } else { b[i] };
+    }
+    result
+}
+
+fn lane_find(haystack: &Lane, needle: u8) -> Option<usize> {
+    let needle_lane = [needle; 16];
+    let mask = lane_cmpeq(haystack, &needle_lane);
+    for i in 0..16 {
+        if mask[i] != 0 {
+            return Some(i);
+        }
+    }
+    None
+}
+
+fn lane_cipher(data: &Lane, key: &Lane) -> Lane {
+    lane_xor(data, key)
+}
+`,
+    testCode: `let a: Lane = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    let b: Lane = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+    let sum = lane_add(&a, &b);
+    assert_test_eq("add uniform", [17u8; 16], sum);
+    let wrap_a: Lane = [200; 16];
+    let wrap_b: Lane = [100; 16];
+    let wrap_sum = lane_add(&wrap_a, &wrap_b);
+    assert_test_eq("add wrapping", [44u8; 16], wrap_sum);
+    let x = lane_xor(&a, &b);
+    assert_test_eq("xor [0]", 17u8, x[0]);
+    let x2 = lane_xor(&a, &a);
+    assert_test_eq("xor self is zero", [0u8; 16], x2);
+    let eq = lane_cmpeq(&a, &a);
+    assert_test_eq("cmpeq identical", [0xFFu8; 16], eq);
+    let neq = lane_cmpeq(&a, &b);
+    assert_test_eq("cmpeq different count", 0u32, lane_count_nonzero(&neq));
+    let sat = lane_adds(&[250; 16], &[10; 16]);
+    assert_test_eq("saturating add clamps", [255u8; 16], sat);
+    let mask: Lane = [0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0];
+    let sel = lane_select(&mask, &a, &b);
+    assert_test_eq("select idx0 from a", 1u8, sel[0]);
+    assert_test_eq("select idx1 from b", 15u8, sel[1]);
+    let haystack: Lane = [0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    assert_test_eq("find 42", Some(3usize), lane_find(&haystack, 42));
+    assert_test_eq("find missing", None::<usize>, lane_find(&haystack, 99));
+    let key: Lane = [0xAA; 16];
+    let encrypted = lane_cipher(&a, &key);
+    let decrypted = lane_cipher(&encrypted, &key);
+    assert_test_eq("cipher roundtrip", a, decrypted);`,
+    hints: [
+      'All operations follow the same pattern: create <code>let mut result = [0u8; 16];</code>, loop <code>for i in 0..16</code>, compute <code>result[i]</code>, return <code>result</code>. The compiler can auto-vectorize these loops into actual SIMD instructions.',
+      'Use <code>.wrapping_add()</code> for <code>lane_add</code> (overflow wraps around) and <code>.saturating_add()</code> for <code>lane_adds</code> (overflow clamps at 255). These correspond to different SIMD instructions.',
+      'For <code>lane_find()</code>, first create a lane filled with the needle: <code>[needle; 16]</code>. Then use <code>lane_cmpeq</code> to get a mask of matches. Then find the first index where the mask is non-zero.',
+      'XOR cipher is its own inverse: <code>(data ^ key) ^ key == data</code>. So <code>lane_cipher</code> is just <code>lane_xor</code>. This is how real stream ciphers (RC4, ChaCha20) work at the byte level.',
+    ],
+    concepts: ['SIMD', 'data parallelism', 'lane operations', 'auto-vectorization', 'wrapping vs saturating arithmetic'],
+    successPatterns: [
+      '\\.wrapping_add\\(b\\[i\\]\\);',
+      '\\.saturating_add\\(b\\[i\\]\\);',
+      'let mut result = \\[0u8; 16\\]',
+      'lane_cmpeq\\(haystack',
+    ],
+    testNames: [
+      'lane_add produces uniform sum',
+      'lane_add wraps on overflow',
+      'lane_xor produces correct result',
+      'lane_xor with self is zero',
+      'lane_cmpeq identical lanes all 0xFF',
+      'lane_cmpeq different lanes no matches',
+      'lane_adds saturates at 255',
+      'lane_select picks from a where mask is set',
+      'lane_select picks from b where mask is clear',
+      'lane_find locates needle at index 3',
+      'lane_find returns None for missing needle',
+      'XOR cipher roundtrip recovers original',
+    ],
+  },
+
+  'rust-zero-copy': {
+    id: 'rust-zero-copy',
+    language: 'rust',
+    title: 'Zero-Copy Parsing: The Fastest Operation Is None',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Real Problem: Parsing by Copying</h3>
+
+<p>The typical CSV parser allocates a new String for every field. For a 1GB file with 10 million rows and 10 columns, that's 100 million allocations — each one calling malloc, copying bytes, and eventually calling free.</p>
+
+<pre><code>// The allocating approach (slow):
+fn parse_field(input: &amp;str) -&gt; String {
+    input.to_string()  // COPIES every field into a new heap allocation
+}
+// 100 million fields × 1 allocation each = slow</code></pre>
+
+<h3>Zero-Copy: Borrow, Don't Own</h3>
+
+<p>If the original input string lives long enough, we can return <em>slices into it</em> instead of copying. A <code>&amp;str</code> is just a pointer and a length — no allocation, no copy, no deallocation.</p>
+
+<pre><code>// The zero-copy approach (fast):
+fn parse_field&lt;'a&gt;(input: &amp;'a str) -&gt; &amp;'a str {
+    input  // returns a VIEW into the original data
+}
+// 100 million fields × 0 allocations each = fast</code></pre>
+
+<h3>The Taste Principle</h3>
+
+<blockquote>"The fastest operation is the one you don't do." Every allocation you skip is a malloc + memcpy + free you don't pay for. Rust's lifetime system makes zero-copy parsing <em>safe</em> — the compiler proves that your slices don't outlive the source data.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a zero-copy CSV parser that returns <code>&amp;str</code> slices into the original input. No allocations for field values.</p>
+`,
+    starterCode: `// Zero-Copy Parsing: The Fastest Operation Is None
+//
+// Parse CSV without copying field values.
+// Return &str slices into the original input.
+
+/// Parse a single CSV line into fields, returning slices into the input.
+/// Fields are separated by commas. No quoting support needed.
+fn parse_line<'a>(line: &'a str) -> Vec<&'a str> {
+    todo!("split by ',' and trim whitespace from each field")
+}
+
+/// Parse an entire CSV string into rows of fields.
+/// Returns Vec<Vec<&str>> — every &str is a zero-copy slice of the input.
+fn parse_csv<'a>(input: &'a str) -> Vec<Vec<&'a str>> {
+    todo!("split by newlines, parse each non-empty line")
+}
+
+/// Find all values in a specific column (by index).
+/// Returns slices into the original input.
+fn column<'a>(rows: &[Vec<&'a str>], col: usize) -> Vec<&'a str> {
+    todo!("collect row[col] for each row that has enough columns")
+}
+
+/// Find rows where a specific column matches a predicate.
+/// Returns the matching rows (still zero-copy slices).
+fn filter_rows<'a, F>(rows: &[Vec<&'a str>], col: usize, pred: F) -> Vec<Vec<&'a str>>
+where
+    F: Fn(&str) -> bool,
+{
+    todo!("keep rows where pred(row[col]) is true")
+}
+
+/// Demonstrate that all returned slices point into the original string.
+/// Returns true if every field slice is a sub-slice of the input.
+fn verify_zero_copy(input: &str, rows: &[Vec<&str>]) -> bool {
+    todo!(
+        "for every field in every row, check that the field's pointer
+         falls within the input string's memory range"
+    )
+}
+
+/// Parse CSV with a header row. Returns (headers, data_rows).
+fn parse_with_header<'a>(input: &'a str) -> (Vec<&'a str>, Vec<Vec<&'a str>>) {
+    todo!(
+        "parse all rows, split off the first row as headers,
+         return (headers, remaining_rows)"
+    )
+}
+`,
+    solutionCode: `fn parse_line<'a>(line: &'a str) -> Vec<&'a str> {
+    line.split(',').map(|field| field.trim()).collect()
+}
+
+fn parse_csv<'a>(input: &'a str) -> Vec<Vec<&'a str>> {
+    input
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| parse_line(line))
+        .collect()
+}
+
+fn column<'a>(rows: &[Vec<&'a str>], col: usize) -> Vec<&'a str> {
+    rows.iter()
+        .filter_map(|row| row.get(col).copied())
+        .collect()
+}
+
+fn filter_rows<'a, F>(rows: &[Vec<&'a str>], col: usize, pred: F) -> Vec<Vec<&'a str>>
+where
+    F: Fn(&str) -> bool,
+{
+    rows.iter()
+        .filter(|row| row.get(col).map_or(false, |val| pred(val)))
+        .cloned()
+        .collect()
+}
+
+fn verify_zero_copy(input: &str, rows: &[Vec<&str>]) -> bool {
+    let input_start = input.as_ptr() as usize;
+    let input_end = input_start + input.len();
+    for row in rows {
+        for field in row {
+            let field_start = field.as_ptr() as usize;
+            let field_end = field_start + field.len();
+            if field.is_empty() { continue; }
+            if field_start < input_start || field_end > input_end {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+fn parse_with_header<'a>(input: &'a str) -> (Vec<&'a str>, Vec<Vec<&'a str>>) {
+    let mut rows = parse_csv(input);
+    if rows.is_empty() {
+        return (vec![], vec![]);
+    }
+    let header = rows.remove(0);
+    (header, rows)
+}
+`,
+    testCode: `let line = "alice, 30, engineer";
+    let fields = parse_line(line);
+    assert_test_eq("parse_line count", 3usize, fields.len());
+    assert_test_eq("parse_line field 0", "alice", fields[0]);
+    assert_test_eq("parse_line field 1", "30", fields[1]);
+    assert_test_eq("parse_line field 2", "engineer", fields[2]);
+    let csv = "name,age,role\nalice,30,engineer\nbob,25,designer\ncarol,35,manager";
+    let rows = parse_csv(csv);
+    assert_test_eq("parse_csv row count", 4usize, rows.len());
+    assert_test_eq("parse_csv header", vec!["name", "age", "role"], rows[0]);
+    let ages = column(&rows[1..], 1);
+    assert_test_eq("column ages", vec!["30", "25", "35"], ages);
+    let seniors = filter_rows(&rows[1..], 1, |age| {
+        age.parse::<u32>().map_or(false, |a| a >= 30)
+    });
+    assert_test_eq("filter seniors count", 2usize, seniors.len());
+    assert_test_eq("filter senior 0 name", "alice", seniors[0][0]);
+    assert_test_eq("filter senior 1 name", "carol", seniors[1][0]);
+    assert_test("zero copy verified", verify_zero_copy(csv, &rows));
+    let (header, data) = parse_with_header(csv);
+    assert_test_eq("header count", 3usize, header.len());
+    assert_test_eq("header 0", "name", header[0]);
+    assert_test_eq("data row count", 3usize, data.len());
+    assert_test_eq("data row 0 col 0", "alice", data[0][0]);`,
+    hints: [
+      'For <code>parse_line()</code>, use <code>line.split(\',\').map(|f| f.trim()).collect()</code>. The <code>trim()</code> method returns a <code>&amp;str</code> that is a sub-slice of the original — still zero-copy.',
+      'For <code>parse_csv()</code>, use <code>input.lines()</code> to split by newline, filter out empty lines with <code>.filter(|l| !l.trim().is_empty())</code>, and map each line through <code>parse_line</code>.',
+      'For <code>verify_zero_copy()</code>, use <code>.as_ptr() as usize</code> to get the memory address of each field slice. Check that it falls within <code>input.as_ptr()..input.as_ptr()+input.len()</code>. This proves the fields are sub-slices of the input.',
+      'For <code>filter_rows()</code>, use <code>rows.iter().filter(|row| row.get(col).map_or(false, |v| pred(v))).cloned().collect()</code>. The <code>.cloned()</code> clones the <code>Vec&lt;&amp;str&gt;</code> (cheap — just copies pointers), not the strings themselves.',
+    ],
+    concepts: ['zero-copy parsing', 'lifetimes', 'string slices', 'memory efficiency', 'borrow not own'],
+    successPatterns: [
+      "parse_line|parse_csv",
+      "\\.split\\('",
+      "as_ptr",
+      "filter_map|filter",
+    ],
+    testNames: [
+      'parse_line splits into correct count',
+      'parse_line field 0 is alice',
+      'parse_line field 1 is 30',
+      'parse_line field 2 is engineer',
+      'parse_csv parses all rows',
+      'parse_csv header row is correct',
+      'column extracts ages correctly',
+      'filter_rows finds 2 seniors',
+      'filter_rows first senior is alice',
+      'filter_rows second senior is carol',
+      'verify_zero_copy confirms no copies',
+      'parse_with_header extracts header',
+      'parse_with_header correct header field',
+      'parse_with_header correct data count',
+      'parse_with_header correct data field',
+    ],
+  },
 };

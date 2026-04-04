@@ -2765,4 +2765,2138 @@ assertEqual("tupleToUnion second", 42, tupleElement(["hello", 42, true], 1));
       'tupleToUnion accesses second element',
     ],
   },
+
+  // ─── Module 5: Architecture ─────────────────────────────────────────────
+  // "Structure is the first design decision"
+
+  'ts-dependency-injection': {
+    id: 'ts-dependency-injection',
+    language: 'typescript',
+    title: 'Dependency Injection Through Interfaces',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>class UserService {
+  private db = new PostgresConnection("localhost:5432");
+  private logger = new FileLogger("/var/log/app.log");
+
+  async getUser(id: string) {
+    this.logger.log("Fetching user " + id);
+    return this.db.query("SELECT * FROM users WHERE id = $1", [id]);
+  }
+}
+
+// Cannot test without a real database
+// Cannot swap logger without editing the class
+// Cannot reuse in a different environment
+const service = new UserService();</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>This class secretly depends on a Postgres database and a filesystem logger. You cannot see these dependencies from the outside. You cannot test <code>getUser</code> without spinning up a real database. You cannot use this service in a Lambda function where the filesystem is read-only. Every concrete dependency is a hidden coupling that makes the code brittle and untestable.</p>
+
+<p>David Parnas called this the key insight of <em>information hiding</em>: a module should depend on <strong>interfaces</strong>, not on the implementation details of other modules. When <code>UserService</code> hard-codes <code>PostgresConnection</code>, it has violated this principle &mdash; it knows <em>how</em> data is stored, not just <em>that</em> data can be stored.</p>
+
+<h3>The Beautiful Way: Constructor-Injected Dependencies</h3>
+<pre><code>interface Database {
+  query(sql: string, params: unknown[]): Promise<unknown>;
+}
+
+interface Logger {
+  log(message: string): void;
+}
+
+interface UserServiceDeps {
+  db: Database;
+  logger: Logger;
+}
+
+function createUserService(deps: UserServiceDeps) {
+  return {
+    getUser: async (id: string) => {
+      deps.logger.log("Fetching user " + id);
+      return deps.db.query("SELECT * FROM users WHERE id = $1", [id]);
+    }
+  };
+}</code></pre>
+
+<p>Now the dependencies are <strong>visible, swappable, and testable</strong>. Pass a mock database for tests. Pass a console logger for development. Pass a cloud logger for production. The <code>UserService</code> does not know or care.</p>
+
+<blockquote><strong>Taste principle (Parnas, 1972):</strong> "One must provide the intended user with all the information needed to make proper use of the module, and nothing more." Dependencies should be explicit in the interface, not hidden in the implementation.</blockquote>
+
+<h3>Your Task</h3>
+<p>Refactor a <code>NotificationService</code> that internally creates its own email client, SMS client, and logger. Define interfaces for each dependency, create a <code>NotificationServiceDeps</code> type, and implement <code>createNotificationService(deps)</code> that accepts them via constructor injection. Then demonstrate testability by creating a mock version.</p>
+`,
+    starterCode: `// UGLY: The service creates its own dependencies internally
+// Refactor this into clean dependency injection
+
+// Step 1: Define interfaces for each dependency
+// interface EmailClient { ... }
+// interface SmsClient { ... }
+// interface Logger { ... }
+
+// Step 2: Define a Deps type grouping all dependencies
+// interface NotificationServiceDeps { ... }
+
+// Step 3: Implement the factory function
+// function createNotificationService(deps: NotificationServiceDeps) { ... }
+
+// The service should have these methods:
+// - sendEmail(to: string, subject: string, body: string): boolean
+// - sendSms(to: string, message: string): boolean
+// - getLog(): string[]
+
+// Step 4: Create mock implementations for testing
+// function createMockDeps(): NotificationServiceDeps { ... }
+`,
+    solutionCode: `interface EmailClient {
+  send(to: string, subject: string, body: string): boolean;
+}
+
+interface SmsClient {
+  send(to: string, message: string): boolean;
+}
+
+interface Logger {
+  log(message: string): void;
+  getEntries(): string[];
+}
+
+interface NotificationServiceDeps {
+  email: EmailClient;
+  sms: SmsClient;
+  logger: Logger;
+}
+
+function createNotificationService(deps: NotificationServiceDeps) {
+  return {
+    sendEmail(to: string, subject: string, body: string): boolean {
+      deps.logger.log(\`email:\${to}:\${subject}\`);
+      return deps.email.send(to, subject, body);
+    },
+    sendSms(to: string, message: string): boolean {
+      deps.logger.log(\`sms:\${to}:\${message}\`);
+      return deps.sms.send(to, message);
+    },
+    getLog(): string[] {
+      return deps.logger.getEntries();
+    }
+  };
+}
+
+function createMockDeps(): NotificationServiceDeps {
+  const entries: string[] = [];
+  return {
+    email: { send: (_to, _subj, _body) => true },
+    sms: { send: (_to, _msg) => true },
+    logger: {
+      log: (msg: string) => entries.push(msg),
+      getEntries: () => entries,
+    }
+  };
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const mockDeps = createMockDeps();
+const service = createNotificationService(mockDeps);
+
+assertEqual("sendEmail returns true", true, service.sendEmail("a@b.com", "Hi", "Hello"));
+assertEqual("sendSms returns true", true, service.sendSms("+1234", "Hey"));
+assertEqual("log has two entries", 2, service.getLog().length);
+assertEqual("log first entry is email", true, service.getLog()[0].includes("email"));
+assertEqual("log second entry is sms", true, service.getLog()[1].includes("sms"));
+
+const mockDeps2 = createMockDeps();
+const service2 = createNotificationService(mockDeps2);
+assertEqual("fresh service has empty log", 0, service2.getLog().length);
+`,
+    hints: [
+      'Start by defining three interfaces: <code>EmailClient</code> with a <code>send(to, subject, body)</code> method, <code>SmsClient</code> with <code>send(to, message)</code>, and <code>Logger</code> with <code>log(message)</code> and <code>getEntries()</code>.',
+      'Group all dependencies into a single <code>NotificationServiceDeps</code> interface: <code>{ email: EmailClient; sms: SmsClient; logger: Logger }</code>. This makes the full dependency surface visible at a glance.',
+      'The factory function <code>createNotificationService(deps)</code> returns an object with methods that delegate to <code>deps</code>. Each method should log its action via <code>deps.logger.log()</code> before calling the underlying client.',
+      'For <code>createMockDeps()</code>, create simple objects that satisfy each interface. The mock email/sms clients can just return <code>true</code>. The mock logger stores entries in a closure-captured array.',
+    ],
+    concepts: ['dependency injection', 'interface segregation', 'inversion of control', 'testability', 'Parnas information hiding', 'constructor injection'],
+    successPatterns: [
+      'interface\\s+EmailClient',
+      'interface\\s+NotificationServiceDeps',
+      'createNotificationService\\s*\\(\\s*deps',
+      'createMockDeps',
+    ],
+    testNames: [
+      'sendEmail returns true with mock',
+      'sendSms returns true with mock',
+      'log has two entries after two sends',
+      'log first entry is email',
+      'log second entry is sms',
+      'fresh service has empty log',
+    ],
+  },
+
+  'ts-state-machines': {
+    id: 'ts-state-machines',
+    language: 'typescript',
+    title: 'Type-Level State Machines',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>class Document {
+  state: string = "draft";
+
+  publish() {
+    if (this.state === "reviewed") {
+      this.state = "published";
+    } else {
+      throw new Error("Can only publish reviewed documents");
+    }
+  }
+
+  archive() {
+    if (this.state === "published") {
+      this.state = "archived";
+    } else {
+      throw new Error("Can only archive published documents");
+    }
+  }
+}
+
+// This compiles! But crashes at runtime.
+const doc = new Document();
+doc.publish(); // Error: Can only publish reviewed documents</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>The state is a <code>string</code>. Every transition requires a runtime check. Invalid transitions compile just fine and blow up in production. Adding a new state means auditing every method to find which transitions are affected. This is exactly the situation where "make illegal states unrepresentable" applies &mdash; the type system should prevent calling <code>publish()</code> on a draft, not a runtime <code>if</code> check.</p>
+
+<h3>The Beautiful Way: Discriminated Union State Machine</h3>
+<pre><code>type Draft = { state: 'draft'; content: string };
+type InReview = { state: 'review'; content: string; reviewer: string };
+type Published = { state: 'published'; content: string; publishedAt: Date };
+type Archived = { state: 'archived'; content: string; archivedAt: Date };
+
+type Document = Draft | InReview | Published | Archived;
+
+// These functions encode VALID transitions in the type system
+function submitForReview(doc: Draft, reviewer: string): InReview { ... }
+function approve(doc: InReview): Published { ... }
+function archive(doc: Published): Archived { ... }
+// approve(draft) is a COMPILE ERROR - not a runtime error</code></pre>
+
+<p>Now the compiler enforces the workflow. You literally cannot call <code>approve</code> on a <code>Draft</code> &mdash; the types do not allow it. Each state carries exactly the data it needs (a <code>Draft</code> has no <code>publishedAt</code>; a <code>Published</code> document must have one).</p>
+
+<blockquote><strong>Taste principle (Minsky):</strong> "Make illegal states unrepresentable." When your state machine is encoded in the type system, invalid transitions are compile errors, not runtime exceptions. The compiler becomes your workflow engine.</blockquote>
+
+<h3>Your Task</h3>
+<p>Model a document workflow with four states: <code>Draft</code>, <code>InReview</code>, <code>Published</code>, and <code>Archived</code>. Implement transition functions where each function only accepts the correct input state and returns the next state. Also implement a <code>getStatusLine(doc: Document): string</code> function that returns a description via exhaustive pattern matching.</p>
+`,
+    starterCode: `// Model a document workflow as a type-level state machine.
+// States: Draft -> InReview -> Published -> Archived
+// Invalid transitions should be COMPILE ERRORS, not runtime errors.
+
+// Step 1: Define each state as a distinct type with appropriate data
+// type Draft = { state: 'draft'; ... }
+// type InReview = { state: 'review'; ... }
+// type Published = { state: 'published'; ... }
+// type Archived = { state: 'archived'; ... }
+
+// Step 2: Union them into a Document type
+// type Document = Draft | InReview | Published | Archived;
+
+// Step 3: Implement transition functions
+// function createDraft(content: string): Draft
+// function submitForReview(doc: Draft, reviewer: string): InReview
+// function approve(doc: InReview): Published
+// function archive(doc: Published): Archived
+
+// Step 4: Implement an exhaustive status function
+// function getStatusLine(doc: Document): string
+`,
+    solutionCode: `type Draft = { state: 'draft'; content: string };
+type InReview = { state: 'review'; content: string; reviewer: string };
+type Published = { state: 'published'; content: string; publishedAt: number };
+type Archived = { state: 'archived'; content: string; archivedAt: number };
+
+type Document = Draft | InReview | Published | Archived;
+
+function createDraft(content: string): Draft {
+  return { state: 'draft', content };
+}
+
+function submitForReview(doc: Draft, reviewer: string): InReview {
+  return { state: 'review', content: doc.content, reviewer };
+}
+
+function approve(doc: InReview): Published {
+  return { state: 'published', content: doc.content, publishedAt: Date.now() };
+}
+
+function archive(doc: Published): Archived {
+  return { state: 'archived', content: doc.content, archivedAt: Date.now() };
+}
+
+function getStatusLine(doc: Document): string {
+  switch (doc.state) {
+    case 'draft': return \`Draft: \${doc.content}\`;
+    case 'review': return \`In review by \${doc.reviewer}\`;
+    case 'published': return \`Published: \${doc.content}\`;
+    case 'archived': return \`Archived: \${doc.content}\`;
+  }
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const draft = createDraft("Hello World");
+assertEqual("draft state", "draft", draft.state);
+assertEqual("draft content", "Hello World", draft.content);
+
+const reviewed = submitForReview(draft, "Alice");
+assertEqual("review state", "review", reviewed.state);
+assertEqual("review reviewer", "Alice", reviewed.reviewer);
+
+const published = approve(reviewed);
+assertEqual("published state", "published", published.state);
+assertEqual("published has publishedAt", true, typeof published.publishedAt === "number");
+
+const archived = archive(published);
+assertEqual("archived state", "archived", archived.state);
+
+assertEqual("draft status line", "Draft: Hello World", getStatusLine(draft));
+assertEqual("review status line", true, getStatusLine(reviewed).includes("Alice"));
+assertEqual("published status line", true, getStatusLine(published).includes("Published"));
+assertEqual("archived status line", true, getStatusLine(archived).includes("Archived"));
+`,
+    hints: [
+      'Each state is a separate type with a <code>state</code> discriminant field. <code>Draft</code> has <code>state: \'draft\'</code> and <code>content: string</code>. <code>InReview</code> adds <code>reviewer: string</code>. <code>Published</code> adds <code>publishedAt: number</code>.',
+      'Transition functions accept ONLY the valid input state. <code>submitForReview(doc: Draft, ...)</code> &mdash; not <code>Document</code>, specifically <code>Draft</code>. This makes calling <code>submitForReview(published)</code> a compile error.',
+      'Each transition returns a new object with the next state\'s discriminant. <code>submitForReview</code> takes a <code>Draft</code> and returns <code>InReview</code> by spreading relevant fields and adding the new state.',
+      'For <code>getStatusLine</code>, switch on <code>doc.state</code>. TypeScript narrows the type in each branch, so you can access <code>doc.reviewer</code> in the <code>\'review\'</code> case. The exhaustive switch ensures all states are handled.',
+    ],
+    concepts: ['state machines', 'discriminated unions', 'make illegal states unrepresentable', 'type-level transitions', 'exhaustive matching', 'workflow modeling'],
+    successPatterns: [
+      "state:\\s*'draft'",
+      "state:\\s*'review'",
+      "state:\\s*'published'",
+      'function\\s+submitForReview\\s*\\(\\s*doc:\\s*Draft',
+    ],
+    testNames: [
+      'draft has correct state',
+      'draft has correct content',
+      'review has correct state',
+      'review has correct reviewer',
+      'published has correct state',
+      'published has publishedAt timestamp',
+      'archived has correct state',
+      'draft status line is correct',
+      'review status line includes reviewer',
+      'published status line includes Published',
+      'archived status line includes Archived',
+    ],
+  },
+
+  'ts-plugin-system': {
+    id: 'ts-plugin-system',
+    language: 'typescript',
+    title: 'Typed Plugin Architecture',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>const plugins: Record<string, any> = {};
+
+function registerPlugin(name: string, plugin: any) {
+  plugins[name] = plugin;
+}
+
+function runPlugin(name: string, data: any): any {
+  return plugins[name]?.process(data);
+}
+
+// No type safety. What capabilities does "analytics" have?
+// What shape is "data"? What does process return?
+registerPlugin("analytics", { process: (x: any) => x });
+const result = runPlugin("analytics", { event: "click" }); // result is any</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>Everything is <code>any</code>. You cannot discover what a plugin can do without reading its source code. You cannot verify that a plugin conforms to a contract. You cannot get autocompletion when using a plugin. The plugin registry is a typed black hole &mdash; types go in, <code>any</code> comes out.</p>
+
+<h3>The Beautiful Way: Generic Plugin Types</h3>
+<pre><code>interface Plugin&lt;TInput, TOutput&gt; {
+  name: string;
+  process(input: TInput): TOutput;
+}
+
+interface PluginRegistry {
+  register&lt;I, O&gt;(plugin: Plugin&lt;I, O&gt;): void;
+  get&lt;I, O&gt;(name: string): Plugin&lt;I, O&gt; | undefined;
+}</code></pre>
+
+<p>Now each plugin declares its input and output types. The registry preserves those types. Consumers know exactly what shape data goes in and what comes out, with full IDE support.</p>
+
+<blockquote><strong>Taste principle (Meyer, Open/Closed):</strong> "Software entities should be open for extension, but closed for modification." A well-typed plugin system lets you add new capabilities without modifying the host. The type system ensures each extension conforms to the contract.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a typed plugin system. Define a <code>Plugin&lt;TInput, TOutput&gt;</code> interface, implement a <code>PluginHost</code> that can register and execute plugins by name, and create concrete plugins (a Validator and a Transformer) that demonstrate type-safe composition.</p>
+`,
+    starterCode: `// Build a typed plugin system.
+// No 'any' allowed except where absolutely necessary for the internal registry.
+
+// Step 1: Define the Plugin interface
+// interface Plugin<TInput, TOutput> { ... }
+
+// Step 2: Create a PluginHost that manages registration and execution
+// function createPluginHost() { ... }
+// It should have:
+//   register<I, O>(plugin: Plugin<I, O>): void
+//   execute<I, O>(name: string, input: I): O | undefined
+//   listPlugins(): string[]
+
+// Step 3: Create concrete plugins
+// A string-validator plugin: input string, output { valid: boolean; errors: string[] }
+// A number-doubler plugin: input number, output number
+
+// Step 4: Wire them together and demonstrate
+`,
+    solutionCode: `interface Plugin<TInput, TOutput> {
+  name: string;
+  process(input: TInput): TOutput;
+}
+
+function createPluginHost() {
+  const registry = new Map<string, Plugin<unknown, unknown>>();
+
+  return {
+    register<I, O>(plugin: Plugin<I, O>): void {
+      registry.set(plugin.name, plugin as Plugin<unknown, unknown>);
+    },
+    execute<I, O>(name: string, input: I): O | undefined {
+      const plugin = registry.get(name);
+      if (!plugin) return undefined;
+      return plugin.process(input) as O;
+    },
+    listPlugins(): string[] {
+      return Array.from(registry.keys());
+    }
+  };
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+const stringValidator: Plugin<string, ValidationResult> = {
+  name: 'string-validator',
+  process(input: string): ValidationResult {
+    const errors: string[] = [];
+    if (input.length === 0) errors.push('empty string');
+    if (input.length > 100) errors.push('too long');
+    return { valid: errors.length === 0, errors };
+  }
+};
+
+const numberDoubler: Plugin<number, number> = {
+  name: 'number-doubler',
+  process(input: number): number {
+    return input * 2;
+  }
+};
+
+const host = createPluginHost();
+host.register(stringValidator);
+host.register(numberDoubler);
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+assertEqual("listPlugins has two", 2, host.listPlugins().length);
+assertEqual("listPlugins includes validator", true, host.listPlugins().includes("string-validator"));
+assertEqual("listPlugins includes doubler", true, host.listPlugins().includes("number-doubler"));
+
+const validResult = host.execute<string, ValidationResult>("string-validator", "hello");
+assertEqual("valid string passes", true, validResult?.valid);
+assertEqual("valid string no errors", 0, validResult?.errors.length);
+
+const invalidResult = host.execute<string, ValidationResult>("string-validator", "");
+assertEqual("empty string fails", false, invalidResult?.valid);
+assertEqual("empty string has error", 1, invalidResult?.errors.length);
+
+const doubled = host.execute<number, number>("number-doubler", 21);
+assertEqual("doubler works", 42, doubled);
+
+const missing = host.execute<string, string>("nonexistent", "test");
+assertEqual("missing plugin returns undefined", undefined, missing);
+`,
+    hints: [
+      'The <code>Plugin&lt;TInput, TOutput&gt;</code> interface needs a <code>name: string</code> for registry lookup and a <code>process(input: TInput): TOutput</code> method for execution.',
+      'Internally, the <code>PluginHost</code> stores plugins as <code>Map&lt;string, Plugin&lt;unknown, unknown&gt;&gt;</code>. You need to cast when storing and retrieving, but the public API stays generic and type-safe.',
+      'When creating concrete plugins, explicitly type them: <code>const myPlugin: Plugin&lt;string, ValidationResult&gt; = { ... }</code>. This ensures the plugin conforms to the interface at the definition site.',
+      'The <code>execute</code> method returns <code>O | undefined</code> to handle the case where no plugin is registered for that name. Use the <code>Map.get()</code> method and check for <code>undefined</code>.',
+    ],
+    concepts: ['plugin architecture', 'open/closed principle', 'generic interfaces', 'type-safe registry', 'extension points', 'composition over inheritance'],
+    successPatterns: [
+      'interface\\s+Plugin\\s*<',
+      'createPluginHost',
+      'registry\\.set',
+      'Plugin<string,\\s*ValidationResult>',
+    ],
+    testNames: [
+      'listPlugins has two registered',
+      'listPlugins includes validator',
+      'listPlugins includes doubler',
+      'valid string passes validation',
+      'valid string has no errors',
+      'empty string fails validation',
+      'empty string has error message',
+      'doubler doubles correctly',
+      'missing plugin returns undefined',
+    ],
+  },
+
+  'ts-module-boundaries': {
+    id: 'ts-module-boundaries',
+    language: 'typescript',
+    title: 'Clean Module Boundaries',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>// user-module.ts — exports EVERYTHING
+export function hashPassword(pw: string): string { ... }
+export function validateEmail(email: string): boolean { ... }
+export function generateUserId(): string { ... }
+export function formatUserForDb(user: User): DbRow { ... }
+export function parseUserFromDb(row: DbRow): User { ... }
+export function normalizeUsername(name: string): string { ... }
+export function checkPasswordStrength(pw: string): number { ... }
+export interface DbRow { [key: string]: unknown }
+export interface User { id: string; name: string; email: string }
+export interface UserPreferences { theme: string; lang: string }
+// ... 20 more exports
+
+// consumer.ts — depends on internal helpers
+import { hashPassword, formatUserForDb, parseUserFromDb,
+         normalizeUsername, DbRow } from './user-module';</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>When a module exports everything, consumers couple to internal implementation details. If you rename <code>formatUserForDb</code> or change <code>DbRow</code>, you break consumers who should never have used those internals. There is no boundary between "public API" and "internal helpers." The module has no shape &mdash; it is a bag of functions.</p>
+
+<h3>The Beautiful Way: Facade Pattern</h3>
+<pre><code>// Public API — the only thing consumers import
+export interface UserModule {
+  createUser(name: string, email: string, password: string): User;
+  getUser(id: string): User | undefined;
+  updateUser(id: string, updates: Partial<Pick<User, 'name' | 'email'>>): User;
+  authenticate(email: string, password: string): User | undefined;
+}
+
+export interface User {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+}
+
+// Everything else is internal — not exported</code></pre>
+
+<p>Now the module has a clear, small surface area. Consumers depend on the <em>contract</em>, not the implementation. You can refactor every internal function without breaking anyone.</p>
+
+<blockquote><strong>Taste principle (Parnas, 1972):</strong> "The connections between modules are the assumptions which the modules make about each other." A clean module boundary minimizes these assumptions. The fewer exports, the fewer assumptions, the more freedom to change.</blockquote>
+
+<h3>Your Task</h3>
+<p>You are given a module that exports all its internals. Refactor it into a clean facade: define a public <code>UserModule</code> interface with only the operations consumers need, implement it with a factory function that hides all internals in a closure, and export only the interface and the factory.</p>
+`,
+    starterCode: `// UGLY: Everything is exported, consumers depend on internals
+// Refactor into a clean module with a small public API
+
+// Internal helpers (should NOT be in the public API)
+function hashPassword(pw: string): string {
+  return "hashed_" + pw;
+}
+
+function generateId(): string {
+  return "uid_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// Step 1: Define the public User type (readonly fields)
+// interface User { ... }
+
+// Step 2: Define the public UserModule interface
+// Only expose: createUser, getUser, authenticate, listUsers
+// interface UserModule { ... }
+
+// Step 3: Implement createUserModule() that hides all internals in a closure
+// function createUserModule(): UserModule { ... }
+// Internally it manages a Map<string, { ...user, passwordHash: string }>
+`,
+    solutionCode: `function hashPassword(pw: string): string {
+  return "hashed_" + pw;
+}
+
+function generateId(): string {
+  return "uid_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+interface User {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+}
+
+interface UserModule {
+  createUser(name: string, email: string, password: string): User;
+  getUser(id: string): User | undefined;
+  authenticate(email: string, password: string): User | undefined;
+  listUsers(): User[];
+}
+
+function createUserModule(): UserModule {
+  const store = new Map<string, { id: string; name: string; email: string; passwordHash: string }>();
+
+  function toPublicUser(record: { id: string; name: string; email: string }): User {
+    return { id: record.id, name: record.name, email: record.email };
+  }
+
+  return {
+    createUser(name: string, email: string, password: string): User {
+      const id = generateId();
+      const normalizedEmail = normalizeEmail(email);
+      const passwordHash = hashPassword(password);
+      const record = { id, name, email: normalizedEmail, passwordHash };
+      store.set(id, record);
+      return toPublicUser(record);
+    },
+    getUser(id: string): User | undefined {
+      const record = store.get(id);
+      return record ? toPublicUser(record) : undefined;
+    },
+    authenticate(email: string, password: string): User | undefined {
+      const normalizedEmail = normalizeEmail(email);
+      const hash = hashPassword(password);
+      for (const record of store.values()) {
+        if (record.email === normalizedEmail && record.passwordHash === hash) {
+          return toPublicUser(record);
+        }
+      }
+      return undefined;
+    },
+    listUsers(): User[] {
+      return Array.from(store.values()).map(toPublicUser);
+    }
+  };
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const mod = createUserModule();
+const user = mod.createUser("Alice", " Alice@Example.COM ", "secret123");
+
+assertEqual("createUser returns name", "Alice", user.name);
+assertEqual("createUser normalizes email", "alice@example.com", user.email);
+assertEqual("createUser returns id", true, user.id.startsWith("uid_"));
+
+const fetched = mod.getUser(user.id);
+assertEqual("getUser returns same user", user.id, fetched?.id);
+assertEqual("getUser returns name", "Alice", fetched?.name);
+
+const authed = mod.authenticate("alice@example.com", "secret123");
+assertEqual("authenticate succeeds", user.id, authed?.id);
+
+const wrongPw = mod.authenticate("alice@example.com", "wrong");
+assertEqual("wrong password fails", undefined, wrongPw);
+
+assertEqual("listUsers has one", 1, mod.listUsers().length);
+
+const user2 = mod.createUser("Bob", "bob@test.com", "pw");
+assertEqual("listUsers has two", 2, mod.listUsers().length);
+`,
+    hints: [
+      'The <code>User</code> interface should only have <code>readonly</code> fields: <code>id</code>, <code>name</code>, <code>email</code>. No <code>passwordHash</code> &mdash; that is an internal detail that should never leak through the public API.',
+      'The <code>UserModule</code> interface defines the four public methods: <code>createUser</code>, <code>getUser</code>, <code>authenticate</code>, <code>listUsers</code>. This is the entire surface area consumers see.',
+      'Inside <code>createUserModule()</code>, store records in a <code>Map</code> with password hashes. Create a private <code>toPublicUser()</code> helper that strips internal fields before returning to consumers.',
+      'For <code>authenticate</code>, normalize the input email and hash the password, then search the store for a matching record. Return the public user (without hash) or <code>undefined</code>.',
+    ],
+    concepts: ['module boundaries', 'facade pattern', 'information hiding', 'Parnas decomposition', 'encapsulation', 'public API design', 'closure-based privacy'],
+    successPatterns: [
+      'interface\\s+UserModule',
+      'interface\\s+User',
+      'createUserModule\\s*\\(\\s*\\)\\s*:\\s*UserModule',
+      'toPublicUser',
+    ],
+    testNames: [
+      'createUser returns correct name',
+      'createUser normalizes email',
+      'createUser returns prefixed id',
+      'getUser retrieves by id',
+      'getUser returns correct name',
+      'authenticate succeeds with correct password',
+      'authenticate fails with wrong password',
+      'listUsers returns one after first create',
+      'listUsers returns two after second create',
+    ],
+  },
+
+  // ─── Module 6: Advanced Patterns ────────────────────────────────────────
+  // "Types as a design language"
+
+  'ts-phantom-types': {
+    id: 'ts-phantom-types',
+    language: 'typescript',
+    title: 'Phantom Types for Compile-Time State',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>class FileHandle {
+  private path: string;
+  private isOpen: boolean = false;
+
+  open() { this.isOpen = true; }
+  close() { this.isOpen = false; }
+
+  write(data: string) {
+    if (!this.isOpen) throw new Error("Cannot write to closed file!");
+    // ... write data
+  }
+
+  read(): string {
+    if (!this.isOpen) throw new Error("Cannot read from closed file!");
+    return "data";
+  }
+}
+
+// Compiles fine, crashes at runtime
+const f = new FileHandle();
+f.write("data"); // Runtime error!</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>The handle tracks its state with a boolean at runtime. Every operation must check the boolean. The compiler happily lets you write to a closed file &mdash; you only discover the bug when the code runs. And the boolean can get out of sync with the actual OS-level file state.</p>
+
+<h3>The Beautiful Way: Phantom Types</h3>
+<pre><code>type Open = { readonly __state: unique symbol };
+type Closed = { readonly __state: unique symbol };
+
+interface Handle&lt;State&gt; {
+  readonly path: string;
+  readonly _phantom?: State; // never actually used at runtime
+}
+
+function openFile(path: string): Handle&lt;Open&gt; { ... }
+function writeFile(handle: Handle&lt;Open&gt;, data: string): void { ... }
+function closeFile(handle: Handle&lt;Open&gt;): Handle&lt;Closed&gt; { ... }
+
+// writeFile(closedHandle, "data") — COMPILE ERROR!
+// The type system tracks file state without any runtime cost.</code></pre>
+
+<p>Phantom types are type parameters that exist only at the type level &mdash; they have no runtime representation. They let you encode state transitions in the type system so that invalid operations are compile errors, not runtime exceptions.</p>
+
+<blockquote><strong>Taste principle:</strong> Compile-time state tracking. If a constraint can be checked by the compiler, it should be. Runtime checks are for things the compiler genuinely cannot know (user input, network responses). File handle state is deterministic from the code path &mdash; the compiler CAN track it.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a file handle system using phantom types. Create <code>Open</code> and <code>Closed</code> marker types, a <code>Handle&lt;State&gt;</code> type, and functions <code>openFile</code>, <code>writeFile</code>, <code>readFile</code>, <code>closeFile</code> where read/write only accept <code>Handle&lt;Open&gt;</code> and <code>closeFile</code> returns <code>Handle&lt;Closed&gt;</code>.</p>
+`,
+    starterCode: `// Implement phantom types for file handle state tracking.
+// The goal: write() and read() only accept open handles.
+// closeFile() transitions Handle<Open> to Handle<Closed>.
+
+// Step 1: Define phantom marker types
+// type Open = ...
+// type Closed = ...
+
+// Step 2: Define Handle<State> that carries the phantom type
+// interface Handle<State> { ... }
+
+// Step 3: Implement state-aware functions
+// function openFile(path: string): Handle<Open>
+// function writeFile(handle: Handle<Open>, data: string): string
+// function readFile(handle: Handle<Open>): string
+// function closeFile(handle: Handle<Open>): Handle<Closed>
+
+// Step 4: Create a demo function that uses the full lifecycle
+// function processFile(path: string): string[]
+`,
+    solutionCode: `type Open = { readonly __state: 'open' };
+type Closed = { readonly __state: 'closed' };
+
+interface Handle<State> {
+  readonly path: string;
+  readonly _phantom?: State;
+  readonly _log: string[];
+}
+
+function openFile(path: string): Handle<Open> {
+  return { path, _log: [\`opened:\${path}\`] };
+}
+
+function writeFile(handle: Handle<Open>, data: string): string {
+  handle._log.push(\`write:\${data}\`);
+  return \`wrote \${data.length} bytes\`;
+}
+
+function readFile(handle: Handle<Open>): string {
+  handle._log.push("read");
+  return \`content of \${handle.path}\`;
+}
+
+function closeFile(handle: Handle<Open>): Handle<Closed> {
+  return { path: handle.path, _log: [...handle._log, "closed"] };
+}
+
+function processFile(path: string): string[] {
+  const h = openFile(path);
+  writeFile(h, "hello");
+  const data = readFile(h);
+  const closed = closeFile(h);
+  return [...h._log, \`final:\${closed.path}\`];
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const h = openFile("/tmp/test.txt");
+assertEqual("openFile returns path", "/tmp/test.txt", h.path);
+assertEqual("openFile logs open", true, h._log[0].includes("opened"));
+
+const writeResult = writeFile(h, "hello world");
+assertEqual("writeFile returns byte info", true, writeResult.includes("11"));
+
+const content = readFile(h);
+assertEqual("readFile returns content", true, content.includes("/tmp/test.txt"));
+
+const closed = closeFile(h);
+assertEqual("closeFile returns path", "/tmp/test.txt", closed.path);
+assertEqual("closeFile logs close", true, closed._log[closed._log.length - 1] === "closed");
+
+const results = processFile("/data/file.csv");
+assertEqual("processFile returns array", true, Array.isArray(results));
+assertEqual("processFile has entries", true, results.length >= 3);
+`,
+    hints: [
+      'Phantom marker types just need to be distinct. The simplest approach: <code>type Open = { readonly __state: \'open\' };</code> and <code>type Closed = { readonly __state: \'closed\' };</code>. These types are never instantiated at runtime.',
+      '<code>Handle&lt;State&gt;</code> carries the phantom type parameter but never uses it at runtime. The optional <code>_phantom?: State</code> field makes TypeScript treat <code>Handle&lt;Open&gt;</code> and <code>Handle&lt;Closed&gt;</code> as different types.',
+      'Functions like <code>writeFile(handle: Handle&lt;Open&gt;, data: string)</code> only accept open handles. <code>closeFile(handle: Handle&lt;Open&gt;): Handle&lt;Closed&gt;</code> transitions the phantom type from Open to Closed.',
+      'The <code>processFile</code> function demonstrates the full lifecycle: open, write, read, close. Notice how the types guide you &mdash; you cannot accidentally read after closing because the closed handle has the wrong phantom type.',
+    ],
+    concepts: ['phantom types', 'compile-time state', 'type-level state machine', 'zero-cost abstraction', 'file handle safety', 'marker types'],
+    successPatterns: [
+      'type\\s+Open\\s*=',
+      'type\\s+Closed\\s*=',
+      'Handle<\\s*Open\\s*>',
+      'Handle<\\s*Closed\\s*>',
+    ],
+    testNames: [
+      'openFile returns correct path',
+      'openFile logs open event',
+      'writeFile returns byte count info',
+      'readFile returns file content',
+      'closeFile returns correct path',
+      'closeFile logs close event',
+      'processFile returns array',
+      'processFile has multiple entries',
+    ],
+  },
+
+  'ts-opaque-types': {
+    id: 'ts-opaque-types',
+    language: 'typescript',
+    title: 'Opaque Types via Branding',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>function getUser(id: string): User { ... }
+function getOrder(id: string): Order { ... }
+
+const userId = "user_123";
+const orderId = "order_456";
+
+// This compiles. This is a bug.
+getUser(orderId);  // Passing an order ID where a user ID is expected
+getOrder(userId);  // Passing a user ID where an order ID is expected</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>Both IDs are <code>string</code>. TypeScript's structural type system treats them as interchangeable. You can pass an order ID to <code>getUser()</code> and the compiler will not complain. This is the same class of bug as the Mars Climate Orbiter: two values with the same representation but different semantics, and no type-level distinction.</p>
+
+<h3>The Beautiful Way: Branded Opaque Types</h3>
+<pre><code>declare const UserIdBrand: unique symbol;
+type UserId = string & { readonly [UserIdBrand]: typeof UserIdBrand };
+
+declare const OrderIdBrand: unique symbol;
+type OrderId = string & { readonly [OrderIdBrand]: typeof OrderIdBrand };
+
+function makeUserId(raw: string): UserId {
+  return raw as UserId;  // validated constructor
+}
+
+function getUser(id: UserId): User { ... }
+getUser(orderId); // COMPILE ERROR: OrderId is not assignable to UserId</code></pre>
+
+<p>The brand is a phantom property that exists only in the type system. At runtime, a <code>UserId</code> is still just a string. But at compile time, it is structurally incompatible with <code>OrderId</code>, even though both are branded strings.</p>
+
+<blockquote><strong>Taste principle:</strong> Encapsulation via types. An opaque type hides its representation and forces consumers to go through validated constructors. This is the type-level equivalent of a module boundary: you control how values are created, ensuring invariants hold.</blockquote>
+
+<h3>Your Task</h3>
+<p>Create opaque branded types for <code>UserId</code>, <code>OrderId</code>, and <code>Email</code>. Each should have a validated constructor that enforces format rules. Then build functions that accept ONLY the correct branded type.</p>
+`,
+    starterCode: `// Create opaque branded types that prevent mixing up different string IDs.
+
+// Step 1: Define branded types using unique symbols
+// type UserId = string & { readonly __brand: ... }
+// type OrderId = string & { readonly __brand: ... }
+// type Email = string & { readonly __brand: ... }
+
+// Step 2: Validated constructors (return the branded type or throw)
+// function makeUserId(raw: string): UserId
+// function makeOrderId(raw: string): OrderId
+// function makeEmail(raw: string): Email
+
+// Step 3: Functions that require specific branded types
+// function getUserName(id: UserId): string
+// function getOrderTotal(id: OrderId): number
+// function sendEmail(to: Email, body: string): string
+
+// Validation rules:
+// - UserId: must start with "user_"
+// - OrderId: must start with "order_"
+// - Email: must contain "@"
+`,
+    solutionCode: `declare const UserIdBrand: unique symbol;
+type UserId = string & { readonly [UserIdBrand]: typeof UserIdBrand };
+
+declare const OrderIdBrand: unique symbol;
+type OrderId = string & { readonly [OrderIdBrand]: typeof OrderIdBrand };
+
+declare const EmailBrand: unique symbol;
+type Email = string & { readonly [EmailBrand]: typeof EmailBrand };
+
+function makeUserId(raw: string): UserId {
+  if (!raw.startsWith("user_")) throw new Error("UserId must start with user_");
+  return raw as UserId;
+}
+
+function makeOrderId(raw: string): OrderId {
+  if (!raw.startsWith("order_")) throw new Error("OrderId must start with order_");
+  return raw as OrderId;
+}
+
+function makeEmail(raw: string): Email {
+  if (!raw.includes("@")) throw new Error("Email must contain @");
+  return raw as Email;
+}
+
+function getUserName(id: UserId): string {
+  return \`User(\${id})\`;
+}
+
+function getOrderTotal(id: OrderId): number {
+  return 99.99;
+}
+
+function sendEmail(to: Email, body: string): string {
+  return \`Sent to \${to}: \${body}\`;
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const uid = makeUserId("user_123");
+assertEqual("makeUserId succeeds", "user_123", uid as string);
+
+const oid = makeOrderId("order_456");
+assertEqual("makeOrderId succeeds", "order_456", oid as string);
+
+const email = makeEmail("alice@test.com");
+assertEqual("makeEmail succeeds", "alice@test.com", email as string);
+
+let userIdError = false;
+try { makeUserId("order_789"); } catch { userIdError = true; }
+assertEqual("makeUserId rejects bad prefix", true, userIdError);
+
+let orderIdError = false;
+try { makeOrderId("user_789"); } catch { orderIdError = true; }
+assertEqual("makeOrderId rejects bad prefix", true, orderIdError);
+
+let emailError = false;
+try { makeEmail("not-an-email"); } catch { emailError = true; }
+assertEqual("makeEmail rejects missing @", true, emailError);
+
+assertEqual("getUserName works", true, getUserName(uid).includes("user_123"));
+assertEqual("getOrderTotal returns number", 99.99, getOrderTotal(oid));
+assertEqual("sendEmail works", true, sendEmail(email, "hi").includes("alice@test.com"));
+`,
+    hints: [
+      'Declare a unique symbol for each brand: <code>declare const UserIdBrand: unique symbol;</code>. Then intersect it with string: <code>type UserId = string & { readonly [UserIdBrand]: typeof UserIdBrand };</code>.',
+      'The <code>declare const</code> keyword means the symbol exists only in the type system &mdash; no runtime value is created. The intersection type makes <code>UserId</code> structurally different from <code>OrderId</code> even though both are strings at runtime.',
+      'Validated constructors use <code>as</code> to cast after validation: <code>return raw as UserId;</code>. This is the ONE place where the cast is acceptable &mdash; the validation ensures the invariant holds.',
+      'Functions like <code>getUserName(id: UserId)</code> will reject <code>OrderId</code> and plain <code>string</code> at compile time. Only values created through <code>makeUserId()</code> have the <code>UserId</code> brand.',
+    ],
+    concepts: ['opaque types', 'branded types', 'unique symbol', 'type-level encapsulation', 'validated constructors', 'nominal typing in structural systems'],
+    successPatterns: [
+      'unique\\s+symbol',
+      'type\\s+UserId\\s*=\\s*string\\s*&',
+      'type\\s+OrderId\\s*=\\s*string\\s*&',
+      'return\\s+raw\\s+as\\s+UserId',
+    ],
+    testNames: [
+      'makeUserId succeeds with valid prefix',
+      'makeOrderId succeeds with valid prefix',
+      'makeEmail succeeds with valid email',
+      'makeUserId rejects bad prefix',
+      'makeOrderId rejects bad prefix',
+      'makeEmail rejects missing @',
+      'getUserName works with UserId',
+      'getOrderTotal returns number',
+      'sendEmail works with Email',
+    ],
+  },
+
+  'ts-type-safe-events': {
+    id: 'ts-type-safe-events',
+    language: 'typescript',
+    title: 'Type-Safe Event Emitter',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>class EventEmitter {
+  private handlers: Record<string, Function[]> = {};
+
+  on(event: string, handler: Function) {
+    (this.handlers[event] ??= []).push(handler);
+  }
+
+  emit(event: string, ...args: any[]) {
+    this.handlers[event]?.forEach(h => h(...args));
+  }
+}
+
+const emitter = new EventEmitter();
+emitter.on('click', (x: number, y: number) => { ... });
+emitter.emit('click', "not a number", "oops"); // No type error!</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>The event name is an untyped string. The handler is <code>Function</code>. The emit args are <code>any[]</code>. There is zero connection between the event name and the expected payload. You can emit a click event with string arguments and the compiler does not care. This defeats the entire purpose of using TypeScript.</p>
+
+<h3>The Beautiful Way: Mapped Event Types</h3>
+<pre><code>interface EventMap {
+  click: { x: number; y: number };
+  resize: { width: number; height: number };
+  close: void;
+}
+
+interface TypedEmitter&lt;Events&gt; {
+  on&lt;K extends keyof Events&gt;(event: K, handler: (payload: Events[K]) => void): void;
+  emit&lt;K extends keyof Events&gt;(event: K, payload: Events[K]): void;
+}
+
+// emitter.emit('click', { x: 10, y: 20 }); // OK
+// emitter.emit('click', "wrong");           // COMPILE ERROR</code></pre>
+
+<p>Now the event map is the single source of truth. When you write <code>on('click', handler)</code>, TypeScript knows the handler receives <code>{ x: number; y: number }</code>. When you emit, you must provide the correct payload. Add a new event? Just extend the map. The compiler enforces everything.</p>
+
+<blockquote><strong>Taste principle:</strong> Composition + safety. A well-typed event emitter composes the open-ended nature of events (anyone can listen) with the closed safety of types (payloads must match). This is what good API design looks like: flexible where it should be, strict where it must be.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a fully typed event emitter. Define an <code>EventMap</code> interface, implement <code>createEmitter&lt;Events&gt;()</code> that returns <code>on</code>, <code>emit</code>, and <code>off</code> methods, all fully typed against the event map.</p>
+`,
+    starterCode: `// Build a type-safe event emitter where the event map
+// determines handler payload types at compile time.
+
+// Step 1: Define an event map for a UI component
+// interface AppEvents {
+//   click: { x: number; y: number };
+//   keypress: { key: string; shift: boolean };
+//   close: void;
+// }
+
+// Step 2: Implement createEmitter<Events>()
+// Returns: {
+//   on<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): void;
+//   off<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): void;
+//   emit<K extends keyof Events>(event: K, payload: Events[K]): void;
+//   listenerCount<K extends keyof Events>(event: K): number;
+// }
+
+// Step 3: Wire up a demo with AppEvents
+`,
+    solutionCode: `interface AppEvents {
+  click: { x: number; y: number };
+  keypress: { key: string; shift: boolean };
+  close: void;
+}
+
+function createEmitter<Events>() {
+  const handlers = new Map<keyof Events, Array<(payload: any) => void>>();
+
+  return {
+    on<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): void {
+      if (!handlers.has(event)) handlers.set(event, []);
+      handlers.get(event)!.push(handler as (payload: any) => void);
+    },
+    off<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): void {
+      const list = handlers.get(event);
+      if (!list) return;
+      const idx = list.indexOf(handler as (payload: any) => void);
+      if (idx >= 0) list.splice(idx, 1);
+    },
+    emit<K extends keyof Events>(event: K, payload: Events[K]): void {
+      const list = handlers.get(event);
+      if (list) list.forEach(h => h(payload));
+    },
+    listenerCount<K extends keyof Events>(event: K): number {
+      return handlers.get(event)?.length ?? 0;
+    }
+  };
+}
+
+const emitter = createEmitter<AppEvents>();
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+let clickPayload: any = null;
+const clickHandler = (p: { x: number; y: number }) => { clickPayload = p; };
+emitter.on('click', clickHandler);
+
+emitter.emit('click', { x: 10, y: 20 });
+assertEqual("click handler receives payload", 10, clickPayload?.x);
+assertEqual("click handler y value", 20, clickPayload?.y);
+assertEqual("click listener count", 1, emitter.listenerCount('click'));
+
+let keyPayload: any = null;
+emitter.on('keypress', (p) => { keyPayload = p; });
+emitter.emit('keypress', { key: 'a', shift: false });
+assertEqual("keypress handler receives key", 'a', keyPayload?.key);
+assertEqual("keypress handler receives shift", false, keyPayload?.shift);
+
+emitter.off('click', clickHandler);
+assertEqual("click listener count after off", 0, emitter.listenerCount('click'));
+
+let closeFired = false;
+emitter.on('close', () => { closeFired = true; });
+emitter.emit('close', undefined as void);
+assertEqual("close event fires", true, closeFired);
+`,
+    hints: [
+      'The event map is just an interface mapping event names to payload types: <code>interface AppEvents { click: { x: number; y: number }; close: void; }</code>.',
+      '<code>createEmitter&lt;Events&gt;()</code> is generic over the event map. Each method constrains its key with <code>K extends keyof Events</code>, and the payload type is <code>Events[K]</code> &mdash; looked up from the map.',
+      'Internally, store handlers in a <code>Map&lt;keyof Events, Array&lt;(payload: any) =&gt; void&gt;&gt;</code>. The <code>any</code> is hidden inside the implementation; the public API is fully typed.',
+      'For <code>off</code>, find the handler by reference (<code>indexOf</code>) and splice it out. <code>listenerCount</code> returns the length of the handler array for that event, defaulting to 0.',
+    ],
+    concepts: ['typed event emitter', 'mapped types', 'keyof constraint', 'indexed access types', 'generic functions', 'composition and safety'],
+    successPatterns: [
+      'interface\\s+AppEvents',
+      'createEmitter<',
+      'K\\s+extends\\s+keyof\\s+Events',
+      'Events\\[K\\]',
+    ],
+    testNames: [
+      'click handler receives x payload',
+      'click handler receives y payload',
+      'click listener count is 1',
+      'keypress handler receives key',
+      'keypress handler receives shift',
+      'click listener count after off is 0',
+      'close event fires',
+    ],
+  },
+
+  'ts-property-testing': {
+    id: 'ts-property-testing',
+    language: 'typescript',
+    title: 'Property-Based Testing Framework',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>// Testing with specific examples only
+test("reverse reverses", () => {
+  expect(reverse([1, 2, 3])).toEqual([3, 2, 1]);
+});
+
+// What about empty arrays? Single elements? Very long arrays?
+// What about arrays with duplicates? Negative numbers?
+// You test what you think of, and miss what you don't.</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>Example-based tests only cover the cases you thought of. They are biased by your mental model &mdash; which is the same mental model that wrote the buggy code. The bugs are in the cases you <em>did not</em> think of.</p>
+
+<h3>The Beautiful Way: Property-Based Testing</h3>
+<pre><code>// Test the PROPERTY, not specific examples
+property(
+  "reverse is its own inverse",
+  Gen.array(Gen.int(-100, 100)),
+  (arr) => deepEqual(reverse(reverse(arr)), arr)
+);
+
+// This generates hundreds of random arrays and checks the property.
+// If it fails, it SHRINKS to the minimal failing case.</code></pre>
+
+<p>Property-based testing checks universal truths about your code. Instead of "does reverse([1,2,3]) equal [3,2,1]?", it asks "is reverse(reverse(x)) always equal to x?" for hundreds of random inputs. When it finds a failure, it shrinks to the simplest failing case.</p>
+
+<blockquote><strong>Taste principle:</strong> Test what matters, not what is easy. Example-based tests are easy to write but test shallow properties. Property-based tests require thinking about invariants &mdash; which forces you to understand your code more deeply.</blockquote>
+
+<h3>Your Task</h3>
+<p>Build a mini property-testing framework with: <code>Gen&lt;T&gt;</code> generators (<code>Gen.int</code>, <code>Gen.string</code>, <code>Gen.array</code>), a <code>property()</code> function that runs tests, and basic shrinking for integers.</p>
+`,
+    starterCode: `// Build a mini property-based testing framework.
+
+// Step 1: Define Gen<T> — a generator that produces random values
+// interface Gen<T> {
+//   generate(seed: number): T;
+//   shrink(value: T): T[];
+// }
+
+// Step 2: Implement basic generators
+// Gen.int(min, max): Gen<number>
+// Gen.string(maxLen): Gen<string>
+// Gen.array<T>(elemGen: Gen<T>, maxLen?: number): Gen<T[]>
+
+// Step 3: Implement the property checker
+// function property<T>(name: string, gen: Gen<T>, predicate: (value: T) => boolean, numTests?: number): PropertyResult
+
+// Step 4: Define the result type
+// interface PropertyResult { passed: boolean; numTests: number; counterexample?: any; shrunk?: any }
+`,
+    solutionCode: `interface Gen<T> {
+  generate(seed: number): T;
+  shrink(value: T): T[];
+}
+
+interface PropertyResult {
+  passed: boolean;
+  numTests: number;
+  counterexample?: unknown;
+  shrunk?: unknown;
+}
+
+const Gen = {
+  int(min: number, max: number): Gen<number> {
+    return {
+      generate(seed: number): number {
+        const range = max - min + 1;
+        return min + Math.abs(Math.floor(seed * 9301 + 49297) % range);
+      },
+      shrink(value: number): number[] {
+        const results: number[] = [];
+        if (value > 0) results.push(value - 1, Math.floor(value / 2));
+        if (value < 0) results.push(value + 1, Math.ceil(value / 2));
+        if (value !== 0) results.push(0);
+        return results.filter(v => v >= min && v <= max);
+      }
+    };
+  },
+
+  string(maxLen: number): Gen<string> {
+    return {
+      generate(seed: number): string {
+        const len = Math.abs(seed * 9301 + 49297) % (maxLen + 1);
+        const chars = 'abcdefghijklmnopqrstuvwxyz';
+        let result = '';
+        let s = seed;
+        for (let i = 0; i < len; i++) {
+          s = (s * 9301 + 49297) % 233280;
+          result += chars[Math.abs(s) % chars.length];
+        }
+        return result;
+      },
+      shrink(value: string): string[] {
+        if (value.length === 0) return [];
+        return [value.slice(0, -1), value.slice(1), ''];
+      }
+    };
+  },
+
+  array<T>(elemGen: Gen<T>, maxLen: number = 5): Gen<T[]> {
+    return {
+      generate(seed: number): T[] {
+        const len = Math.abs(seed * 9301 + 49297) % (maxLen + 1);
+        const result: T[] = [];
+        let s = seed;
+        for (let i = 0; i < len; i++) {
+          s = (s * 9301 + 49297) % 233280;
+          result.push(elemGen.generate(s));
+        }
+        return result;
+      },
+      shrink(value: T[]): T[][] {
+        if (value.length === 0) return [];
+        const results: T[][] = [[], value.slice(1), value.slice(0, -1)];
+        return results;
+      }
+    };
+  }
+};
+
+function property<T>(name: string, gen: Gen<T>, predicate: (value: T) => boolean, numTests: number = 50): PropertyResult {
+  for (let i = 0; i < numTests; i++) {
+    const value = gen.generate(i);
+    if (!predicate(value)) {
+      let shrunk = value;
+      const candidates = gen.shrink(value);
+      for (const candidate of candidates) {
+        if (!predicate(candidate)) {
+          shrunk = candidate;
+          break;
+        }
+      }
+      return { passed: false, numTests: i + 1, counterexample: value, shrunk };
+    }
+  }
+  return { passed: true, numTests };
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const intGen = Gen.int(0, 100);
+const val = intGen.generate(42);
+assertEqual("int generator produces number", true, typeof val === 'number');
+assertEqual("int generator in range", true, val >= 0 && val <= 100);
+
+const shrunk = intGen.shrink(10);
+assertEqual("int shrink produces candidates", true, shrunk.length > 0);
+assertEqual("int shrink includes smaller values", true, shrunk.some(v => v < 10));
+
+const strGen = Gen.string(10);
+const str = strGen.generate(7);
+assertEqual("string generator produces string", true, typeof str === 'string');
+assertEqual("string generator respects maxLen", true, str.length <= 10);
+
+const arrGen = Gen.array(Gen.int(0, 10), 5);
+const arr = arrGen.generate(3);
+assertEqual("array generator produces array", true, Array.isArray(arr));
+assertEqual("array generator respects maxLen", true, arr.length <= 5);
+
+const passingResult = property("x >= 0", Gen.int(0, 100), x => x >= 0);
+assertEqual("passing property passes", true, passingResult.passed);
+assertEqual("passing property ran tests", 50, passingResult.numTests);
+
+const failResult = property("x < 5", Gen.int(0, 100), x => x < 5);
+assertEqual("failing property fails", false, failResult.passed);
+assertEqual("failing property has counterexample", true, failResult.counterexample !== undefined);
+`,
+    hints: [
+      '<code>Gen&lt;T&gt;</code> needs two methods: <code>generate(seed: number): T</code> for creating values and <code>shrink(value: T): T[]</code> for producing smaller counterexamples. The seed ensures reproducibility.',
+      'For <code>Gen.int(min, max)</code>: use a simple hash function like <code>Math.abs(seed * 9301 + 49297) % range + min</code>. For shrinking, try: value - 1, value / 2, and 0 (all clamped to the valid range).',
+      '<code>Gen.array(elemGen)</code> uses <code>elemGen.generate()</code> in a loop to build arrays. For shrinking, try: empty array, drop first element, drop last element.',
+      'The <code>property()</code> function runs <code>generate(i)</code> for i = 0..numTests-1. On failure, try all <code>shrink()</code> candidates and return the first one that also fails as the shrunk counterexample.',
+    ],
+    concepts: ['property-based testing', 'generators', 'shrinking', 'invariant testing', 'randomized testing', 'test design'],
+    successPatterns: [
+      'interface\\s+Gen<',
+      'int\\(min:\\s*number,\\s*max:\\s*number\\)',
+      'array.*elemGen:\\s*Gen<T>',
+      'function\\s+property',
+    ],
+    testNames: [
+      'int generator produces number',
+      'int generator value in range',
+      'int shrink produces candidates',
+      'int shrink includes smaller values',
+      'string generator produces string',
+      'string generator respects maxLen',
+      'array generator produces array',
+      'array generator respects maxLen',
+      'passing property passes',
+      'passing property ran correct count',
+      'failing property fails',
+      'failing property has counterexample',
+    ],
+  },
+
+  // ─── Module 7: Performance Patterns ─────────────────────────────────────
+  // "Measure first, optimize second"
+
+  'ts-structural-sharing': {
+    id: 'ts-structural-sharing',
+    language: 'typescript',
+    title: 'Persistent Data with Structural Sharing',
+    difficulty: 'advanced',
+    order: 1,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>function updateMap(map: Map<string, number>, key: string, value: number): Map<string, number> {
+  // Deep copy the entire map on every update
+  const newMap = new Map(map);
+  newMap.set(key, value);
+  return newMap;
+}
+
+// 10,000 entries? Copy ALL of them for each update. O(n) per update.</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>Full copy on every update is O(n). For immutable data structures, this means performance degrades linearly with size. If you have 10,000 entries and update one, you copy 9,999 unchanged entries. This is why people say "immutability is expensive" &mdash; but only with naive implementations.</p>
+
+<h3>The Beautiful Way: Structural Sharing</h3>
+<pre><code>// A trie-based map shares unchanged branches.
+// Updating one key only copies the nodes along the path to that key.
+// All other branches are SHARED between old and new versions.
+// O(log n) per update, O(1) sharing of unchanged data.</code></pre>
+
+<p>Persistent data structures share unchanged portions between versions. When you update a key, only the path from root to that key is copied. Everything else is shared. This gives you immutability with O(log n) updates instead of O(n).</p>
+
+<blockquote><strong>Taste principle:</strong> Immutability without copy cost. Structural sharing is the technique that makes immutable data structures practical. It is how Git stores commits, how React compares virtual DOM trees, and how Clojure implements its persistent collections.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a simple persistent map using a binary trie keyed on string hash codes. The key operations: <code>set</code> returns a NEW map (old one unchanged), <code>get</code> retrieves by key, and unchanged branches are shared between versions.</p>
+`,
+    starterCode: `// Implement a persistent map with structural sharing.
+// set() returns a NEW map; the old map is unchanged.
+// Unchanged branches are shared (not copied).
+
+// Step 1: Define the trie node structure
+// interface TrieNode<V> {
+//   key?: string;
+//   value?: V;
+//   left?: TrieNode<V>;
+//   right?: TrieNode<V>;
+// }
+
+// Step 2: Implement a simple hash function for strings
+// function hashKey(key: string): number
+
+// Step 3: Implement the PersistentMap
+// interface PersistentMap<V> {
+//   get(key: string): V | undefined;
+//   set(key: string, value: V): PersistentMap<V>;
+//   has(key: string): boolean;
+//   size: number;
+// }
+
+// Step 4: Factory function
+// function createPersistentMap<V>(): PersistentMap<V>
+`,
+    solutionCode: `interface TrieNode<V> {
+  key?: string;
+  value?: V;
+  left?: TrieNode<V>;
+  right?: TrieNode<V>;
+}
+
+function hashKey(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function trieGet<V>(node: TrieNode<V> | undefined, key: string, hash: number, depth: number): V | undefined {
+  if (!node) return undefined;
+  if (node.key === key) return node.value;
+  const bit = (hash >>> depth) & 1;
+  return bit === 0 ? trieGet(node.left, key, hash, depth + 1) : trieGet(node.right, key, hash, depth + 1);
+}
+
+function trieSet<V>(node: TrieNode<V> | undefined, key: string, value: V, hash: number, depth: number): TrieNode<V> {
+  if (!node) return { key, value };
+  if (node.key === key) return { ...node, value };
+  const bit = (hash >>> depth) & 1;
+  if (bit === 0) {
+    return { ...node, left: trieSet(node.left, key, value, hash, depth + 1) };
+  } else {
+    return { ...node, right: trieSet(node.right, key, value, hash, depth + 1) };
+  }
+}
+
+interface PersistentMap<V> {
+  get(key: string): V | undefined;
+  set(key: string, value: V): PersistentMap<V>;
+  has(key: string): boolean;
+  size: number;
+}
+
+function createPersistentMap<V>(): PersistentMap<V> {
+  function makeMap(root: TrieNode<V> | undefined, count: number): PersistentMap<V> {
+    return {
+      get(key: string): V | undefined {
+        return trieGet(root, key, hashKey(key), 0);
+      },
+      set(key: string, value: V): PersistentMap<V> {
+        const existing = this.has(key);
+        const newRoot = trieSet(root, key, value, hashKey(key), 0);
+        return makeMap(newRoot, existing ? count : count + 1);
+      },
+      has(key: string): boolean {
+        return trieGet(root, key, hashKey(key), 0) !== undefined;
+      },
+      get size() { return count; }
+    };
+  }
+  return makeMap(undefined, 0);
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const empty = createPersistentMap<number>();
+assertEqual("empty map size", 0, empty.size);
+assertEqual("empty map get", undefined, empty.get("x"));
+
+const m1 = empty.set("a", 1);
+assertEqual("m1 has a", 1, m1.get("a"));
+assertEqual("m1 size", 1, m1.size);
+assertEqual("empty still empty", 0, empty.size);
+
+const m2 = m1.set("b", 2);
+assertEqual("m2 has a", 1, m2.get("a"));
+assertEqual("m2 has b", 2, m2.get("b"));
+assertEqual("m2 size", 2, m2.size);
+assertEqual("m1 unchanged", undefined, m1.get("b"));
+
+const m3 = m2.set("a", 99);
+assertEqual("m3 updated a", 99, m3.get("a"));
+assertEqual("m3 keeps b", 2, m3.get("b"));
+assertEqual("m2 a unchanged", 1, m2.get("a"));
+assertEqual("m3 size unchanged", 2, m3.size);
+
+assertEqual("has returns true", true, m2.has("a"));
+assertEqual("has returns false", false, m2.has("z"));
+`,
+    hints: [
+      'The trie node has optional <code>left</code> and <code>right</code> children plus an optional <code>key/value</code> pair. Use a simple hash function to convert string keys to numbers, then use bits of the hash to navigate left (0) or right (1).',
+      '<code>trieSet</code> creates a new node on the path being modified but <strong>reuses</strong> the unchanged branch. For example, if you go left, the new node shares the old node\'s <code>right</code> subtree: <code>{ ...node, left: trieSet(node.left, ...) }</code>.',
+      'The <code>PersistentMap</code> interface wraps the trie. <code>set()</code> returns a NEW map with a new root, while the old map still points to the old root. This is structural sharing in action.',
+      'Track size by checking if the key already exists before setting. If it is a new key, increment count. If it is an update, keep the same count. The <code>makeMap</code> closure captures the root and count.',
+    ],
+    concepts: ['structural sharing', 'persistent data structures', 'binary trie', 'immutability', 'copy-on-write paths', 'Git-style versioning'],
+    successPatterns: [
+      'interface\\s+TrieNode',
+      '\\{\\s*\\.\\.\\.node',
+      'interface\\s+PersistentMap',
+      'createPersistentMap',
+    ],
+    testNames: [
+      'empty map has size 0',
+      'empty map returns undefined',
+      'set creates new map with value',
+      'new map has size 1',
+      'original map unchanged after set',
+      'second set preserves first value',
+      'second set has new value',
+      'second set has size 2',
+      'original not mutated by second set',
+      'update preserves other keys',
+      'update changes target key',
+      'original unchanged after update',
+      'update does not change size',
+      'has returns true for existing',
+      'has returns false for missing',
+    ],
+  },
+
+  'ts-lazy-evaluation': {
+    id: 'ts-lazy-evaluation',
+    language: 'typescript',
+    title: 'Lazy Sequences for Modular Composition',
+    difficulty: 'advanced',
+    order: 2,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>const data = getMillionRecords();
+const filtered = data.filter(x => x.active);    // new array: 500K items
+const mapped = filtered.map(x => x.name);        // new array: 500K strings
+const first10 = mapped.slice(0, 10);              // we only needed 10!
+
+// Created 2 intermediate arrays of 500K items each
+// to get 10 results. Wasteful.</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>Eager evaluation creates intermediate arrays at every step. If you have a million records and only need the first 10 that match, you still process all one million. Each <code>filter</code> and <code>map</code> allocates a full new array. For large datasets, this is a massive waste of memory and CPU.</p>
+
+<h3>The Beautiful Way: Lazy Sequences</h3>
+<pre><code>const result = LazySeq.from(getMillionRecords())
+  .filter(x => x.active)
+  .map(x => x.name)
+  .take(10)
+  .toArray();
+
+// Only processes records until 10 matches are found.
+// No intermediate arrays. Elements flow through the pipeline one at a time.</code></pre>
+
+<p>Lazy sequences defer computation until the result is consumed. <code>filter</code> and <code>map</code> do not execute immediately &mdash; they build up a pipeline. Only when <code>toArray()</code> is called does the pipeline start pulling elements through, stopping as soon as 10 are collected.</p>
+
+<blockquote><strong>Taste principle (Hughes, "Why Functional Programming Matters"):</strong> Laziness is a powerful tool for modularity. It lets you separate the <em>description</em> of a computation from its <em>execution</em>. You can compose infinite pipelines and only materialize what you need.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a <code>LazySeq&lt;T&gt;</code> class with <code>map</code>, <code>filter</code>, <code>take</code>, and <code>toArray</code>. Use generator functions internally so nothing executes until consumed.</p>
+`,
+    starterCode: `// Implement lazy sequences using generators.
+// Nothing executes until toArray() is called.
+
+// Step 1: Define LazySeq<T>
+// class LazySeq<T> {
+//   constructor(private generator: () => Generator<T>) {}
+//   static from<T>(items: T[]): LazySeq<T>
+//   static range(start: number, end: number): LazySeq<number>
+//   map<U>(fn: (item: T) => U): LazySeq<U>
+//   filter(fn: (item: T) => boolean): LazySeq<T>
+//   take(n: number): LazySeq<T>
+//   toArray(): T[]
+//   reduce<U>(fn: (acc: U, item: T) => U, initial: U): U
+// }
+
+// Step 2: Demonstrate that operations are lazy
+// Track how many items are actually processed
+`,
+    solutionCode: `class LazySeq<T> {
+  constructor(private generator: () => Generator<T>) {}
+
+  static from<T>(items: T[]): LazySeq<T> {
+    return new LazySeq(function* () {
+      for (const item of items) yield item;
+    });
+  }
+
+  static range(start: number, end: number): LazySeq<number> {
+    return new LazySeq(function* () {
+      for (let i = start; i < end; i++) yield i;
+    });
+  }
+
+  map<U>(fn: (item: T) => U): LazySeq<U> {
+    const source = this.generator;
+    return new LazySeq(function* () {
+      for (const item of source()) yield fn(item);
+    });
+  }
+
+  filter(fn: (item: T) => boolean): LazySeq<T> {
+    const source = this.generator;
+    return new LazySeq(function* () {
+      for (const item of source()) {
+        if (fn(item)) yield item;
+      }
+    });
+  }
+
+  take(n: number): LazySeq<T> {
+    const source = this.generator;
+    return new LazySeq(function* () {
+      let count = 0;
+      for (const item of source()) {
+        if (count >= n) return;
+        yield item;
+        count++;
+      }
+    });
+  }
+
+  toArray(): T[] {
+    const result: T[] = [];
+    for (const item of this.generator()) result.push(item);
+    return result;
+  }
+
+  reduce<U>(fn: (acc: U, item: T) => U, initial: U): U {
+    let acc = initial;
+    for (const item of this.generator()) acc = fn(acc, item);
+    return acc;
+  }
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+assertEqual("from + toArray", [1, 2, 3], LazySeq.from([1, 2, 3]).toArray());
+
+assertEqual("range produces sequence", [0, 1, 2, 3, 4], LazySeq.range(0, 5).toArray());
+
+assertEqual("map doubles", [2, 4, 6], LazySeq.from([1, 2, 3]).map(x => x * 2).toArray());
+
+assertEqual("filter evens", [2, 4], LazySeq.from([1, 2, 3, 4, 5]).filter(x => x % 2 === 0).toArray());
+
+assertEqual("take limits", [1, 2, 3], LazySeq.from([1, 2, 3, 4, 5]).take(3).toArray());
+
+assertEqual("chained pipeline", [4, 16], LazySeq.range(1, 10).filter(x => x % 2 === 0).map(x => x * x).take(2).toArray());
+
+let processedCount = 0;
+const result = LazySeq.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  .filter(x => { processedCount++; return x > 5; })
+  .take(2)
+  .toArray();
+assertEqual("lazy take processes minimum", true, processedCount < 10);
+assertEqual("lazy take correct result", [6, 7], result);
+
+const sum = LazySeq.from([1, 2, 3, 4]).reduce((acc, x) => acc + x, 0);
+assertEqual("reduce sums", 10, sum);
+`,
+    hints: [
+      '<code>LazySeq</code> wraps a generator factory: <code>() =&gt; Generator&lt;T&gt;</code>. The factory is called only when <code>toArray()</code> or <code>reduce()</code> consumes the sequence.',
+      '<code>map</code> and <code>filter</code> return NEW <code>LazySeq</code> instances with generator factories that wrap the source generator. <code>map</code> yields <code>fn(item)</code>; <code>filter</code> yields items where <code>fn(item)</code> is true.',
+      '<code>take(n)</code> wraps the source generator and stops yielding after <code>n</code> items. This is what makes the whole pipeline lazy &mdash; once take has enough items, the source generator stops being pulled.',
+      'Use <code>function*</code> generator syntax. <code>yield</code> produces values one at a time. <code>for (const item of source())</code> pulls values from the upstream generator lazily.',
+    ],
+    concepts: ['lazy evaluation', 'generators', 'deferred computation', 'pipeline composition', 'Hughes laziness-as-modularity', 'iterator protocol'],
+    successPatterns: [
+      'class\\s+LazySeq',
+      'function\\s*\\*',
+      'yield\\s',
+      'take\\(n:\\s*number\\)',
+    ],
+    testNames: [
+      'from and toArray round-trip',
+      'range produces correct sequence',
+      'map transforms elements',
+      'filter selects matching',
+      'take limits output count',
+      'chained pipeline works correctly',
+      'lazy take processes minimum elements',
+      'lazy take produces correct result',
+      'reduce accumulates values',
+    ],
+  },
+
+  'ts-object-pooling': {
+    id: 'ts-object-pooling',
+    language: 'typescript',
+    title: 'Object Pool for Hot Paths',
+    difficulty: 'advanced',
+    order: 3,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>function processFrame(particles: Particle[]) {
+  for (const p of particles) {
+    // Allocate a new Vec2 EVERY FRAME for EVERY PARTICLE
+    const velocity = new Vec2(p.vx, p.vy);
+    const position = new Vec2(p.x, p.y);
+    const newPos = position.add(velocity);
+    p.x = newPos.x;
+    p.y = newPos.y;
+  }
+  // 10,000 particles * 60fps = 600,000 allocations/second
+  // GC pauses make the animation stutter
+}</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>In performance-critical code (game loops, animation frames, real-time audio), creating and discarding thousands of small objects per frame puts enormous pressure on the garbage collector. GC pauses cause visible stuttering and latency spikes.</p>
+
+<h3>The Beautiful Way: Object Pool</h3>
+<pre><code>const pool = createPool(() => new Vec2(0, 0), v => { v.x = 0; v.y = 0; });
+
+function processFrame(particles: Particle[]) {
+  for (const p of particles) {
+    const velocity = pool.acquire();
+    velocity.x = p.vx; velocity.y = p.vy;
+    // ... use velocity ...
+    pool.release(velocity); // back to the pool, no GC needed
+  }
+}</code></pre>
+
+<p>An object pool pre-allocates objects and recycles them. <code>acquire()</code> pulls from the pool (or creates if empty), <code>release()</code> returns it. No garbage collection needed for pooled objects.</p>
+
+<blockquote><strong>Taste principle:</strong> Profile before optimizing. Object pooling adds complexity. Use it ONLY when profiling shows GC pressure is a real bottleneck (game loops, audio processing, high-frequency trading). For typical web apps, the GC is fine. The <em>taste</em> is knowing when NOT to optimize.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement a generic <code>ObjectPool&lt;T&gt;</code> with <code>acquire()</code>, <code>release()</code>, stats tracking, and configurable pool limits. Include a <code>reset</code> function to clean objects before reuse.</p>
+`,
+    starterCode: `// Implement a generic object pool for GC-sensitive hot paths.
+// Key: acquire() returns an object, release() recycles it.
+
+// Step 1: Define the pool interface
+// interface ObjectPool<T> {
+//   acquire(): T;
+//   release(obj: T): void;
+//   size: number;        // currently available in pool
+//   totalCreated: number; // total objects ever created
+//   inUse: number;       // currently acquired, not yet released
+// }
+
+// Step 2: Implement createPool<T>(factory, reset, maxSize?)
+// factory: () => T         — creates new instances
+// reset: (obj: T) => void  — cleans object before reuse
+// maxSize: number           — cap on pool size (default 100)
+
+// Step 3: Demonstrate with a Vec2 example
+// interface Vec2 { x: number; y: number }
+`,
+    solutionCode: `interface ObjectPool<T> {
+  acquire(): T;
+  release(obj: T): void;
+  size: number;
+  totalCreated: number;
+  inUse: number;
+}
+
+function createPool<T>(
+  factory: () => T,
+  reset: (obj: T) => void,
+  maxSize: number = 100
+): ObjectPool<T> {
+  const available: T[] = [];
+  let totalCreated = 0;
+  let inUse = 0;
+
+  return {
+    acquire(): T {
+      let obj: T;
+      if (available.length > 0) {
+        obj = available.pop()!;
+      } else {
+        obj = factory();
+        totalCreated++;
+      }
+      inUse++;
+      return obj;
+    },
+    release(obj: T): void {
+      if (inUse > 0) inUse--;
+      reset(obj);
+      if (available.length < maxSize) {
+        available.push(obj);
+      }
+    },
+    get size() { return available.length; },
+    get totalCreated() { return totalCreated; },
+    get inUse() { return inUse; }
+  };
+}
+
+interface Vec2 { x: number; y: number; }
+
+const vec2Pool = createPool<Vec2>(
+  () => ({ x: 0, y: 0 }),
+  (v) => { v.x = 0; v.y = 0; },
+  50
+);
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+assertEqual("initial pool size", 0, vec2Pool.size);
+assertEqual("initial totalCreated", 0, vec2Pool.totalCreated);
+assertEqual("initial inUse", 0, vec2Pool.inUse);
+
+const v1 = vec2Pool.acquire();
+v1.x = 10; v1.y = 20;
+assertEqual("acquire returns object", true, typeof v1.x === 'number');
+assertEqual("totalCreated after first acquire", 1, vec2Pool.totalCreated);
+assertEqual("inUse after acquire", 1, vec2Pool.inUse);
+
+vec2Pool.release(v1);
+assertEqual("pool size after release", 1, vec2Pool.size);
+assertEqual("inUse after release", 0, vec2Pool.inUse);
+
+const v2 = vec2Pool.acquire();
+assertEqual("reused object is reset x", 0, v2.x);
+assertEqual("reused object is reset y", 0, v2.y);
+assertEqual("totalCreated unchanged on reuse", 1, vec2Pool.totalCreated);
+
+const poolSmall = createPool<Vec2>(() => ({ x: 0, y: 0 }), v => { v.x = 0; v.y = 0; }, 2);
+const a = poolSmall.acquire();
+const b = poolSmall.acquire();
+const c = poolSmall.acquire();
+poolSmall.release(a);
+poolSmall.release(b);
+poolSmall.release(c);
+assertEqual("pool respects maxSize", 2, poolSmall.size);
+`,
+    hints: [
+      'The pool maintains an array of available objects. <code>acquire()</code> pops from the array if non-empty, otherwise calls <code>factory()</code> to create a new one.',
+      '<code>release(obj)</code> calls <code>reset(obj)</code> to clean the object, then pushes it back to the available array &mdash; but only if the pool has not reached <code>maxSize</code>.',
+      'Track three counters: <code>available.length</code> (pool size), <code>totalCreated</code> (incremented only when factory is called), and <code>inUse</code> (incremented on acquire, decremented on release).',
+      'The <code>reset</code> function is crucial &mdash; without it, released objects carry stale data. For <code>Vec2</code>, reset sets x and y back to 0. This ensures acquired objects are always in a clean state.',
+    ],
+    concepts: ['object pooling', 'GC pressure', 'memory management', 'hot path optimization', 'profiling-driven optimization', 'resource recycling'],
+    successPatterns: [
+      'interface\\s+ObjectPool',
+      'createPool',
+      'available\\.pop\\(\\)',
+      'reset\\(obj\\)',
+    ],
+    testNames: [
+      'initial pool size is 0',
+      'initial totalCreated is 0',
+      'initial inUse is 0',
+      'acquire returns object with number fields',
+      'totalCreated increments on new object',
+      'inUse increments on acquire',
+      'pool size increases after release',
+      'inUse decrements after release',
+      'reused object x is reset',
+      'reused object y is reset',
+      'totalCreated unchanged on reuse',
+      'pool respects maxSize limit',
+    ],
+  },
+
+  'ts-memoization': {
+    id: 'ts-memoization',
+    language: 'typescript',
+    title: 'Type-Safe Memoization with WeakMap',
+    difficulty: 'advanced',
+    order: 4,
+    description: `
+<h3>The Ugly Way</h3>
+<pre><code>const cache: Record<string, any> = {};
+
+function memoize(fn: Function): Function {
+  return function (...args: any[]) {
+    const key = JSON.stringify(args);
+    if (key in cache) return cache[key];
+    const result = fn(...args);
+    cache[key] = result;
+    return result;
+  };
+}
+
+// Problems:
+// 1. Global cache leaks memory forever
+// 2. JSON.stringify loses type information and fails on circular refs
+// 3. Return type is Function (any)
+// 4. Object keys create identical strings for different objects</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>This memoization has four flaws: (1) the cache grows without bound and never releases memory, (2) <code>JSON.stringify</code> is unreliable as a key (fails on circular references, treats different objects with same structure as identical), (3) no type safety (input and output types are lost), and (4) it is a global singleton that leaks across unrelated calls.</p>
+
+<h3>The Beautiful Way: WeakMap + Type Safety</h3>
+<pre><code>function memoize<A extends object, R>(fn: (arg: A) => R): (arg: A) => R {
+  const cache = new WeakMap<A, R>();
+  return (arg: A): R => {
+    if (cache.has(arg)) return cache.get(arg)!;
+    const result = fn(arg);
+    cache.set(arg, result);
+    return result;
+  };
+}</code></pre>
+
+<p><code>WeakMap</code> keys are held weakly &mdash; when the object is garbage collected, its cache entry is automatically cleaned up. No memory leaks. The generic types preserve input/output type information. And identity-based keying means different objects are always distinct keys.</p>
+
+<blockquote><strong>Taste principle:</strong> Space-time tradeoff done correctly. Memoization trades memory for speed, but a good implementation also manages that memory wisely. WeakMap gives you automatic cache cleanup. Generics give you type safety. Together, they make memoization a zero-maintenance optimization.</blockquote>
+
+<h3>Your Task</h3>
+<p>Implement three memoization strategies: (1) <code>memoizeWeak</code> using WeakMap for single object args, (2) <code>memoizeByKey</code> using a custom key function for primitives, and (3) <code>memoizeMultiArg</code> using nested Maps for multi-argument functions. Each should be fully typed and track cache hit statistics.</p>
+`,
+    starterCode: `// Implement type-safe memoization with proper cache management.
+
+// Step 1: memoizeWeak — for single object arguments
+// Uses WeakMap for automatic GC of unused entries
+// function memoizeWeak<A extends object, R>(fn: (arg: A) => R): MemoizedFn<A, R>
+
+// Step 2: memoizeByKey — for primitive arguments
+// Uses a custom key function to derive cache keys
+// function memoizeByKey<A, R>(fn: (arg: A) => R, keyFn: (arg: A) => string): MemoizedFn<A, R>
+
+// Step 3: memoizeMultiArg — for two-argument functions
+// Uses nested Maps: Map<A1, Map<A2, R>>
+// function memoizeMultiArg<A1, A2, R>(fn: (a1: A1, a2: A2) => R): MemoizedMulti<A1, A2, R>
+
+// Each memoized function should expose:
+// - hits: number (cache hit count)
+// - misses: number (cache miss count)
+
+// interface MemoizedFn<A, R> {
+//   (arg: A): R;
+//   hits: number;
+//   misses: number;
+// }
+`,
+    solutionCode: `interface MemoizedFn<A, R> {
+  (arg: A): R;
+  hits: number;
+  misses: number;
+}
+
+interface MemoizedMulti<A1, A2, R> {
+  (a1: A1, a2: A2): R;
+  hits: number;
+  misses: number;
+}
+
+function memoizeWeak<A extends object, R>(fn: (arg: A) => R): MemoizedFn<A, R> {
+  const cache = new WeakMap<A, R>();
+  const memoized = function (arg: A): R {
+    if (cache.has(arg)) {
+      memoized.hits++;
+      return cache.get(arg)!;
+    }
+    memoized.misses++;
+    const result = fn(arg);
+    cache.set(arg, result);
+    return result;
+  } as MemoizedFn<A, R>;
+  memoized.hits = 0;
+  memoized.misses = 0;
+  return memoized;
+}
+
+function memoizeByKey<A, R>(fn: (arg: A) => R, keyFn: (arg: A) => string): MemoizedFn<A, R> {
+  const cache = new Map<string, R>();
+  const memoized = function (arg: A): R {
+    const key = keyFn(arg);
+    if (cache.has(key)) {
+      memoized.hits++;
+      return cache.get(key)!;
+    }
+    memoized.misses++;
+    const result = fn(arg);
+    cache.set(key, result);
+    return result;
+  } as MemoizedFn<A, R>;
+  memoized.hits = 0;
+  memoized.misses = 0;
+  return memoized;
+}
+
+function memoizeMultiArg<A1, A2, R>(fn: (a1: A1, a2: A2) => R): MemoizedMulti<A1, A2, R> {
+  const cache = new Map<A1, Map<A2, R>>();
+  const memoized = function (a1: A1, a2: A2): R {
+    if (cache.has(a1) && cache.get(a1)!.has(a2)) {
+      memoized.hits++;
+      return cache.get(a1)!.get(a2)!;
+    }
+    memoized.misses++;
+    const result = fn(a1, a2);
+    if (!cache.has(a1)) cache.set(a1, new Map());
+    cache.get(a1)!.set(a2, result);
+    return result;
+  } as MemoizedMulti<A1, A2, R>;
+  memoized.hits = 0;
+  memoized.misses = 0;
+  return memoized;
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+let weakCallCount = 0;
+const processObj = memoizeWeak((obj: { n: number }) => { weakCallCount++; return obj.n * 2; });
+
+const obj1 = { n: 5 };
+assertEqual("weak first call", 10, processObj(obj1));
+assertEqual("weak second call cached", 10, processObj(obj1));
+assertEqual("weak fn called once", 1, weakCallCount);
+assertEqual("weak hits", 1, processObj.hits);
+assertEqual("weak misses", 1, processObj.misses);
+
+const obj2 = { n: 5 };
+processObj(obj2);
+assertEqual("weak different object is miss", 2, processObj.misses);
+
+let keyCallCount = 0;
+const factorial = memoizeByKey((n: number) => {
+  keyCallCount++;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+}, n => String(n));
+
+assertEqual("key first call", 120, factorial(5));
+assertEqual("key second call cached", 120, factorial(5));
+assertEqual("key fn called once", 1, keyCallCount);
+assertEqual("key hits", 1, factorial.hits);
+
+let multiCount = 0;
+const add = memoizeMultiArg((a: number, b: number) => { multiCount++; return a + b; });
+
+assertEqual("multi first call", 3, add(1, 2));
+assertEqual("multi cached call", 3, add(1, 2));
+assertEqual("multi fn called once", 1, multiCount);
+assertEqual("multi different args", 7, add(3, 4));
+assertEqual("multi hits", 1, add.hits);
+assertEqual("multi misses", 2, add.misses);
+`,
+    hints: [
+      '<code>memoizeWeak</code> uses <code>WeakMap&lt;A, R&gt;</code> where A is constrained to <code>object</code>. Check with <code>cache.has(arg)</code>, return <code>cache.get(arg)!</code> on hit, compute and <code>cache.set(arg, result)</code> on miss.',
+      '<code>memoizeByKey</code> uses a regular <code>Map&lt;string, R&gt;</code> with a custom key function: <code>const key = keyFn(arg)</code>. This works for primitive arguments where WeakMap cannot be used.',
+      '<code>memoizeMultiArg</code> uses nested Maps: <code>Map&lt;A1, Map&lt;A2, R&gt;&gt;</code>. Check both levels: <code>cache.has(a1) && cache.get(a1)!.has(a2)</code>. On miss, create the inner Map if needed.',
+      'To expose <code>hits</code> and <code>misses</code> on the function, create the function first, then assign properties: <code>const memoized = function(...) { ... } as MemoizedFn&lt;A, R&gt;; memoized.hits = 0;</code>.',
+    ],
+    concepts: ['memoization', 'WeakMap', 'cache management', 'space-time tradeoff', 'type-safe generics', 'nested Map strategy', 'automatic GC cleanup'],
+    successPatterns: [
+      'WeakMap',
+      'memoizeWeak',
+      'memoizeByKey',
+      'memoizeMultiArg',
+    ],
+    testNames: [
+      'weak memoize first call computes',
+      'weak memoize second call cached',
+      'weak function called once',
+      'weak hits count correct',
+      'weak misses count correct',
+      'weak different object identity is miss',
+      'key memoize first call computes',
+      'key memoize second call cached',
+      'key function called once',
+      'key hits count correct',
+      'multi first call computes',
+      'multi second call cached',
+      'multi function called once',
+      'multi different args computes',
+      'multi hits count correct',
+      'multi misses count correct',
+    ],
+  },
 };

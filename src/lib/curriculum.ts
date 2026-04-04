@@ -10,7 +10,8 @@ import type { Language } from './types/exercise';
 export type ModuleStatus = 'available' | 'coming-soon';
 export type TrackSlug = 'foundation' | 'category-theory' | 'algebra-crypto' | 'algorithms'
   | 'applied-ct' | 'languages' | 'linear-algebra' | 'verified-crypto' | 'lambda-calculus'
-  | 'ts-design' | 'ts-advanced' | 'rust-ownership' | 'rust-systems' | 'gpu-fundamentals' | 'gpu-portable';
+  | 'ts-design' | 'ts-advanced' | 'rust-ownership' | 'rust-systems' | 'gpu-fundamentals' | 'gpu-portable'
+  | 'ts-architecture' | 'ts-perf' | 'rust-async-track' | 'rust-perf';
 
 export interface Track {
   slug: TrackSlug;
@@ -131,6 +132,30 @@ export const tracks: Track[] = [
     title: 'GPU: ROCm/HIP',
     description: 'Portable GPU programming, CUDA-to-HIP translation, AMD architecture',
     order: 15,
+  },
+  {
+    slug: 'ts-architecture',
+    title: 'TypeScript: Architecture',
+    description: 'DI, state machines, plugin systems, and module boundary design',
+    order: 16,
+  },
+  {
+    slug: 'ts-perf',
+    title: 'TypeScript: Performance',
+    description: 'Structural sharing, lazy evaluation, object pooling, and memoization',
+    order: 17,
+  },
+  {
+    slug: 'rust-async-track',
+    title: 'Rust: Async & Traits',
+    description: 'Futures, Pin, async patterns, sealed traits, middleware, and type-state',
+    order: 18,
+  },
+  {
+    slug: 'rust-perf',
+    title: 'Rust: Performance',
+    description: 'Cache-friendly layouts, arena allocation, SIMD concepts, and zero-copy parsing',
+    order: 19,
   },
 ];
 
@@ -636,6 +661,114 @@ export const modules: CurriculumModule[] = [
       title: 'AMD GPU Architecture',
       path: '/rocm-architecture/architecture',
       exerciseIds: ['rocm-wavefronts', 'rocm-lds', 'rocm-gcn-rdna', 'rocm-profiling'],
+    }],
+  },
+
+  // ── Advanced TypeScript ────────────────────────────────────────────
+
+  {
+    slug: 'ts-architecture',
+    title: 'Software Architecture',
+    description: 'Dependency injection, state machines, plugin systems, and module boundary design.',
+    icon: '\u0054',
+    order: 28,
+    track: 'ts-architecture',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-type-level'],
+    lessons: [{
+      slug: 'architecture',
+      title: 'Software Architecture in TypeScript',
+      path: '/ts-architecture/architecture',
+      exerciseIds: ['ts-dependency-injection', 'ts-state-machines', 'ts-plugin-system', 'ts-module-boundaries'],
+    }],
+  },
+  {
+    slug: 'ts-patterns',
+    title: 'Advanced Patterns',
+    description: 'Phantom types, opaque types, typed events, and property-based testing.',
+    icon: '\u0054',
+    order: 29,
+    track: 'ts-architecture',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-architecture'],
+    lessons: [{
+      slug: 'patterns',
+      title: 'Advanced TypeScript Patterns',
+      path: '/ts-patterns/patterns',
+      exerciseIds: ['ts-phantom-types', 'ts-opaque-types', 'ts-type-safe-events', 'ts-property-testing'],
+    }],
+  },
+  {
+    slug: 'ts-perf-module',
+    title: 'Performance Taste',
+    description: 'Structural sharing, lazy evaluation, object pooling, and memoization.',
+    icon: '\u0054',
+    order: 30,
+    track: 'ts-perf',
+    language: 'typescript',
+    status: 'available',
+    prerequisites: ['ts-patterns'],
+    lessons: [{
+      slug: 'performance',
+      title: 'Performance Patterns',
+      path: '/ts-perf-module/performance',
+      exerciseIds: ['ts-structural-sharing', 'ts-lazy-evaluation', 'ts-object-pooling', 'ts-memoization'],
+    }],
+  },
+
+  // ── Advanced Rust ──────────────────────────────────────────────────
+
+  {
+    slug: 'rust-async',
+    title: 'Async Rust',
+    description: 'Futures by hand, Pin/Unpin, async combinators, and channels.',
+    icon: '\u0052',
+    order: 31,
+    track: 'rust-async-track',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-crypto'],
+    lessons: [{
+      slug: 'async',
+      title: 'Async Rust from Scratch',
+      path: '/rust-async/async',
+      exerciseIds: ['rust-futures-basics', 'rust-pin-unpin', 'rust-async-patterns', 'rust-channels'],
+    }],
+  },
+  {
+    slug: 'rust-advanced-traits',
+    title: 'Advanced Trait Patterns',
+    description: 'Sealed traits, middleware composition, type-state, and GATs.',
+    icon: '\u0052',
+    order: 32,
+    track: 'rust-async-track',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-async'],
+    lessons: [{
+      slug: 'advanced-traits',
+      title: 'Advanced Trait Mastery',
+      path: '/rust-advanced-traits/advanced-traits',
+      exerciseIds: ['rust-sealed-traits', 'rust-tower-middleware', 'rust-type-state', 'rust-gats'],
+    }],
+  },
+  {
+    slug: 'rust-perf-module',
+    title: 'Performance Engineering',
+    description: 'Cache-friendly layouts, arena allocation, SIMD concepts, and zero-copy parsing.',
+    icon: '\u0052',
+    order: 33,
+    track: 'rust-perf',
+    language: 'rust',
+    status: 'available',
+    prerequisites: ['rust-advanced-traits'],
+    lessons: [{
+      slug: 'performance',
+      title: 'Rust Performance Engineering',
+      path: '/rust-perf-module/performance',
+      exerciseIds: ['rust-cache-friendly', 'rust-arena-allocation', 'rust-simd-basics', 'rust-zero-copy'],
     }],
   },
 ];

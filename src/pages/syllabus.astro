@@ -20,7 +20,24 @@ import { href } from '../lib/paths';
 
     <main class="flex-1 max-w-3xl mx-auto w-full px-6 py-10">
       <h1 class="text-3xl font-bold mb-2">Curriculum</h1>
-      <p class="text-text-secondary mb-8">Programming taste across the stack — type systems, systems design, parallel computing, and algebraic foundations.</p>
+      <p class="text-text-secondary mb-6">Programming taste across the stack: find structure first, encode invariants, then let algorithms and interpreters carry the implementation.</p>
+
+      <div class="mb-8 rounded-lg border border-border bg-bg-card p-4">
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div>
+            <div class="text-xs font-medium text-text-primary mb-1">Human judgment</div>
+            <p class="text-xs text-text-muted leading-relaxed">Choose the domain shape: operations, laws, invariants, and valid transitions.</p>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-text-primary mb-1">Algorithmic taste</div>
+            <p class="text-xs text-text-muted leading-relaxed">Pick the composition strategy that matches the data, runtime, and failure model.</p>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-text-primary mb-1">AI leverage</div>
+            <p class="text-xs text-text-muted leading-relaxed">Use constrained types to generate interpreters, tests, refactors, and optimizers.</p>
+          </div>
+        </div>
+      </div>
 
       <div id="syllabus-root"></div>
     </main>

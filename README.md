@@ -1,6 +1,8 @@
 # Categorical
 
-Interactive learning platform for Haskell, type systems, and category theory. A structured curriculum with an embedded code editor, instant feedback, and progress tracking — inspired by [Total TypeScript](https://totaltypescript.com) and [AlgoExpert](https://algoexpert.io).
+Interactive learning platform for Haskell, type systems, category theory, and engineering taste. A structured curriculum with an embedded code editor, instant feedback, and progress tracking — inspired by [Total TypeScript](https://totaltypescript.com) and [AlgoExpert](https://algoexpert.io).
+
+Categorical is built around a simple product thesis: good engineers find the structure of a problem before reaching for patterns or AI. The curriculum teaches learners to name operations, encode invariants, choose algorithms deliberately, and use interpreters/tests/refactors as constrained implementation work.
 
 ## Architecture
 
@@ -61,6 +63,9 @@ src/
 
 ### Category Theory
 - **Functors** — fmap, Functor instances, functor laws, natural transformations
+
+### Architecture Taste
+- **Software Architecture in TypeScript** — domain algebras, invariants, interpreters, state machines, and module boundaries
 
 ## Adding Exercises
 

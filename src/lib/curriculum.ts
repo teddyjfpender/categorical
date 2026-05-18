@@ -64,13 +64,13 @@ export const tracks: Track[] = [
   {
     slug: 'algorithms',
     title: 'Algorithms',
-    description: 'Functional algorithm patterns: recursion, higher-order design, laziness, and memoization',
+    description: 'Algorithmic taste: recursion, higher-order design, laziness, memoization, and the shape of computation',
     order: 4,
   },
   {
     slug: 'applied-ct',
     title: 'Applied Category Theory',
-    description: 'State, Reader, monad transformers, and free monads — practical patterns from category theory',
+    description: 'Algebras, interpreters, state, Reader, transformers, and free monads as practical structure',
     order: 5,
   },
   {
@@ -136,7 +136,7 @@ export const tracks: Track[] = [
   {
     slug: 'ts-architecture',
     title: 'TypeScript: Architecture',
-    description: 'DI, state machines, plugin systems, and module boundary design',
+    description: 'Domain algebras, state machines, plugin systems, and module boundary design',
     order: 16,
   },
   {
@@ -669,7 +669,7 @@ export const modules: CurriculumModule[] = [
   {
     slug: 'ts-architecture',
     title: 'Software Architecture',
-    description: 'Dependency injection, state machines, plugin systems, and module boundary design.',
+    description: 'Extract domain algebras, encode invariants, and keep interpreters at the edge.',
     icon: '\u0054',
     order: 28,
     track: 'ts-architecture',
@@ -680,7 +680,7 @@ export const modules: CurriculumModule[] = [
       slug: 'architecture',
       title: 'Software Architecture in TypeScript',
       path: '/ts-architecture/architecture',
-      exerciseIds: ['ts-dependency-injection', 'ts-state-machines', 'ts-plugin-system', 'ts-module-boundaries'],
+      exerciseIds: ['ts-domain-algebra', 'ts-dependency-injection', 'ts-state-machines', 'ts-plugin-system', 'ts-module-boundaries'],
     }],
   },
   {

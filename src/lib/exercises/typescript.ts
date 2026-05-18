@@ -2769,6 +2769,206 @@ assertEqual("tupleToUnion second", 42, tupleElement(["hello", 42, true], 1));
   // ─── Module 5: Architecture ─────────────────────────────────────────────
   // "Structure is the first design decision"
 
+  'ts-domain-algebra': {
+    id: 'ts-domain-algebra',
+    language: 'typescript',
+    title: 'Extract the Domain Algebra',
+    difficulty: 'advanced',
+    order: 0,
+    description: `
+<h3>The Ugly Way: One Function Knows Everything</h3>
+<pre><code>async function placeOrder(request: OrderRequest): Promise&lt;OrderResult&gt; {
+  const stock = await inventory.check(request.itemId, request.quantity);
+  if (!stock.available) return { ok: false, reason: "out-of-stock" };
+
+  const price = pricing.total(request.itemId, request.quantity);
+  const charge = await payments.charge(request.cardToken, price);
+  if (!charge.ok) return { ok: false, reason: "payment-failed" };
+
+  await inventory.reserve(request.itemId, request.quantity);
+  await email.send(request.customerEmail, "Order confirmed");
+  return { ok: true, receiptId: charge.receiptId };
+}</code></pre>
+
+<h3>Why It Is Bad</h3>
+<p>This code is not wrong because it uses async calls or services. It is wrong because the domain intent is fused to infrastructure. The function mixes the <em>shape</em> of the workflow with payment APIs, email delivery, and inventory storage. Testing the decision logic requires mocks for everything. Changing the runtime changes the business logic.</p>
+
+<p>Architectural taste starts one level earlier than a pattern choice. Ask: what are the domain operations, how do they compose, and which invariants must hold? Here the structure is a sequential workflow with two short-circuiting failure points: stock must be available before charging, and payment must succeed before reservation and notification.</p>
+
+<h3>The Beautiful Way: A Small Algebra</h3>
+<pre><code>interface OrderAlgebra {
+  checkStock(itemId: string, quantity: number): StockStatus;
+  price(itemId: string, quantity: number): Money;
+  charge(cardToken: string, amount: Money): ChargeResult;
+  reserve(itemId: string, quantity: number): void;
+  notify(email: string, receiptId: string): void;
+}
+
+function placeOrder(alg: OrderAlgebra, request: OrderRequest): OrderResult {
+  // business logic uses the algebra only
+}</code></pre>
+
+<p>The program now describes <strong>what</strong> it needs from the domain. An interpreter decides <strong>how</strong> those operations happen. One interpreter can run production services. Another can record a trace. A third can dry-run a plan or generate an audit report. The core workflow stays fixed.</p>
+
+<blockquote><strong>Taste principle:</strong> AI is strongest after a human has found the structure. Once the algebra is explicit, generating interpreters, tests, and migration code is constrained by the type contract instead of guided by vibes.</blockquote>
+
+<h3>Your Task</h3>
+<p>Define an <code>OrderAlgebra</code>, implement <code>placeOrder(alg, request)</code> against that algebra, and create a trace interpreter that records each operation. The invariant: never charge when stock is unavailable, and never reserve or notify unless the charge succeeds.</p>
+`,
+    starterCode: `type Money = number;
+
+type StockStatus = { available: true } | { available: false; reason: string };
+type ChargeResult = { ok: true; receiptId: string } | { ok: false; reason: string };
+type OrderResult = { ok: true; receiptId: string } | { ok: false; reason: string };
+
+type OrderRequest = {
+  itemId: string;
+  quantity: number;
+  cardToken: string;
+  customerEmail: string;
+};
+
+// Step 1: Define the algebra: the domain operations placeOrder needs.
+interface OrderAlgebra {
+  // checkStock(itemId: string, quantity: number): StockStatus
+  // price(itemId: string, quantity: number): Money
+  // charge(cardToken: string, amount: Money): ChargeResult
+  // reserve(itemId: string, quantity: number): void
+  // notify(email: string, receiptId: string): void
+}
+
+// Step 2: Write the workflow against the algebra only.
+function placeOrder(alg: OrderAlgebra, request: OrderRequest): OrderResult {
+  return { ok: false, reason: "implement placeOrder" };
+}
+
+// Step 3: Write a trace interpreter for tests and audit.
+function createTraceAlgebra(options: { stockAvailable: boolean; chargeOk: boolean }): OrderAlgebra & { events: string[] } {
+  return {
+    events: [],
+  } as any;
+}
+`,
+    solutionCode: `type Money = number;
+
+type StockStatus = { available: true } | { available: false; reason: string };
+type ChargeResult = { ok: true; receiptId: string } | { ok: false; reason: string };
+type OrderResult = { ok: true; receiptId: string } | { ok: false; reason: string };
+
+type OrderRequest = {
+  itemId: string;
+  quantity: number;
+  cardToken: string;
+  customerEmail: string;
+};
+
+interface OrderAlgebra {
+  checkStock(itemId: string, quantity: number): StockStatus;
+  price(itemId: string, quantity: number): Money;
+  charge(cardToken: string, amount: Money): ChargeResult;
+  reserve(itemId: string, quantity: number): void;
+  notify(email: string, receiptId: string): void;
+}
+
+function placeOrder(alg: OrderAlgebra, request: OrderRequest): OrderResult {
+  const stock = alg.checkStock(request.itemId, request.quantity);
+  if (!stock.available) {
+    return { ok: false, reason: stock.reason };
+  }
+
+  const amount = alg.price(request.itemId, request.quantity);
+  const charge = alg.charge(request.cardToken, amount);
+  if (!charge.ok) {
+    return { ok: false, reason: charge.reason };
+  }
+
+  alg.reserve(request.itemId, request.quantity);
+  alg.notify(request.customerEmail, charge.receiptId);
+  return { ok: true, receiptId: charge.receiptId };
+}
+
+function createTraceAlgebra(options: { stockAvailable: boolean; chargeOk: boolean }): OrderAlgebra & { events: string[] } {
+  const events: string[] = [];
+
+  return {
+    events,
+    checkStock(itemId: string, quantity: number): StockStatus {
+      events.push(\`checkStock:\${itemId}:\${quantity}\`);
+      return options.stockAvailable
+        ? { available: true }
+        : { available: false, reason: "out-of-stock" };
+    },
+    price(itemId: string, quantity: number): Money {
+      events.push(\`price:\${itemId}:\${quantity}\`);
+      return quantity * 25;
+    },
+    charge(_cardToken: string, amount: Money): ChargeResult {
+      events.push(\`charge:\${amount}\`);
+      return options.chargeOk
+        ? { ok: true, receiptId: "receipt-123" }
+        : { ok: false, reason: "payment-failed" };
+    },
+    reserve(itemId: string, quantity: number): void {
+      events.push(\`reserve:\${itemId}:\${quantity}\`);
+    },
+    notify(email: string, receiptId: string): void {
+      events.push(\`notify:\${email}:\${receiptId}\`);
+    },
+  };
+}
+`,
+    testCode: `function assertEqual(name: string, expected: any, actual: any) {
+  if (JSON.stringify(expected) === JSON.stringify(actual)) {
+    console.log("PASS: " + name);
+  } else {
+    console.log("FAIL: " + name + ": Expected " + JSON.stringify(expected) + " but got " + JSON.stringify(actual));
+  }
+}
+
+const request: OrderRequest = {
+  itemId: "book",
+  quantity: 2,
+  cardToken: "tok_123",
+  customerEmail: "reader@example.com",
+};
+
+const happy = createTraceAlgebra({ stockAvailable: true, chargeOk: true });
+assertEqual("happy path succeeds", { ok: true, receiptId: "receipt-123" }, placeOrder(happy, request));
+assertEqual("happy path records five operations", 5, happy.events.length);
+assertEqual("happy path reserves after charge", "reserve:book:2", happy.events[3]);
+
+const noStock = createTraceAlgebra({ stockAvailable: false, chargeOk: true });
+assertEqual("stock failure returns reason", { ok: false, reason: "out-of-stock" }, placeOrder(noStock, request));
+assertEqual("stock failure stops early", ["checkStock:book:2"], noStock.events);
+
+const paymentFailure = createTraceAlgebra({ stockAvailable: true, chargeOk: false });
+assertEqual("payment failure returns reason", { ok: false, reason: "payment-failed" }, placeOrder(paymentFailure, request));
+assertEqual("payment failure does not reserve", false, paymentFailure.events.some((event) => event.startsWith("reserve")));
+assertEqual("payment failure does not notify", false, paymentFailure.events.some((event) => event.startsWith("notify")));
+`,
+    hints: [
+      'The algebra is just the vocabulary of the domain. Add five methods to <code>OrderAlgebra</code>: <code>checkStock</code>, <code>price</code>, <code>charge</code>, <code>reserve</code>, and <code>notify</code>.',
+      'In <code>placeOrder</code>, call <code>alg.checkStock</code> first and return immediately if stock is unavailable. This encodes the first invariant.',
+      'Only call <code>alg.reserve</code> and <code>alg.notify</code> after <code>alg.charge</code> returns <code>{ ok: true }</code>. That ordering is the workflow structure.',
+      'The trace interpreter should close over an <code>events</code> array. Each algebra method pushes a readable event and returns deterministic data based on the options.',
+    ],
+    concepts: ['domain algebra', 'interpreter pattern', 'separate what from how', 'workflow invariants', 'AI-assisted refactoring', 'structural architecture'],
+    successPatterns: [
+      'interface\\s+OrderAlgebra',
+      'alg\\.checkStock',
+      'alg\\.charge',
+      'alg\\.reserve',
+      'events\\.push',
+    ],
+    testNames: [
+      'defines an explicit domain algebra',
+      'workflow checks stock through the algebra',
+      'workflow charges through the algebra',
+      'workflow reserves only after successful charge',
+      'trace interpreter records operations',
+    ],
+  },
+
   'ts-dependency-injection': {
     id: 'ts-dependency-injection',
     language: 'typescript',

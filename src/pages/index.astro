@@ -25,12 +25,12 @@ import { tracks, modules } from '../lib/curriculum';
         <div class="max-w-3xl mx-auto">
           <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-6">
             Type systems, category theory, and<br/>
-            <span class="text-accent">algebraic foundations</span> — through code
+            <span class="text-accent">engineering taste</span> — through code
           </h1>
           <p class="text-lg text-text-secondary mb-10 max-w-2xl mx-auto leading-relaxed">
             A structured curriculum of {modules.filter(m => m.status === 'available').reduce((sum, m) => sum + m.lessons.flatMap(l => l.exerciseIds).length, 0)} hands-on exercises
-            with real GHC compilation, progressing from reading Haskell to implementing
-            cryptographic protocols and lambda calculus interpreters.
+            for finding the shape of a problem, encoding invariants, and using
+            algorithms, types, and interpreters to make AI-assisted code precise.
           </p>
           <div class="flex items-center justify-center gap-4">
             <a
@@ -44,6 +44,46 @@ import { tracks, modules } from '../lib/curriculum';
               class="px-6 py-3 border border-border hover:border-border-bright hover:bg-bg-hover active:bg-bg-tertiary text-text-secondary hover:text-text-primary rounded-lg transition-colors duration-150"
             >
               Start from the Beginning
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Craft Loop -->
+      <section class="px-6 pb-16">
+        <div class="max-w-5xl mx-auto border-y border-border py-8">
+          <div class="grid md:grid-cols-4 gap-4">
+            <a
+              href={href('/ts-architecture/architecture')}
+              class="group block p-4 rounded-lg border border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover transition-colors duration-150"
+            >
+              <div class="text-[10px] text-text-muted font-mono mb-3">01</div>
+              <h2 class="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-150 mb-2">Find the Shape</h2>
+              <p class="text-xs text-text-muted leading-relaxed">Name the operations, composition rules, and failure modes before choosing a pattern.</p>
+            </a>
+            <a
+              href={href('/ts-type-driven/type-driven')}
+              class="group block p-4 rounded-lg border border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover transition-colors duration-150"
+            >
+              <div class="text-[10px] text-text-muted font-mono mb-3">02</div>
+              <h2 class="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-150 mb-2">Encode Invariants</h2>
+              <p class="text-xs text-text-muted leading-relaxed">Push domain constraints into types so illegal states are removed, not merely tested.</p>
+            </a>
+            <a
+              href={href('/functional-algorithms/algorithms')}
+              class="group block p-4 rounded-lg border border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover transition-colors duration-150"
+            >
+              <div class="text-[10px] text-text-muted font-mono mb-3">03</div>
+              <h2 class="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-150 mb-2">Choose the Algorithm</h2>
+              <p class="text-xs text-text-muted leading-relaxed">Let data shape, hardware, laziness, and composition drive the implementation strategy.</p>
+            </a>
+            <a
+              href={href('/category-theory-ii/applied-ct')}
+              class="group block p-4 rounded-lg border border-border bg-bg-card hover:border-border-bright hover:bg-bg-hover transition-colors duration-150"
+            >
+              <div class="text-[10px] text-text-muted font-mono mb-3">04</div>
+              <h2 class="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-150 mb-2">Swap Interpreters</h2>
+              <p class="text-xs text-text-muted leading-relaxed">Write the program once, then run, test, trace, optimize, or audit it through interpreters.</p>
             </a>
           </div>
         </div>
